@@ -1,0 +1,47 @@
+{
+  "name": "nanyang-logistics-planner",
+  "version": "1.0.0",
+  "description": "A SAP-style logistics planner with Google Sheets-like interface designed for sand and gravel company daily trip management.",
+  "main": "logistics-planner.html",
+  "scripts": {
+    "init": "git init && git add . && git commit -m \"Initial commit\"",
+    "add": "git add .",
+    "commit": "git add . && git commit -m",
+    "status": "git status",
+    "push": "git push origin main",
+    "push-force": "git push --force-with-lease origin main",
+    "pull": "git pull origin main",
+    "deploy": "npm run add && npm run commit \"Deploy: $(date)\" && npm run push",
+    "quick-push": "git add . && git commit -m \"Quick update: $(date)\" && git push origin main",
+    "setup-remote": "echo \"Please run: git remote add origin <your-github-repo-url>\"",
+    "branch": "git branch",
+    "checkout": "git checkout",
+    "merge": "git merge",
+    "log": "git log --oneline -10",
+    "diff": "git diff",
+    "reset": "git reset --soft HEAD~1",
+    "stash": "git stash",
+    "stash-pop": "git stash pop"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/insidedeveloper888/nanyang.git"
+  },
+  "keywords": [
+    "logistics",
+    "planner",
+    "sap",
+    "spreadsheet",
+    "sand",
+    "gravel",
+    "trip-management"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/insidedeveloper888/nanyang/issues"
+  },
+  "homepage": "https://github.com/insidedeveloper888/nanyang#readme",
+  "devDependencies": {},
+  "dependencies": {}
+}
