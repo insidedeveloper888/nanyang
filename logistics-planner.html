@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sand & Gravel Logistics Planner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f4c75 0%, #3282b8 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toolbar h2 {
+            color: #495057;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0f4c75;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0d3f63;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .date-navigator {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-nav {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-nav:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .current-date {
+            font-size: 16px;
+            font-weight: 500;
+            color: #495057;
+            min-width: 180px;
+            text-align: center;
+        }
+
+        .table-container {
+            position: relative;
+            overflow: auto;
+            max-height: 70vh;
+            border: 1px solid #dee2e6;
+        }
+
+        .table-wrapper {
+            position: relative;
+            min-width: 2000px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+        }
+
+        .frozen-column {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: white;
+            border-right: 2px solid #0f4c75;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #333;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            border: 1px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        th.frozen-column {
+            z-index: 15;
+        }
+
+        td {
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+            font-size: 12px;
+            min-width: 120px;
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        td.frozen-column {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #0f4c75;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+
+        .dropdown-cell {
+            padding: 4px;
+        }
+
+        select {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            font-size: 11px;
+            background: white;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #0f4c75;
+            box-shadow: 0 0 0 2px rgba(15, 76, 117, 0.2);
+        }
+
+        .commission-cell {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .completion-cell {
+            text-align: center;
+        }
+
+        .completion-checkbox {
+            transform: scale(1.2);
+            accent-color: #28a745;
+        }
+
+        .trip-separator {
+            background: #e9ecef !important;
+            border-left: 3px solid #0f4c75 !important;
+        }
+
+        .column-label {
+            font-size: 10px;
+            color: #6c757d;
+            font-weight: normal;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+            
+            .toolbar {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .toolbar-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sand & Gravel Logistics Planner</h1>
+        <p>Daily Trip Planning System</p>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <h2>Daily Logistics Schedule</h2>
+            <div class="date-navigator">
+                <button class="btn btn-nav" onclick="navigateDate(-1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15,18 9,12 15,6"></polyline>
+                    </svg>
+                </button>
+                <span class="current-date" id="currentDate"></span>
+                <button class="btn btn-nav" onclick="navigateDate(1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <div class="toolbar-actions">
+                <button class="btn btn-secondary" onclick="exportData()">Export</button>
+                <button class="btn btn-secondary" onclick="saveData()">Save</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table id="logisticsTable">
+                    <thead>
+                        <tr>
+                            <th class="frozen-column">A<br><span class="column-label">Lorry Plate</span></th>
+                            <th>B<br><span class="column-label">Pick Up From</span></th>
+                            <th>C<br><span class="column-label">Product</span></th>
+                            <th>D<br><span class="column-label">Destination</span></th>
+                            <th>E<br><span class="column-label">Completion</span></th>
+                            <th>F<br><span class="column-label">Commission (RM)</span></th>
+                            <th class="trip-separator">G<br><span class="column-label">Pick Up From (Trip 2)</span></th>
+                            <th>H<br><span class="column-label">Product (Trip 2)</span></th>
+                            <th>I<br><span class="column-label">Destination (Trip 2)</span></th>
+                            <th>J<br><span class="column-label">Completion (Trip 2)</span></th>
+                            <th>K<br><span class="column-label">Commission (RM) (Trip 2)</span></th>
+                            <th class="trip-separator">L<br><span class="column-label">Pick Up From (Trip 3)</span></th>
+                            <th>M<br><span class="column-label">Product (Trip 3)</span></th>
+                            <th>N<br><span class="column-label">Destination (Trip 3)</span></th>
+                            <th>O<br><span class="column-label">Completion (Trip 3)</span></th>
+                            <th>P<br><span class="column-label">Commission (RM) (Trip 3)</span></th>
+                            <th class="trip-separator">Q<br><span class="column-label">Pick Up From (Trip 4)</span></th>
+                            <th>R<br><span class="column-label">Product (Trip 4)</span></th>
+                            <th>S<br><span class="column-label">Destination (Trip 4)</span></th>
+                            <th>T<br><span class="column-label">Completion (Trip 4)</span></th>
+                            <th>U<br><span class="column-label">Commission (RM) (Trip 4)</span></th>
+                            <th class="trip-separator">V<br><span class="column-label">Pick Up From (Trip 5)</span></th>
+                            <th>W<br><span class="column-label">Product (Trip 5)</span></th>
+                            <th>X<br><span class="column-label">Destination (Trip 5)</span></th>
+                            <th>Y<br><span class="column-label">Completion (Trip 5)</span></th>
+                            <th>Z<br><span class="column-label">Commission (RM) (Trip 5)</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data based on the provided sheet
+        const sampleData = [
+            {
+                lorryPlate: "8722",
+                trip1: {
+                    pickUp: "Highway Quarry",
+                    product: "3/4 Agg",
+                    destination: "Nilai MDC",
+                    completed: true,
+                    commission: "5.50"
+                },
+                trip2: {
+                    pickUp: "Highway Quarry",
+                    product: "3/4 Agg",
+                    destination: "Icp kebun",
+                    completed: true,
+                    commission: "11.50"
+                },
+                trip3: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip4: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip5: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                }
+            },
+            {
+                lorryPlate: "8915",
+                trip1: {
+                    pickUp: "Majumas Bestari",
+                    product: "C/Sand",
+                    destination: "Subang Gy two",
+                    completed: true,
+                    commission: "10.50"
+                },
+                trip2: {
+                    pickUp: "IJM",
+                    product: "C/run",
+                    destination: "kapar k345 lucat",
+                    completed: true,
+                    commission: "10.00"
+                },
+                trip3: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip4: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip5: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                }
+            },
+            {
+                lorryPlate: "4250",
+                trip1: {
+                    pickUp: "RCJ",
+                    product: "C/Sand",
+                    destination: "B. Jalil",
+                    completed: true,
+                    commission: "14.00"
+                },
+                trip2: {
+                    pickUp: "Takali Sunway",
+                    product: "C/run",
+                    destination: "K345 Lucas",
+                    completed: true,
+                    commission: "13.50"
+                },
+                trip3: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip4: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip5: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                }
+            },
+            {
+                lorryPlate: "907",
+                trip1: {
+                    pickUp: "RCJ",
+                    product: "C/Sand",
+                    destination: "Tasik Selatan",
+                    completed: true,
+                    commission: "14.00"
+                },
+                trip2: {
+                    pickUp: "Pepsi",
+                    product: "",
+                    destination: "sps chong",
+                    completed: true,
+                    commission: ""
+                },
+                trip3: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip4: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip5: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                }
+            },
+            {
+                lorryPlate: "5708",
+                trip1: {
+                    pickUp: "LORI ROSAK",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip2: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip3: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip4: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip5: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                }
+            }
+        ];
+
+        // Dropdown options
+        const pickUpOptions = [
+            "", "Highway Quarry", "Majumas Bestari", "RCJ", "LORI ROSAK", "CST", 
+            "IJM", "Takali Sunway", "Pepsi", "Hanson Cheras", "Guna"
+        ];
+
+        const productOptions = [
+            "", "3/4 Agg", "C/Sand", "C/run", "Icp kapar", "Kajang Setia Mix", 
+            "Langat Tong Ooi", "Kuchai Ytl", "Nilai MDC", "Belakong Ytl", "Setia mix semen",
+            "Subang Gy two", "Puchong ulus wt"
+        ];
+
+        const destinationOptions = [
+            "", "Nilai MDC", "Subang Gy two", "B. Jalil", "Tasik Selatan", "Icp kebun",
+            "kapar k345 lucat", "K345 Lucas", "sps chong", "Kuchai Ytl", "Kajang Setia Mix",
+            "Langat Tong Ooi", "Belakong Ytl", "Setia mix semen", "Suntiga Sg Rasa",
+            "Kapar U wajar", "kapar k345 lucat", "Puchong ulus wt", "K Garden Kapar"
+        ];
+
+        function createDropdown(options, selectedValue = "", onChangeCallback = null) {
+            const select = document.createElement('select');
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option;
+                optionElement.textContent = option;
+                if (option === selectedValue) {
+                    optionElement.selected = true;
+                }
+                select.appendChild(optionElement);
+            });
+            
+            if (onChangeCallback) {
+                select.addEventListener('change', onChangeCallback);
+            }
+            
+            return select;
+        }
+
+        function createTableRow(data, index) {
+            const row = document.createElement('tr');
+            
+            // Lorry Plate (Frozen Column)
+            const lorryCell = document.createElement('td');
+            lorryCell.className = 'frozen-column';
+            lorryCell.textContent = data.lorryPlate;
+            row.appendChild(lorryCell);
+
+            // Create cells for all 5 trips
+            const trips = [data.trip1, data.trip2, data.trip3, data.trip4, data.trip5];
+            
+            trips.forEach((trip, tripIndex) => {
+                // Pick Up column
+                const pickUpCell = document.createElement('td');
+                pickUpCell.className = tripIndex === 0 ? 'dropdown-cell' : 'dropdown-cell trip-separator';
+                pickUpCell.appendChild(createDropdown(pickUpOptions, trip.pickUp));
+                row.appendChild(pickUpCell);
+
+                // Product column
+                const productCell = document.createElement('td');
+                productCell.className = 'dropdown-cell';
+                productCell.appendChild(createDropdown(productOptions, trip.product));
+                row.appendChild(productCell);
+
+                // Destination column
+                const destinationCell = document.createElement('td');
+                destinationCell.className = 'dropdown-cell';
+                destinationCell.appendChild(createDropdown(destinationOptions, trip.destination));
+                row.appendChild(destinationCell);
+
+                // Completion column
+                const completionCell = document.createElement('td');
+                completionCell.className = 'completion-cell';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'completion-checkbox';
+                checkbox.checked = trip.completed;
+                completionCell.appendChild(checkbox);
+                row.appendChild(completionCell);
+
+                // Commission column
+                const commissionCell = document.createElement('td');
+                commissionCell.className = 'commission-cell';
+                commissionCell.textContent = trip.commission ? `RM ${trip.commission}` : '';
+                row.appendChild(commissionCell);
+            });
+
+            return row;
+        }
+
+        function populateTable() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            sampleData.forEach((data, index) => {
+                const row = createTableRow(data, index);
+                tableBody.appendChild(row);
+            });
+        }
+
+        function addRow() {
+            const newData = {
+                lorryPlate: `NEW${Date.now()}`,
+                trip1: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip2: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip3: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip4: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                },
+                trip5: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: false,
+                    commission: ""
+                }
+            };
+            
+            sampleData.push(newData);
+            const tableBody = document.getElementById('tableBody');
+            const row = createTableRow(newData, sampleData.length - 1);
+            tableBody.appendChild(row);
+        }
+
+        function exportData() {
+            alert('Export functionality would be implemented here');
+        }
+
+        function saveData() {
+            alert('Save functionality would be implemented here');
+        }
+
+        // Date navigation functionality
+        let currentDate = new Date();
+
+        function formatDate(date) {
+            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const dayName = days[date.getDay()];
+            
+            return `${day}-${month}-${year} (${dayName})`;
+        }
+
+        function updateDateDisplay() {
+            const dateElement = document.getElementById('currentDate');
+            dateElement.textContent = formatDate(currentDate);
+        }
+
+        function navigateDate(direction) {
+            currentDate.setDate(currentDate.getDate() + direction);
+            updateDateDisplay();
+            // Here you could add functionality to load data for the selected date
+        }
+
+        // Initialize the table and date when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            populateTable();
+            updateDateDisplay();
+        });
+    </script>
+</body>
+</html>
