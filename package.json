@@ -13,7 +13,6 @@
     "pull": "git pull origin main",
     "deploy": "npm run add && npm run commit \"Deploy: %date%\" && npm run push",
     "quick-push": "git add . && git commit -m \"Quick update: %date%\" && git push origin main",
-    "push-with-token": "git push https://%GITHUB_TOKEN%@github.com/insidedeveloper888/nanyang.git main",
     "setup-remote": "echo Please run: git remote add origin https://github.com/insidedeveloper888/nanyang.git",
     "setup-auth": "echo Please set your GitHub token: set GITHUB_TOKEN=your_token_here",
     "check-auth": "git config --list | findstr user",
@@ -26,7 +25,7 @@
     "reset": "git reset --soft HEAD~1",
     "stash": "git stash",
     "stash-pop": "git stash pop",
-    "help": "echo Available commands: npm run status, npm run add, npm run commit \"message\", npm run push, npm run quick-push, npm run push-with-token"
+    "help": "echo Available commands: npm run status, npm run add, npm run commit \"message\", npm run push, npm run quick-push"
   },
   "repository": {
     "type": "git",
