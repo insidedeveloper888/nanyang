@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=6.0, minimum-scale=0.1, user-scalable=yes" />
+<title>车税规则管理</title>
+<style>
+  :root {
+    /* Light, readable palette aligned with planner */
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --surface-2: #f3f6fb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #dfe6ee;
+    --primary: #2563eb; /* indigo */
+    --primary-2: #60a5fa; /* blue */
+    --success: #16a34a;
+    --danger: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    margin: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 20px;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 12px 36px rgba(31,41,55,0.12);
+  }
+  /* Optional page zoom wrapper */
+  .zoom-root { transform: scale(var(--ui-zoom, 1)); transform-origin: top left; width: calc(100% / var(--ui-zoom, 1)); }
+
+  h1 { margin: 0 0 8px; font-size: 22px; }
+  .subtitle { color: var(--muted); margin-bottom: 16px; }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+    background: var(--surface-2);
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .search { flex: 1; }
+
+  input[type="text"], input[type="number"], select {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  /* Date inputs: cleaner spacing and native icon */
+  input[type="date"] {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 28px 8px 10px; /* compact to avoid overflow */
+    font-size: 14px; /* slightly larger for readability */
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    font-variant-numeric: tabular-nums; /* steadier digit widths */
+    background-image: none;
+  }
+  input[type="date"]:focus {
+    border-color: var(--primary-2);
+    box-shadow: 0 0 0 2px rgba(96,165,250,0.25);
+  }
+  /* Improve legibility of date parts in Chromium/WebKit */
+  input[type="date"]::-webkit-datetime-edit { color: var(--muted); }
+  input[type="date"]::-webkit-datetime-edit-year-field,
+  input[type="date"]::-webkit-datetime-edit-month-field,
+  input[type="date"]::-webkit-datetime-edit-day-field { padding: 0 1px; }
+  input[type="date"]::-webkit-datetime-edit-text { padding: 0 2px; opacity: .75; }
+  /* Use the native indicator, slightly softened */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.8;
+    display: block;
+    margin-right: 6px;
+    cursor: pointer;
+  }
+  /* Ensure date inputs remain readable and tidy in table cells */
+  #rulesTable td input[type="date"] { width: 100%; min-width: 0; height: 34px; text-align: center; letter-spacing: .02em; box-sizing: border-box; }
+  /* Visual divider between Start and End columns for clearer separation */
+  #rulesTable td:nth-child(6) { border-left: 1px dashed var(--border); }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: var(--primary-2);
+    box-shadow: 0 0 0 2px rgba(96,165,250,0.25);
+  }
+  input[type="checkbox"] { transform: scale(1.05); accent-color: var(--success); }
+
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, transform .05s ease;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+    color: #fff;
+    border-color: transparent;
+  }
+  .btn-primary:hover { filter: brightness(0.98); }
+  .btn-danger { background: #fff0f0; border-color: #fecaca; color: #b91c1c; }
+  .btn-success { background: #f0fff4; border-color: #bbf7d0; color: #166534; }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 16px 10px; /* wider gutters for clearer separation */
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    table-layout: fixed; /* ensure column widths follow <th> percentages */
+  }
+  th, td { border-bottom: 1px solid var(--border); padding: 10px; text-align: left; vertical-align: middle; }
+  th { font-weight: 700; color: var(--muted); background: var(--surface-2); }
+  tbody tr:nth-child(even) { background: #fafbff; }
+  tbody tr:hover { background: #f0f7ff; }
+  .actions { display: flex; gap: 8px; }
+  .datalist { width: 100%; }
+  .hint { color: var(--muted); font-size: 12px; margin: 6px 0 12px; }
+
+  /* Commission input pill */
+  .inpCM { text-align: right; }
+  /* Mobile-friendly dropdown */
+  .combo { display:flex; align-items:center; gap:0; }
+  /* Make inputs inside table cells fill their columns */
+  #rulesTable td input[type="text"],
+  #rulesTable td input[type="date"],
+  #rulesTable td .combo input { width: 100%; box-sizing: border-box; }
+  /* Hide the arrow button; input click will open overlay */
+  .combo-btn { display:none; }
+  .combo-btn:hover { background:#f0f7ff; }
+  /* Vertical add-rule layout (card style to match screenshot) */
+  .toolbar.stacked {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .toolbar.stacked .field {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    width:100%;
+  }
+  .toolbar.stacked .label {
+    display:inline-block;
+    width:100px;
+    color: var(--muted);
+    font-weight:700;
+  }
+  /* Input sizing inside the add-new card */
+  .toolbar.stacked .combo input,
+  .toolbar.stacked input[type="text"] {
+    width: 260px;
+  }
+  .options-overlay { position:fixed; inset:0; background:transparent; z-index:9998; }
+  .options-panel { position:fixed; top:5%; left:50%; transform:translateX(-50%); width:min(680px,90vw); height:90vh; background:#1e1e1e; color:#fff; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:9999; display:flex; flex-direction:column; }
+  .options-header { padding:12px; border-bottom:1px solid #333; display:flex; gap:8px; align-items:center; }
+  .options-title { font-weight:600; }
+  .options-search { flex:1; padding:8px; border-radius:6px; border:1px solid #444; background:#111; color:#fff; }
+  .options-list { flex:1; overflow-y:auto; padding:8px 12px; }
+  .options-list::-webkit-scrollbar {
+            display:none;
+        }
+  .option-item { padding:10px 12px; border-bottom:1px solid #333; cursor:pointer; }
+  .option-item:hover { background:#2a2a2a; }
+</style>
+</head>
+<body>
+  <div id="zoomRoot" class="zoom-root">
+  <div class="container">
+    <h1>车税规则管理</h1>
+    <!-- 精简顶部区域：移除旧的“添加”表单与说明，仅保留必要的操作按钮 -->
+    <div class="toolbar">
+      <button id="scrollBottom" class="btn">滚到底部</button>
+    </div>
+    <datalist id="dlPickups" class="datalist"></datalist>
+    <datalist id="dlProducts" class="datalist"></datalist>
+    <datalist id="dlDestinations" class="datalist"></datalist>
+
+    <!-- Moved search bar here to sit between add-new card and the table -->
+    <div class="toolbar" id="rulesSearchBar">
+      <input id="search" class="search" type="text" placeholder="搜索取货地/产品/目的地/金额" />
+    </div>
+
+    <table id="rulesTable">
+      <thead>
+        <tr>
+          <th style="width:18%">取货地</th>
+          <th style="width:16%">产品</th>
+          <th style="width:18%">目的地</th>
+          <th style="width:12%">车税（RM）</th>
+          <th style="width:14%">开始</th>
+          <th style="width:14%">结束</th>
+          <th style="width:8%">删除</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    const SUPABASE_URL = "https://ihafdntwtiyaykgmzimd.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloYWZkbnR3dGl5YXlrZ216aW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3MTk2MjUsImV4cCI6MjA3NTI5NTYyNX0.amf3iEFv1XK1h3h5_orUQfE4w0XY2ubSoD08dhtjyWw";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const optionsCache = { pickup: [], product: [], destination: [] };
+
+    function norm(s) { return (s || '').toString().trim(); }
+    function titleCase(s) {
+      const v = norm(s).toLowerCase();
+      return v.replace(/(^|\s)([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase());
+    }
+    function formatCase(s) { return titleCase(s); }
+    function toRM(s) {
+      if (s == null) return '';
+      const m = String(s).match(/[0-9]+(?:\.[0-9]+)?/);
+      return m ? String(Number(m[0]).toFixed(2)) : '';
+    }
+
+    async function loadOptions() {
+      try {
+        const { data, error } = await sb.from('config_options').select('category,name,active').eq('active', true);
+        if (error) throw error;
+        const dlPU = document.getElementById('dlPickups');
+        const dlPR = document.getElementById('dlProducts');
+        const dlDE = document.getElementById('dlDestinations');
+        function fillDL(dl, items) {
+          dl.innerHTML = '';
+          items.forEach(v => { const o = document.createElement('option'); o.value = v; dl.appendChild(o); });
+        }
+        const byCatRaw = (cat) => (data||[]).filter(r => r.category === cat).map(r => r.name).filter(Boolean);
+        const dedupeAndFormat = (items) => {
+          const map = new Map();
+          for (const raw of items) {
+            const key = norm(raw).toLowerCase();
+            if (!key) continue;
+            if (!map.has(key)) map.set(key, formatCase(raw));
+          }
+          return Array.from(map.values()).sort((a,b)=> a.localeCompare(b));
+        };
+        optionsCache.pickup = dedupeAndFormat(byCatRaw('pickup'));
+        optionsCache.product = dedupeAndFormat(byCatRaw('product'));
+        optionsCache.destination = dedupeAndFormat(byCatRaw('destination'));
+        fillDL(dlPU, optionsCache.pickup);
+        fillDL(dlPR, optionsCache.product);
+        fillDL(dlDE, optionsCache.destination);
+      } catch (e) {
+        console.warn('Failed to load options', e);
+      }
+    }
+
+    async function loadRules() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const { data, error } = await sb.from('commission_rules').select('pick_up,product,destination,commission,active,valid_from,valid_to');
+      if (error) { console.error(error); return; }
+      const tbody = document.querySelector('#rulesTable tbody');
+      tbody.innerHTML = '';
+      (data||[])
+        .sort((a,b) => norm(a.pick_up).localeCompare(norm(b.pick_up)) || norm(a.product).localeCompare(norm(b.product)) || norm(a.destination).localeCompare(norm(b.destination)))
+        .forEach(row => {
+          const pu = formatCase(row.pick_up), pr = formatCase(row.product), de = formatCase(row.destination), cm = toRM(row.commission);
+          const txt = `${pu} ${pr} ${de} ${cm}`.toLowerCase();
+          if (search && !txt.includes(search)) return;
+          const s = row.valid_from ? String(row.valid_from) : '';
+          const e = row.valid_to ? String(row.valid_to) : '';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><div class="combo"><input type="text" class="inpPU" value="${pu}" placeholder="取货地"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+            <td><div class="combo"><input type="text" class="inpPR" value="${pr}" placeholder="产品"><button class="combo-btn" data-cat="product">▼</button></div></td>
+            <td><div class="combo"><input type="text" class="inpDE" value="${de}" placeholder="目的地"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+            <td><input type="text" class="inpCM" value="${cm}" placeholder="RM"></td>
+            <td><input type="date" class="inpStart" value="${s}"></td>
+            <td><input type="date" class="inpEnd" value="${e}"></td>
+            <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+          tbody.appendChild(tr);
+        });
+      // Always show one empty row at bottom for adding new rule
+      const empty = document.createElement('tr');
+      empty.dataset.new = '1';
+      empty.innerHTML = `
+        <td><div class="combo"><input type="text" class="inpPU" placeholder="取货地"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+        <td><div class="combo"><input type="text" class="inpPR" placeholder="产品"><button class="combo-btn" data-cat="product">▼</button></div></td>
+        <td><div class="combo"><input type="text" class="inpDE" placeholder="目的地"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+        <td><input type="text" class="inpCM" placeholder="RM"></td>
+        <td><input type="date" class="inpStart"></td>
+        <td><input type="date" class="inpEnd"></td>
+        <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+      tbody.appendChild(empty);
+    }
+
+    async function addNew() {
+      const pu = formatCase(document.getElementById('newPU').value);
+      const pr = formatCase(document.getElementById('newPR').value);
+      const de = formatCase(document.getElementById('newDE').value);
+      const cm = toRM(document.getElementById('newCM').value);
+      const startRaw = document.getElementById('newStart').value;
+      const endRaw = document.getElementById('newEnd').value;
+      const start = startRaw || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10);
+      const end = endRaw || null;
+      const ac = document.getElementById('newActive').checked;
+      if (!pu || !pr || !de) { alert('请填写完整的取货地、产品、目的地'); return; }
+      if (!cm) { alert('请输入有效的车税，例如 14.00'); return; }
+      const { error } = await sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: cm, active: ac, valid_from: start, valid_to: end }], { onConflict: 'pick_up,product,destination,valid_from' });
+      if (error) { alert('添加失败：' + error.message); return; }
+      document.getElementById('newPU').value = '';
+      document.getElementById('newPR').value = '';
+      document.getElementById('newDE').value = '';
+      document.getElementById('newCM').value = '';
+      document.getElementById('newStart').value = '';
+      document.getElementById('newEnd').value = '';
+      document.getElementById('newActive').checked = true;
+      await loadRules();
+    }
+
+    // Delete a rule using the values entered in the add-new inputs
+    async function deleteByInputs() {
+      const pu = formatCase(document.getElementById('newPU').value);
+      const pr = formatCase(document.getElementById('newPR').value);
+      const de = formatCase(document.getElementById('newDE').value);
+      if (!pu || !pr || !de) { alert('请填写完整的取货地、产品、目的地以删除'); return; }
+      if (!confirm(`确定删除规则：\n取货地：${pu}\n产品：${pr}\n目的地：${de}？`)) return;
+      const { error } = await sb.from('commission_rules').delete().match({ pick_up: pu, product: pr, destination: de });
+      if (error) { alert('删除失败：' + error.message); return; }
+      document.getElementById('newPU').value = '';
+      document.getElementById('newPR').value = '';
+      document.getElementById('newDE').value = '';
+      document.getElementById('newCM').value = '';
+      document.getElementById('newActive').checked = true;
+      await loadRules();
+    }
+
+    async function cleanBlanks() {
+      if (!confirm('确定删除（或禁用）“取货地 / 产品 / 目的地”任一为空的规则？')) return;
+      const { data, error } = await sb.from('commission_rules').select('pick_up,product,destination');
+      if (error) { alert(error.message); return; }
+      const toDelete = (data||[]).filter(r => !norm(r.pick_up) || !norm(r.product) || !norm(r.destination));
+      let deleted = 0, disabled = 0;
+      for (const r of toDelete) {
+        const delRes = await sb.from('commission_rules').delete().match({ pick_up: r.pick_up, product: r.product, destination: r.destination });
+        if (delRes.error) {
+          const upd = await sb.from('commission_rules').upsert([{ pick_up: r.pick_up, product: r.product, destination: r.destination, commission: null, active: false }], { onConflict: 'pick_up,product,destination' });
+          if (!upd.error) disabled++;
+        } else {
+          deleted++;
+        }
+      }
+      alert(`清理完成：删除 ${deleted} 条，禁用 ${disabled} 条`);
+      await loadRules();
+    }
+
+    // Delete ALL commission rules from Supabase safely
+    async function clearAllRules() {
+      if (!confirm('确定删除“所有”车税规则？此操作不可撤销。')) return;
+      try {
+        const { data, error } = await sb.from('commission_rules').select('pick_up,product,destination');
+        if (error) throw error;
+        const rows = data || [];
+        let deleted = 0, disabled = 0;
+        for (const r of rows) {
+          const delRes = await sb.from('commission_rules').delete().match({ pick_up: r.pick_up, product: r.product, destination: r.destination });
+          if (delRes.error) {
+            const upd = await sb.from('commission_rules').upsert([{ pick_up: r.pick_up, product: r.product, destination: r.destination, commission: null, active: false }], { onConflict: 'pick_up,product,destination' });
+            if (!upd.error) disabled++;
+          } else {
+            deleted++;
+          }
+        }
+        alert(`已清空：成功删除 ${deleted} 条，禁用 ${disabled} 条（当删除受限时）`);
+        await loadRules();
+      } catch (e) {
+        alert('清空失败：' + e.message);
+      }
+    }
+
+    // Reset table by clearing everything first, then re-import from Excel
+    async function resetToExcel() {
+      if (!confirm('将清空全部规则，并从 Book1.xlsx 重新导入。是否继续？')) return;
+      await clearAllRules();
+      await importFromExcel('Book1.xlsx');
+    }
+
+    async function importFromExcel(url = 'Book1.xlsx') {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('无法获取Excel：' + res.status);
+        const ab = await res.arrayBuffer();
+        const wb = XLSX.read(ab, { type: 'array' });
+        const sheetNames = wb.SheetNames;
+        if (!sheetNames || sheetNames.length === 0) { alert('Excel为空'); return; }
+        // Collectors across all sheets
+        const rulesMap = new Map();
+        const puSet = new Set();
+        const prSet = new Set();
+        const deSet = new Set();
+        let totalRows = 0;
+        let skippedBlankFields = 0;
+        let skippedNoCommission = 0;
+        const examplesBlank = [];
+        const examplesNoCM = [];
+        const normH = (s) => (s || '').toString().trim().toLowerCase();
+        const toRM = (s) => {
+          if (s == null) return '';
+          const m = String(s).match(/[0-9]+(?:\.[0-9]+)?/);
+          return m ? String(Number(m[0]).toFixed(2)) : '';
+        };
+        for (const sheetName of sheetNames) {
+          const ws = wb.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+          if (!rows || rows.length === 0) continue;
+          let startIdx = 0;
+          let idxPU = 0, idxPR = 1, idxDE = 2, idxCM = 3;
+          const header = rows[0] || [];
+          const normalizedHeader = header.map(normH);
+          const hasHeader = normalizedHeader.length > 0 && (
+            normalizedHeader.some(h => h.includes('pick')) ||
+            normalizedHeader.some(h => h.includes('source')) ||
+            normalizedHeader.some(h => h.includes('from')) ||
+            normalizedHeader.some(h => h.includes('地点') || h.includes('lokasi'))
+          );
+          if (hasHeader) {
+            startIdx = 1;
+            const findIdx = (cands) => {
+              for (let i = 0; i < normalizedHeader.length; i++) {
+                const h = normalizedHeader[i];
+                if (cands.some(c => h.includes(c))) return i;
+              }
+              return -1;
+            };
+            idxPU = findIdx(['pick','source','from','地点','lokasi']);
+            idxPR = findIdx(['product','type','产品','barang']);
+            idxDE = findIdx(['dest','to','目的地','tempat']);
+            idxCM = findIdx(['commission','rm','fee','车税','tax','harga']);
+            if (idxPU < 0) idxPU = 0;
+            if (idxPR < 0) idxPR = 1;
+            if (idxDE < 0) idxDE = 2;
+            if (idxCM < 0) idxCM = 3;
+          }
+          // Fallback: auto-detect commission column by scanning for numeric-looking cells
+          const detectNumericColumn = () => {
+            const colCount = (rows[0] || []).length;
+            let bestIdx = -1;
+            let bestScore = 0;
+            for (let i = 0; i < colCount; i++) {
+              let score = 0;
+              for (let r = startIdx; r < rows.length; r++) {
+                const cell = rows[r] && rows[r][i];
+                const m = String(cell ?? '').match(/[0-9]+(?:\.[0-9]+)?/);
+                if (m) score++;
+              }
+              if (score > bestScore) { bestScore = score; bestIdx = i; }
+            }
+            return bestScore > 0 ? bestIdx : -1;
+          };
+          // If few numeric cells found in the chosen commission column, try the best numeric column
+          let previewNumeric = 0;
+          const maxPreview = Math.min(rows.length, startIdx + 50);
+          for (let r = startIdx; r < maxPreview; r++) {
+            const cell = rows[r] && rows[r][idxCM];
+            const m = String(cell ?? '').match(/[0-9]+(?:\.[0-9]+)?/);
+            if (m) previewNumeric++;
+          }
+          if (previewNumeric < 3) {
+            const guess = detectNumericColumn();
+            if (guess >= 0) idxCM = guess;
+          }
+          // Process rows for this sheet
+          for (let r = startIdx; r < rows.length; r++) {
+            const row = rows[r] || [];
+            const pu = formatCase(row[idxPU]);
+            const pr = formatCase(row[idxPR]);
+            const de = formatCase(row[idxDE]);
+            const cm = toRM(row[idxCM]);
+            totalRows++;
+            if (pu) puSet.add(pu);
+            if (pr) prSet.add(pr);
+            if (de) deSet.add(de);
+            if (!pu || !pr || !de) {
+              skippedBlankFields++;
+              if (examplesBlank.length < 5) examplesBlank.push([pu, pr, de, row[idxCM]]);
+              continue;
+            }
+            if (!cm) {
+              skippedNoCommission++;
+              if (examplesNoCM.length < 5) examplesNoCM.push([pu, pr, de, row[idxCM]]);
+            }
+            const key = `${pu}|||${pr}|||${de}`.toLowerCase();
+            const cmValue = cm || '0.00';
+            rulesMap.set(key, { pick_up: pu, product: pr, destination: de, commission: cmValue, active: true });
+          }
+        }
+        const rulesRows = Array.from(rulesMap.values());
+        // Upsert in small chunks to avoid ON CONFLICT affecting same row twice
+        const chunk = async (arr, size = 200) => {
+          for (let i = 0; i < arr.length; i += size) {
+            const slice = arr.slice(i, i + size);
+            const { error } = await sb.from('commission_rules').upsert(slice, { onConflict: 'pick_up,product,destination' });
+            if (error) throw error;
+          }
+        };
+        if (rulesRows.length) {
+          await chunk(rulesRows);
+        }
+        // Also upsert options for datalist auto-complete
+        const optRows = [];
+        Array.from(puSet).forEach(name => optRows.push({ category: 'pickup', name, active: true }));
+        Array.from(prSet).forEach(name => optRows.push({ category: 'product', name, active: true }));
+        Array.from(deSet).forEach(name => optRows.push({ category: 'destination', name, active: true }));
+        if (optRows.length) {
+          const { error: optErr } = await sb.from('config_options').upsert(optRows, { onConflict: 'category,name' });
+          if (optErr) console.warn('Upsert options failed', optErr);
+        }
+        const msg = [
+          `导入完成：${rulesRows.length} 条规则已写入（重复组合已自动去重）`,
+          `总行数：${totalRows}，跳过空字段：${skippedBlankFields}，跳过空佣金：${skippedNoCommission}`,
+          `已更新选项：取货地 ${puSet.size} 项，产品 ${prSet.size} 项，目的地 ${deSet.size} 项`
+        ];
+        if (examplesBlank.length) msg.push('示例(空字段被跳过)：' + examplesBlank.map(e=>e.join(' | ')).join('; '));
+        if (examplesNoCM.length) msg.push('示例(佣金为空被跳过)：' + examplesNoCM.map(e=>e.join(' | ')).join('; '));
+        alert(msg.join('\n'));
+        await loadRules();
+      } catch (e) {
+        console.warn(e);
+        alert('导入失败：' + e.message);
+      }
+    }
+
+    // Import from a user-selected local Excel file
+    async function importFromSelectedFile(file) {
+      if (!file) return;
+      try {
+        const ab = await file.arrayBuffer();
+        const wb = XLSX.read(ab, { type: 'array' });
+        const sheetNames = wb.SheetNames;
+        if (!sheetNames || sheetNames.length === 0) { alert('Excel为空'); return; }
+        // Collectors across all sheets
+        const rulesMap = new Map();
+        const puSet = new Set();
+        const prSet = new Set();
+        const deSet = new Set();
+        let totalRows = 0;
+        let skippedBlankFields = 0;
+        let skippedNoCommission = 0;
+        const examplesBlank = [];
+        const examplesNoCM = [];
+        const normH = (s) => (s || '').toString().trim().toLowerCase();
+        for (const sheetName of sheetNames) {
+          const ws = wb.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+          if (!rows || rows.length === 0) continue;
+          let startIdx = 0;
+          let idxPU = 0, idxPR = 1, idxDE = 2, idxCM = 3;
+          const header = rows[0] || [];
+          const normalizedHeader = header.map(normH);
+          const hasHeader = normalizedHeader.length > 0 && (
+            normalizedHeader.some(h => h.includes('pick')) ||
+            normalizedHeader.some(h => h.includes('source')) ||
+            normalizedHeader.some(h => h.includes('from')) ||
+            normalizedHeader.some(h => h.includes('地点') || h.includes('lokasi'))
+          );
+          if (hasHeader) {
+            startIdx = 1;
+            const findIdx = (cands) => {
+              for (let i = 0; i < normalizedHeader.length; i++) {
+                const h = normalizedHeader[i];
+                if (cands.some(c => h.includes(c))) return i;
+              }
+              return -1;
+            };
+            idxPU = findIdx(['pick','pickup','from','source','地点','lokasi']);
+            idxPR = findIdx(['product','prod','货','barang','type','产品']);
+            idxDE = findIdx(['destination','dest','to','地方','tempat','目的地']);
+            idxCM = findIdx(['commission','rm','fee','车税','tax','harga']);
+            if (idxPU < 0) idxPU = 0;
+            if (idxPR < 0) idxPR = 1;
+            if (idxDE < 0) idxDE = 2;
+            if (idxCM < 0) idxCM = 3;
+          }
+          // Fallback: auto-detect commission column by scanning for numeric-looking cells
+          const detectNumericColumn2 = () => {
+            const colCount = (rows[0] || []).length;
+            let bestIdx = -1;
+            let bestScore = 0;
+            for (let i = 0; i < colCount; i++) {
+              let score = 0;
+              for (let r = startIdx; r < rows.length; r++) {
+                const cell = rows[r] && rows[r][i];
+                const m = String(cell ?? '').match(/[0-9]+(?:\.[0-9]+)?/);
+                if (m) score++;
+              }
+              if (score > bestScore) { bestScore = score; bestIdx = i; }
+            }
+            return bestScore > 0 ? bestIdx : -1;
+          };
+          let previewNumeric = 0;
+          const maxPreview = Math.min(rows.length, startIdx + 50);
+          for (let r = startIdx; r < maxPreview; r++) {
+            const cell = rows[r] && rows[r][idxCM];
+            const m = String(cell ?? '').match(/[0-9]+(?:\.[0-9]+)?/);
+            if (m) previewNumeric++;
+          }
+          if (previewNumeric < 3) {
+            const guess = detectNumericColumn2();
+            if (guess >= 0) idxCM = guess;
+          }
+          for (let r = startIdx; r < rows.length; r++) {
+            const row = rows[r] || [];
+            const pu = formatCase(row[idxPU]);
+            const pr = formatCase(row[idxPR]);
+            const de = formatCase(row[idxDE]);
+            const cm = toRM(row[idxCM]);
+            totalRows++;
+            if (pu) puSet.add(pu);
+            if (pr) prSet.add(pr);
+            if (de) deSet.add(de);
+            if (!pu || !pr || !de) {
+              skippedBlankFields++;
+              if (examplesBlank.length < 5) examplesBlank.push([pu, pr, de, row[idxCM]]);
+              continue;
+            }
+            if (!cm) {
+              skippedNoCommission++;
+              if (examplesNoCM.length < 5) examplesNoCM.push([pu, pr, de, row[idxCM]]);
+            }
+            const key = `${pu}|||${pr}|||${de}`.toLowerCase();
+            const cmValue = cm || '0.00';
+            rulesMap.set(key, { pick_up: pu, product: pr, destination: de, commission: cmValue, active: true });
+          }
+        }
+        const rulesRows = Array.from(rulesMap.values());
+        // Write rules
+        const chunk = async (arr, size = 200) => {
+          for (let i = 0; i < arr.length; i += size) {
+            const slice = arr.slice(i, i + size);
+            const { error } = await sb.from('commission_rules').upsert(slice, { onConflict: 'pick_up,product,destination' });
+            if (error) throw error;
+          }
+        };
+        if (rulesRows.length) {
+          await chunk(rulesRows);
+        }
+        // Update options
+        const optRows = [];
+        Array.from(puSet).forEach(name => optRows.push({ category: 'pickup', name, active: true }));
+        Array.from(prSet).forEach(name => optRows.push({ category: 'product', name, active: true }));
+        Array.from(deSet).forEach(name => optRows.push({ category: 'destination', name, active: true }));
+        if (optRows.length) {
+          await sb.from('config_options').upsert(optRows, { onConflict: 'category,name' });
+        }
+        const msg = [
+          `文件导入完成：${rulesRows.length} 条规则`,
+          `总行数：${totalRows}，跳过空字段：${skippedBlankFields}，跳过空佣金：${skippedNoCommission}`,
+          `已更新选项：取货地 ${puSet.size} 项，产品 ${prSet.size} 项，目的地 ${deSet.size} 项`
+        ];
+        if (examplesBlank.length) msg.push('示例(空字段被跳过)：' + examplesBlank.map(e=>e.join(' | ')).join('; '));
+        if (examplesNoCM.length) msg.push('示例(佣金为空被跳过)：' + examplesNoCM.map(e=>e.join(' | ')).join('; '));
+        alert(msg.join('\n'));
+        await loadRules();
+      } catch (e) {
+        console.warn(e);
+        alert('文件导入失败：' + e.message);
+      }
+    }
+
+    // Wire toolbar（若无刷新按钮则跳过）
+    const refreshBtn = document.getElementById('refresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', loadRules);
+    document.getElementById('search').addEventListener('input', loadRules);
+    const scrollBtn = document.getElementById('scrollBottom');
+    if (scrollBtn) scrollBtn.addEventListener('click', () => {
+      const tbody = document.querySelector('#rulesTable tbody');
+      const last = tbody && tbody.lastElementChild;
+      if (last) last.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+
+    // Auto-save on edit
+    const tbodyEl = document.querySelector('#rulesTable tbody');
+    tbodyEl.addEventListener('input', (ev) => {
+      const tr = ev.target.closest('tr');
+      if (!tr) return;
+      // Only save when editing meaningful fields
+      if (ev.target.classList && (
+        ev.target.classList.contains('inpPU') ||
+        ev.target.classList.contains('inpPR') ||
+        ev.target.classList.contains('inpDE') ||
+        ev.target.classList.contains('inpCM') ||
+        ev.target.classList.contains('inpStart') ||
+        ev.target.classList.contains('inpEnd')
+      )) {
+        // debounce
+        if (!window.__saveTimers) window.__saveTimers = new WeakMap();
+        const timers = window.__saveTimers;
+        clearTimeout(timers.get(tr));
+        const t = setTimeout(() => {
+          const get = (sel) => tr.querySelector(sel);
+          const pu = formatCase(get('.inpPU').value);
+          const pr = formatCase(get('.inpPR').value);
+          const de = formatCase(get('.inpDE').value);
+          const cm = toRM(get('.inpCM').value);
+          const s = get('.inpStart').value || null;
+          const e = get('.inpEnd').value || null;
+          if (!pu || !pr || !de) return;
+          sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: cm, valid_from: s, valid_to: e, active: true }], { onConflict: 'pick_up,product,destination,valid_from' })
+            .then(async ({ error }) => {
+              if (error) console.warn('保存失败', error);
+              else if (tr.dataset.new === '1') {
+                delete tr.dataset.new;
+                const blank = document.createElement('tr');
+                blank.dataset.new = '1';
+                blank.innerHTML = `
+                  <td><div class="combo"><input type="text" class="inpPU" placeholder="取货地"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+                  <td><div class="combo"><input type="text" class="inpPR" placeholder="产品"><button class="combo-btn" data-cat="product">▼</button></div></td>
+                  <td><div class="combo"><input type="text" class="inpDE" placeholder="目的地"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+                  <td><input type="text" class="inpCM" placeholder="RM"></td>
+                  <td><input type="date" class="inpStart"></td>
+                  <td><input type="date" class="inpEnd"></td>
+                  <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+                tr.parentElement.appendChild(blank);
+              }
+              // Upsert the edited values into config_options to keep pickUp/product/destination synced
+              try {
+                const rows = [];
+                if (pu) rows.push({ category: 'pickup', name: pu, active: true });
+                if (pr) rows.push({ category: 'product', name: pr, active: true });
+                if (de) rows.push({ category: 'destination', name: de, active: true });
+                if (rows.length) await sb.from('config_options').upsert(rows, { onConflict: 'category,name' });
+                // Update local caches and datalists for immediate availability in overlays
+                const addUnique = (arr, v) => { const k = String(v).toLowerCase(); if (!arr.some(x => String(x).toLowerCase() === k)) arr.push(v); };
+                if (pu) addUnique(optionsCache.pickup, pu);
+                if (pr) addUnique(optionsCache.product, pr);
+                if (de) addUnique(optionsCache.destination, de);
+                // Refresh datalists
+                const fillDL = (dlId, items) => {
+                  const dl = document.getElementById(dlId); if (!dl) return;
+                  dl.innerHTML = '';
+                  Array.from(items).sort((a,b)=>a.localeCompare(b)).forEach(v => { const o = document.createElement('option'); o.value = v; dl.appendChild(o); });
+                };
+                fillDL('dlPickups', optionsCache.pickup);
+                fillDL('dlProducts', optionsCache.product);
+                fillDL('dlDestinations', optionsCache.destination);
+                // Notify parent (planner) to update its option lists
+                try { window.parent && window.parent.postMessage({ type: 'optionsUpdated', added: rows.map(r => ({ category: r.category, name: r.name })) }, '*'); } catch (_) {}
+              } catch (e) { console.warn('同步配置选项失败', e); }
+            });
+        }, 500);
+        timers.set(tr, t);
+      }
+    });
+    // 已移除“导入Excel”按钮，以简化顶部区域，仅保留“滚到底部”
+
+    // Mobile-friendly full list overlay for datalist alternatives
+    function openOptionsPanel(category, targetInput) {
+      // Ensure items are deduped case-insensitively and displayed in Title Case
+      const source = optionsCache[category] || [];
+      const uniqItems = Array.from(
+        new Map(source.map(raw => [norm(raw).toLowerCase(), formatCase(raw)])).values()
+      ).sort((a,b) => a.localeCompare(b));
+      const overlay = document.createElement('div'); overlay.className = 'options-overlay';
+      const panel = document.createElement('div'); panel.className = 'options-panel';
+      const header = document.createElement('div'); header.className = 'options-header';
+      const title = document.createElement('div'); title.className = 'options-title'; title.textContent = `选择：${category}`;
+      const search = document.createElement('input'); search.className = 'options-search'; search.placeholder = '搜索...';
+      const list = document.createElement('div'); list.className = 'options-list';
+      panel.appendChild(header); header.appendChild(title); header.appendChild(search); panel.appendChild(list);
+      document.body.appendChild(overlay); document.body.appendChild(panel);
+      const render = () => {
+        const q = search.value.toLowerCase();
+        list.innerHTML = '';
+        uniqItems.filter(v => !q || v.toLowerCase().includes(q)).forEach(v => {
+          const div = document.createElement('div'); div.className = 'option-item'; div.textContent = v;
+          div.addEventListener('click', () => { targetInput.value = v; closeOptionsPanel(); });
+          list.appendChild(div);
+        });
+      };
+      render();
+      search.addEventListener('input', render);
+      overlay.addEventListener('click', closeOptionsPanel);
+      function closeOptionsPanel(){ overlay.remove(); panel.remove(); }
+      window.__closeOptionsPanel = closeOptionsPanel;
+    }
+
+    // Delegated click for expand buttons
+    document.body.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.combo-btn');
+      if (!btn) return;
+      const input = btn.previousElementSibling;
+      const cat = btn.getAttribute('data-cat');
+      openOptionsPanel(cat, input);
+    });
+
+    // Listen for option updates from parent (planner) to keep datalists in sync
+    window.addEventListener('message', (ev) => {
+      const d = ev?.data; if (!d) return;
+      if (d.type === 'optionsUpdated' && Array.isArray(d.added)) {
+        const addUnique = (arr, v) => { const k = String(v).toLowerCase(); if (!arr.some(x => String(x).toLowerCase() === k)) arr.push(v); };
+        d.added.forEach(({ category, name }) => {
+          if (category === 'pickup') addUnique(optionsCache.pickup, name);
+          if (category === 'product') addUnique(optionsCache.product, name);
+          if (category === 'destination') addUnique(optionsCache.destination, name);
+        });
+        const fillDL = (dlId, items) => {
+          const dl = document.getElementById(dlId); if (!dl) return;
+          dl.innerHTML = '';
+          Array.from(items).sort((a,b)=>a.localeCompare(b)).forEach(v => { const o = document.createElement('option'); o.value = v; dl.appendChild(o); });
+        };
+        fillDL('dlPickups', optionsCache.pickup);
+        fillDL('dlProducts', optionsCache.product);
+        fillDL('dlDestinations', optionsCache.destination);
+      } else if (d.type === 'reloadOptions') {
+        loadOptions();
+      }
+    });
+
+    // Also open the overlay when clicking on the input itself
+    document.body.addEventListener('click', (ev) => {
+      // Ignore clicks inside the options panel
+      if (ev.target.closest('.options-panel')) return;
+      const input = ev.target.closest('input');
+      if (!input) return;
+      let cat = null;
+      if (input.id === 'newPU' || input.classList.contains('inpPU')) cat = 'pickup';
+      else if (input.id === 'newPR' || input.classList.contains('inpPR')) cat = 'product';
+      else if (input.id === 'newDE' || input.classList.contains('inpDE')) cat = 'destination';
+      if (!cat) return;
+      openOptionsPanel(cat, input);
+    });
+
+    // Delegated handlers for Save/Delete to ensure reliability
+    document.querySelector('#rulesTable tbody').addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('button');
+      if (!btn) return;
+      const tr = btn.closest('tr');
+      const get = (sel) => tr.querySelector(sel);
+      if (btn.classList.contains('btnSave')) {
+        const newPU = formatCase(get('.inpPU').value);
+        const newPR = formatCase(get('.inpPR').value);
+        const newDE = formatCase(get('.inpDE').value);
+        const newCM = toRM(get('.inpCM').value);
+        const newST = get('.inpStart').value || null;
+        const newEN = get('.inpEnd').value || null;
+        const newAC = get('.inpAC').checked;
+        if (!newPU || !newPR || !newDE) { alert('取货地/产品/目的地均为必填'); return; }
+        const { error } = await sb.from('commission_rules').upsert([{ pick_up:newPU, product:newPR, destination:newDE, commission:newCM, active:newAC, valid_from:newST, valid_to:newEN }], { onConflict:'pick_up,product,destination,valid_from' });
+        if (error) { alert('保存失败：' + error.message); return; }
+        alert('已保存');
+        await loadRules();
+      } else if (btn.classList.contains('btnDelete')) {
+        const pu = norm(get('.inpPU').value);
+        const pr = norm(get('.inpPR').value);
+        const de = norm(get('.inpDE').value);
+        if (!confirm('确定删除该规则？')) return;
+        const delRes = await sb.from('commission_rules').delete().match({ pick_up: pu, product: pr, destination: de });
+        if (delRes.error) {
+          const upd = await sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: null, active: false }], { onConflict: 'pick_up,product,destination' });
+          if (upd.error) { alert('删除/禁用失败：' + upd.error.message); return; }
+          alert('删除被阻止，已改为禁用该规则');
+        } else {
+          alert('已删除');
+        }
+        await loadRules();
+      }
+    });
+
+    // Init
+    (async () => {
+      await loadOptions();
+      await loadRules();
+      // Auto-import Excel when requested via query param
+      try {
+        const params = new URLSearchParams(location.search);
+        if (params.get('autoImport') === '1') {
+          await importFromExcel('Book1.xlsx');
+        }
+      } catch (e) {
+        console.warn('Auto import failed', e);
+      }
+    })();
+  </script>
+</body>
+</html>

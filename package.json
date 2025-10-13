@@ -1,0 +1,15 @@
+{
+  "name": "trae-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root workspace for the Nanyang project",
+  "scripts": {
+    "serve": "npx serve -l 8000 nanyang",
+    "serve:manager": "npx serve -l 8001 nanyang",
+    "start": "npm run serve"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.74.0",
+    "xlsx": "^0.18.5"
+  }
+}

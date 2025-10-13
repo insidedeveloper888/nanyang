@@ -1,0 +1,3433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.1, maximum-scale=6.0, user-scalable=yes">
+    <title>砂石运输计划</title>
+    <style>
+        :root {
+            --bg: #f5f7fb;
+            --text: #2b2f36;
+            --text-muted: #6c757d;
+            --surface: #ffffff;
+            --surface-2: #f8f9fa;
+            --border: #dee2e6;
+            --primary: #0f4c75;
+            --primary-2: #3282b8;
+            --primary-hover: #0d3f63;
+            --accent-success: #28a745;
+            --table-hover: #e3f2fd;
+        }
+        /* Allow native pinch zoom and scrolling on touch devices */
+        html, body { touch-action: auto; }
+        
+        /* Vibrant colorful theme */
+        [data-theme="colorful"] {
+            --bg: radial-gradient(1200px 600px at 10% 10%, #fffaf0 0%, #f0f5ff 40%, #f7f0ff 70%, #f5f7fb 100%);
+            --text: #262339;
+            --text-muted: #5c6680;
+            --surface: #ffffff;
+            --surface-2: #f6f9ff;
+            --border: #d7e3f0;
+            --primary: #8a2be2; /* electric violet */
+            --primary-2: #06b6d4; /* cyan */
+            --primary-hover: #6f22bd;
+            --accent-success: #12b886; /* teal-green */
+            --table-hover: #f0f8ff;
+        }
+
+        /* Calm, readable theme */
+        [data-theme="readable"] {
+            --bg: #f6f8fb;
+            --text: #1f2937; /* slate-800 */
+            --text-muted: #4b5563; /* slate-600 */
+            --surface: #ffffff;
+            --surface-2: #f3f6fb;
+            --border: #dfe6ee;
+            --primary: #2563eb; /* indigo-600 */
+            --primary-2: #60a5fa; /* blue-400 */
+            --primary-hover: #1d4ed8;
+            --accent-success: #16a34a; /* green-600 */
+            --table-hover: #eff6ff; /* slate/blue subtle */
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px; /* 提升全局字体，便于阅读 */
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+            color: white;
+            padding: 8px 10px; /* 压缩顶部留白 */
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .header h1 {
+            font-size: 18px; /* 更大的标题字体 */
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0; /* 去除外边距，最大化内容区 */
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 12px 36px rgba(31, 41, 55, 0.15);
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: var(--surface-2);
+            padding: 6px 10px; /* 压缩工具栏内边距 */
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toolbar h2 {
+            color: var(--text);
+            font-size: 16px; /* 更大 */
+            font-weight: 700;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn {
+            padding: 8px 12px; /* 更大的按钮尺寸 */
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .date-navigator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-nav {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+
+        .btn-nav:hover {
+            background: var(--surface-2);
+            border-color: #adb5bd;
+        }
+
+        .current-date {
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .table-container {
+            position: relative;
+            overflow: auto; /* 恢复滚动（缩放到整页后一般不会出现滚动条） */
+            max-height: 85vh; /* 原始高度，避免工具栏被压缩过度 */
+            border: 1px solid var(--border);
+        }
+
+        .table-wrapper {
+            position: relative;
+            /* Removed min-width constraint for better zoom-out */
+        }
+
+        /* Tablet-specific styles for fit-to-page layout */
+        @media screen  and (orientation: landscape),
+               screen {
+            .table-container {
+                overflow-x: auto; /* Allow horizontal scroll when needed */
+                max-height: 80vh;
+            }
+            
+            .table-wrapper {
+                /* Removed min-width and transform constraints for better zoom control */
+            }
+            
+            /* Adjust container to account for scaling */
+            .container {
+                overflow-x: hidden;
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: var(--surface);
+        }
+
+        .frozen-column {
+            /* Make the first column sticky on the left during horizontal scroll */
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            background: var(--surface);
+            border-right: 2px solid var(--primary);
+        }
+
+        /* Ensure the entire first column (cells) sticks on the left */
+        table tr > th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 21;
+            background: var(--surface);
+            border-right: 2px solid var(--primary);
+        }
+        table tr > td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            background: var(--surface);
+            border-right: 2px solid var(--primary);
+        }
+
+        th {
+            background: var(--surface-2);
+            color: var(--text);
+            padding: 6px 4px; /* 更紧凑 */
+            text-align: center;
+            font-weight: 700;
+            font-size: 11px;
+            border: 1px solid var(--border);
+            /* Remove sticky headers on scroll */
+            position: static;
+            top: auto;
+            z-index: auto;
+            box-shadow: 0 2px 0 rgba(0,0,0,0.06);
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s ease;
+        }
+
+        th:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        th.sortable::after {
+            content: ' ↕';
+            opacity: 0.5;
+            font-size: 10px;
+        }
+
+        th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+            color: var(--primary);
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+            color: var(--primary);
+        }
+
+        /* Trip background colors (customizable via CSS variables) */
+        :root {
+            --trip1-bg: #e3f2fd; /* Light Blue */
+            --trip2-bg: #f3e5f5; /* Light Purple */
+            --trip3-bg: #e8f5e8; /* Light Green */
+            --trip4-bg: #fff3e0; /* Light Orange */
+            --trip5-bg: #fce4ec; /* Light Pink */
+        }
+        .trip1-bg { background-color: var(--trip1-bg) !important; }
+        .trip2-bg { background-color: var(--trip2-bg) !important; }
+        .trip3-bg { background-color: var(--trip3-bg) !important; }
+        .trip4-bg { background-color: var(--trip4-bg) !important; }
+        .trip5-bg { background-color: var(--trip5-bg) !important; }
+
+        /* Prominent trip group headers row (sticks above column headers) */
+        .trip-group-header th {
+            /* No sticky group headers */
+            position: static;
+            top: auto;
+            z-index: auto;
+            background: var(--surface);
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--primary);
+            padding: 6px;
+            border-bottom: 2px solid var(--primary);
+        }
+        .trip-group-header th.trip-header { text-align: center; }
+        .trip-group-header th.trip-header + th.trip-header { border-left: 3px solid var(--primary); }
+
+        /* Column letters/labels row (non-sticky) */
+        .columns-header th { top: auto !important; z-index: auto; }
+
+        /* Prevent header cells from blocking interactions on the first body row */
+        .trip-group-header th,
+        .columns-header th {
+            /* Allow interactions like sorting on header cells */
+            pointer-events: auto;
+        }
+
+        /* Colorful column headers for first impression */
+        [data-theme="colorful"] thead th:nth-child(1) { background: #eef6ff; }
+        [data-theme="colorful"] thead th:nth-child(2) { background: #fff0f5; }
+        [data-theme="colorful"] thead th:nth-child(3) { background: #f0fff4; }
+        [data-theme="colorful"] thead th:nth-child(4) { background: #f0f9ff; }
+        [data-theme="colorful"] thead th:nth-child(5) { background: #f9f0ff; }
+        [data-theme="colorful"] thead th:nth-child(6) { background: #fffaf0; }
+
+        th.frozen-column {
+            z-index: auto;
+        }
+
+        /* Ensure the first column cells sit above non-interactive header overlay */
+        td.frozen-column { z-index: 12; }
+
+        td {
+            padding: 3px 4px; /* 更紧凑但不改字号 */
+            border: 1px solid var(--border);
+            text-align: center;
+            font-size: 10px; /* 保持原字号 */
+            min-width: 96px;
+            max-width: 180px; /* 稍微缩窄列宽 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 车牌列更紧凑 */
+        th.frozen-column {
+            padding: 4px 4px;
+            min-width: 70px;
+            font-size: 10px; /* Larger for senior users */
+        }
+        td.frozen-column {
+            padding: 4px 6px; /* 增加内边距，易读 */
+            min-width: 70px;
+            font-size: 10px; /* Larger for senior users */
+            font-weight: 700;
+        }
+
+        td.frozen-column {
+            background: var(--surface-2);
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 10px;
+        }
+
+        /* Lorry Plate column is visible and sticky on the far left */
+        /* Previously hidden via: th.frozen-column, td.frozen-column { display: none; } */
+
+        tr:nth-child(even) {
+            background-color: var(--surface-2);
+        }
+
+        tr:hover {
+            background-color: var(--table-hover);
+            transition: background-color 0.15s ease;
+        }
+
+        .dropdown-cell {
+            padding: 0; /* 取消多余内边距 */
+        }
+
+        select {
+            width: 100%;
+            padding: 4px 6px; /* 下拉更小 */
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 10px;
+            background: transparent; /* inherit column color */
+            color: var(--text);
+        }
+
+        /* Searchable input (replaces select) */
+        .combo-input {
+            width: 100%;
+            padding: 4px 6px; /* 降低高度但保持14px字号 */
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 10px;
+            background: transparent; /* inherit column color */
+            color: var(--text);
+            cursor: pointer;
+        }
+        .combo-input::placeholder { color: var(--text-muted); }
+
+        /* Remarks input styling (compact) */
+        .remarks-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 10px;
+            background: transparent;
+            color: var(--text);
+        }
+        .remarks-input::placeholder { color: var(--text-muted); }
+
+        select:focus, .combo-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(15, 76, 117, 0.2);
+        }
+
+        .commission-cell {
+            color: var(--accent-success);
+            font-weight: 600;
+        }
+
+        /* ===================== Active Trips Board ===================== */
+        .trip-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 14px;
+            padding: 8px 0 20px;
+        }
+        .route-group {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        /* NOTE: Use route-group-header to avoid collision with table header class .trip-group-header */
+        .route-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+        }
+        .route-group-title {
+            font-weight: 700;
+            font-size: 10px;
+            color: var(--primary);
+        }
+        .trip-list {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+        .trip-card {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            align-items: center;
+        }
+        .trip-main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+        .trip-route { font-size: 10px; font-weight: 600; }
+        .trip-meta { font-size: 10px; color: var(--text-muted); }
+        .trip-actions { display: flex; align-items: center; gap: 8px; }
+        .trip-actions .commission-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--accent-success);
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.25);
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        #tableBody {
+            margin-top: 10px;
+        }
+
+        .completion-cell {
+            text-align: center;
+            padding: 0; /* 去除额外空白 */
+            min-width: 32px; /* 稍宽以匹配表头 */
+        }
+
+        .completion-checkbox {
+            width: 10px; /* 再缩小 */
+            height: 10px;
+            transform: none; /* 取消放大 */
+            accent-color: var(--accent-success);
+            margin: 0; /* 去除默认外边距 */
+        }
+
+        /* 完成列表头：仅显示文字 */
+        .completion-header {
+            min-width: 36px; /* 紧凑但保持可读 */
+            padding: 4px 2px;
+            text-align: center;
+        }
+        .completion-header .column-label { display: inline; margin-right: 0; }
+        .completion-header::after { content: none; }
+
+        /* Commission input styling */
+        .commission-input {
+            width: 72px; /* 缩窄输入宽度 */
+            padding: 2px 6px; /* 更紧凑 */
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 10px; /* 保持字号 */
+            color: var(--text);
+            text-align: right;
+            background: transparent; /* inherit column color */
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+            outline: none;
+            /* Hide number input spinners */
+            -moz-appearance: textfield;
+        }
+        .commission-input::-webkit-outer-spin-button,
+        .commission-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .commission-input::placeholder { color: #999; }
+        .commission-input:focus {
+            border-color: var(--primary-2);
+            box-shadow: 0 0 0 2px rgba(50, 130, 184, 0.15);
+        }
+        .commission-input.autofilled {
+            background: #f6fff8; /* softer green */
+            border-color: #a5d6a7; /* soft green border */
+            color: #14532d;
+            font-weight: 500;
+        }
+
+        /* ===================== iPad readability tweaks ===================== */
+        @media (min-width: 768px) {
+            /* Slightly larger base font for tablets */
+            body { font-size: 16px; }
+            /* Keep headers readable but compact */
+            th { font-size: 12px; padding: 5px 4px; }
+            /* Increase cell font-size while tightening vertical padding */
+            td { font-size: 12px; padding: 2px 3px; }
+            /* Inputs readable but low height to fit more rows */
+            .combo-input { font-size: 10px; padding: 3px 5px; }
+            .commission-input { font-size: 10px; padding: 2px 5px; }
+            .completion-checkbox { width: 12px; height: 12px; }
+            /* Use more viewport height for table */
+            .table-container { max-height: 88vh; }
+        }
+
+        /* Large overlay picker (for trip dropdowns) */
+        .options-overlay { position: fixed; inset: 0; background: transparent; z-index: 2000; }
+        /* Compact, tablet-friendly overlay size */
+        .options-panel { position: fixed; top: 6%; left: 50%; transform: translateX(-50%); width: min(520px, 92vw); height: min(70vh, 620px); background: #1e1e1e; color: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2001; display: flex; flex-direction: column; }
+        @media (max-width: 1024px) {
+            .options-panel { width: min(480px, 92vw); height: min(68vh, 560px); }
+        }
+        @media (max-width: 768px) {
+            .options-panel { top: 8%; width: 92vw; height: min(65vh, 520px); }
+            .option-item { font-size: 15px; }
+            .options-search { font-size: 15px; }
+        }
+        .options-header { padding: 12px; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; }
+        .options-title { font-weight: 600; }
+        .options-search { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #111; color: #fff; font-size: 16px; }
+        /* Extra right padding so the A–Z index does not overlap items */
+        .options-list { flex: 1; overflow-y: auto; padding: 8px 48px 8px 12px; }
+        .options-list::-webkit-scrollbar {
+            display:none;
+        }
+        .option-item { padding: 12px 14px; border-bottom: 1px solid #333; cursor: pointer; font-size: 16px; }
+        .option-item:hover { background: #2a2a2a; }
+
+        /* 搜索框 */
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .search-input {
+            width: 240px;
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        /* Config modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--surface);
+            width: 86%;
+            max-width: 900px; /* 更紧凑的配置面板，适合平板 */
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            overflow: hidden;
+            font-size: 14px; /* 提升面板基础字号 */
+        }
+
+        .modal-header {
+            background: var(--primary);
+            color: #fff;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh; /* 更友好高度，避免初始缩放时显得过大 */
+            overflow: auto;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .config-card {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            background: var(--surface-2);
+        }
+
+        .config-card h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        .config-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .config-input-row input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 15px;
+        }
+
+        .config-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        /* 新增：配置面板标签与表格样式，使界面更整齐 */
+        .config-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+        .tab-btn { padding: 8px 12px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .config-table { width: 100%; border-collapse: collapse; }
+        .config-table th, .config-table td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; font-size: 14px; }
+        .config-actions { display: flex; gap: 8px; }
+        .mini-btn { padding: 6px 10px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; }
+        .mini-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        .config-pill {
+            background: #e9f5ff;
+            border: 1px solid #b6e0fe;
+            color: var(--primary);
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Visual indicators for hidden lorry plates */
+        .config-pill.hidden { opacity: 0.8; }
+        .config-pill .plate-label { font-weight: 600; }
+        .config-pill.hidden .plate-label { text-decoration: line-through; opacity: 0.7; }
+        .status-badge {
+            background: #fff3cd;
+            color: #8a6d3b;
+            border: 1px solid #ffe49a;
+            border-radius: 999px;
+            padding: 0 6px;
+            font-size: 10px;
+        }
+        .pill-actions { display: inline-flex; gap: 4px; }
+        .pill-actions button { font-size: 11px; text-decoration: none; }
+
+        .config-pill button {
+            background: transparent;
+            border: none;
+            color: #0f4c75;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-footer {
+            padding: 12px 16px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: #fff;
+        }
+
+        .trip-separator {
+            /* Only draw the separator border; preserve trip background color */
+            border-left: 3px solid var(--primary) !important;
+        }
+
+        /* Fit-to-screen mode: reduce horizontal footprint WITHOUT changing font sizes */
+        .fit-width .table-container {
+            /* Allow horizontal scrolling in case the screen cannot fit all columns */
+            overflow-x: auto;
+        }
+        .fit-width table {
+            /* allow columns to size a bit more naturally so option text isn't cut off */
+            table-layout: auto;
+        }
+        .fit-width th, .fit-width td {
+            padding-left: 5px;
+            padding-right: 5px;
+            min-width: 100px; /* slightly tighter, still readable */
+        }
+        .fit-width td { max-width: 200px; }
+        /* Keep labels visible in fit-width for clarity */
+        .fit-width .column-label { display: inline; }
+        .fit-width .btn-nav { padding: 6px 10px; }
+        .fit-width select { padding: 6px; }
+
+        .column-label {
+            font-size: 10px; /* Larger for easier reading */
+            color: var(--text);
+            font-weight: 800; /* Extra bold for clarity */
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+            
+            .toolbar {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .toolbar-actions {
+                justify-content: center;
+            }
+        }
+        /* Calendar date picker styling */
+        .date-input {
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 16px;
+            color: var(--text);
+            font-weight: 700;
+            text-align: center;
+            min-width: 170px;
+        }
+        .date-input::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- <div class="header">
+        <h1>砂石运输计划</h1>
+        <p>每日行程管理系统</p>
+    </div> -->
+
+    <!-- 顶部右侧快捷菜单按钮 -->
+    <style>
+        .top-right-menu { position: fixed; top: 4px; right: 10px; z-index: 2400; }
+        .menu-btn { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .menu-btn:hover { background: var(--surface); }
+        .menu-dropdown { position: absolute; top: 40px; right: 0; min-width: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; overflow: hidden; z-index: 9999; }
+        .menu-dropdown.show { display: block; }
+        .menu-item { padding: 10px 12px; cursor: pointer; color: var(--text); font-size: 14px; }
+        .menu-item:hover { background: var(--surface-2); }
+        .menu-sep { height: 1px; background: var(--border); margin: 0; }
+
+        /* Alphabet index sidebar for quick jump */
+        /* Hide alpha index in main tabs; show only inside selection overlays */
+        .alpha-index { display: none; flex-direction: column; gap: 2px; align-items: center; padding: 6px 4px; background: rgba(0,0,0,0.02); border-radius: 8px; }
+        .alpha-index .alpha-btn { border: none; background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+        .alpha-index .alpha-btn:hover { background: var(--surface-2); color: var(--text); }
+        .alpha-index .alpha-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
+        /* Place the index at the right edge of the tab panel */
+        .tab-panel { position: relative; }
+        .tab-panel .alpha-index { display: none; }
+        /* Overlay picker A–Z index: keep inside the scroll column */
+        .options-list { position: relative; }
+        .options-list .alpha-index { display: inline-flex; position: absolute; top: 4px; right: 4px; bottom: 4px; width: 36px; padding: 8px 6px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: flex-start; justify-content: flex-start; gap: 2px; z-index: 1; }
+        .options-list .alpha-index .alpha-btn { color: #fff; font-size: 14px; font-weight: 600; padding: 2px 4px; opacity: 0.9; }
+        .options-list .alpha-index .alpha-btn:hover { background: rgba(255,255,255,0.12); color: #fff; opacity: 1; }
+        .options-list .alpha-index .alpha-btn[disabled] { opacity: 0.35; }
+
+        /* Top-right tab switches replacing the 3-dot menu */
+        .top-right-tabs { position: fixed; top: 4px; right: 10px; z-index: 2400; display: inline-flex; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .top-tab { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 700; }
+        .top-tab:hover { background: var(--surface); }
+        .top-tab.active { background: var(--surface); color: var(--text); border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59,130,246,0.2) inset; }
+
+        /* Zoom controls */
+        :root { --zoom: 1; }
+        .table-wrapper { position: relative; width: max-content; }
+        /* Use CSS zoom to avoid breaking position: sticky on the left plate column */
+        .scale-frame { zoom: var(--zoom); transform: none; transform-origin: top left; width: max-content; }
+        .zoom-controls { display: inline-flex; align-items: center; gap: 8px; }
+        .zoom-btn { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+        .zoom-btn:hover { background: var(--surface); }
+        .zoom-btn.primary { border-color: var(--primary); }
+
+        /* Embedded commission panel (same page tab) */
+        .embedded-panel { position: fixed; inset: 56px 12px 12px 12px; z-index: 2300; display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,0.25); overflow: hidden; }
+        .embedded-panel.show { display: block; }
+        .embedded-panel iframe { width: 100%; height: 100%; border: none; background: var(--surface); }
+        .alpha-header { padding: 6px 12px; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid #333; }
+
+        /* Unsaved badge in modal header */
+        .unsaved-badge { margin-left: 12px; padding: 4px 8px; border-radius: 999px; background: #ffb02e; color: #1f2937; font-size: 12px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+        .unsaved-badge.pulse { animation: pulse 1.2s ease-in-out infinite; }
+        @keyframes pulse { 0%{ transform: scale(1); } 50%{ transform: scale(1.05); } 100%{ transform: scale(1);} }
+
+        /* Toast notifications */
+        .toast-container { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 99999; }
+        .toast { min-width: 240px; max-width: 86vw; padding: 10px 12px; border-radius: 8px; color: #fff; background: rgba(31,41,55,0.95); box-shadow: 0 10px 20px rgba(0,0,0,0.25); border-left: 5px solid #3b82f6; font-size: 14px; }
+        .toast.success { border-color: #16a34a; }
+        .toast.warning { border-color: #f59e0b; }
+        .toast.danger { border-color: #dc2626; }
+        .toast.fade-out { opacity: 0; transition: opacity 300ms ease; }
+
+        /* Text selection visibility */
+        ::selection { background: var(--primary); color: #fff; }
+
+        /* Table row highlights for added items */
+        .row-added { position: relative; background: #e8fff3 !important; }
+        .row-added::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: #16a34a; }
+    </style>
+    <div class="top-right-tabs" aria-label="快捷切换">
+        <button id="topTabPlanner" class="top-tab active" title="排程">排程</button>
+        <button id="topTabConfig" class="top-tab" title="配置">配置</button>
+        <button id="topTabCommission" class="top-tab" title="车税管理">车税管理</button>
+    </div>
+    <!-- Toast notifications -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="container">
+        <div class="toolbar">
+            <!-- <h2>每日物流排程</h2> -->
+            <div class="date-navigator">
+                <button class="btn btn-nav" onclick="navigateDate(-1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15,18 9,12 15,6"></polyline>
+                    </svg>
+                </button>
+                <input type="date" id="datePicker" class="date-input" aria-label="选择日期">
+                <!-- <span class="current-date" id="currentDate"></span> -->
+                <button class="btn btn-nav" onclick="navigateDate(1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <div class="toolbar-actions" style="display:flex;gap:8px;align-items:center">
+                <div class="zoom-controls" aria-label="缩放">
+                    <button id="fitAll" class="zoom-btn primary" title="适配整页">Fit All</button>
+                    <button id="zoomOut" class="zoom-btn" title="缩小">—</button>
+                    <span id="zoomValue" style="min-width:48px;text-align:center">100%</span>
+                    <button id="zoomIn" class="zoom-btn" title="放大">＋</button>
+                </div>
+            </div>
+            <!-- <div class="toolbar-actions">
+                <div class="search-box">
+                    <input id="searchInput" class="search-input" type="text" placeholder="搜索车牌/取货地/产品/目的地">
+                </div>
+                <button class="btn btn-secondary" id="btnFit" title="Fit more trips on screen">Fit to Screen</button>
+                <button class="btn btn-secondary" id="btnConfig">配置</button>
+                <button class="btn btn-secondary" id="btnCommissionManager" title="管理取货地/产品/目的地与车税组合">车税规则</button>
+        </div> -->
+        </div>
+
+        <div class="table-container">
+            <div class="table-wrapper">
+                <div class="scale-frame">
+                <table id="logisticsTable">
+                    <thead>
+                        <tr class="trip-group-header">
+                            <th class="frozen-column"></th>
+                            <th class="trip-header" colspan="6">行程 1</th>
+                            <th class="trip-header" colspan="6">行程 2</th>
+                            <th class="trip-header" colspan="6">行程 3</th>
+                            <th class="trip-header" colspan="6">行程 4</th>
+                            <th class="trip-header" colspan="6">行程 5</th>
+                        </tr>
+                        <tr class="columns-header" >
+                            <th class="frozen-column sortable" data-column="plate"><span class="column-label">车牌</span></th>
+                            <th class="sortable trip1-bg" data-column="pickup1"><span class="column-label">取货地</span></th>
+                            <th class="sortable trip1-bg" data-column="product1"><span class="column-label">产品</span></th>
+                            <th class="sortable trip1-bg" data-column="destination1"><span class="column-label">目的地</span></th>
+                            <th class="completion-header trip1-bg"><span class="column-label">完成</span></th>
+                            <th class="sortable trip1-bg" data-column="commission1"><span class="column-label">车税（RM）</span></th>
+                            <th class="trip1-bg" data-column="remarks1"><span class="column-label">备注</span></th>
+                            <th class="trip-separator sortable trip2-bg" data-column="pickup2"><span class="column-label">取货地</span></th>
+                            <th class="sortable trip2-bg" data-column="product2"><span class="column-label">产品</span></th>
+                            <th class="sortable trip2-bg" data-column="destination2"><span class="column-label">目的地</span></th>
+                            <th class="completion-header trip2-bg"><span class="column-label">完成</span></th>
+                            <th class="sortable trip2-bg" data-column="commission2"><span class="column-label">车税（RM）</span></th>
+                            <th class="trip2-bg" data-column="remarks2"><span class="column-label">备注</span></th>
+                            <th class="trip-separator sortable trip3-bg" data-column="pickup3"><span class="column-label">取货地</span></th>
+                            <th class="sortable trip3-bg" data-column="product3"><span class="column-label">产品</span></th>
+                            <th class="sortable trip3-bg" data-column="destination3"><span class="column-label">目的地</span></th>
+                            <th class="completion-header trip3-bg"><span class="column-label">完成</span></th>
+                            <th class="sortable trip3-bg" data-column="commission3"><span class="column-label">车税（RM）</span></th>
+                            <th class="trip3-bg" data-column="remarks3"><span class="column-label">备注</span></th>
+                            <th class="trip-separator sortable trip4-bg" data-column="pickup4"><span class="column-label">取货地</span></th>
+                            <th class="sortable trip4-bg" data-column="product4"><span class="column-label">产品</span></th>
+                            <th class="sortable trip4-bg" data-column="destination4"><span class="column-label">目的地</span></th>
+                            <th class="completion-header trip4-bg"><span class="column-label">完成</span></th>
+                            <th class="sortable trip4-bg" data-column="commission4"><span class="column-label">车税（RM）</span></th>
+                            <th class="trip4-bg" data-column="remarks4"><span class="column-label">备注</span></th>
+                            <th class="trip-separator sortable trip5-bg" data-column="pickup5"><span class="column-label">取货地</span></th>
+                            <th class="sortable trip5-bg" data-column="product5"><span class="column-label">产品</span></th>
+                            <th class="sortable trip5-bg" data-column="destination5"><span class="column-label">目的地</span></th>
+                            <th class="completion-header trip5-bg"><span class="column-label">完成</span></th>
+                            <th class="sortable trip5-bg" data-column="commission5"><span class="column-label">车税（RM）</span></th>
+                            <th class="trip5-bg" data-column="remarks5"><span class="column-label">备注</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+
+            <!-- Embedded commission manager (keeps in same page). Use cache-busting param to avoid stale UI. -->
+            <div id="embeddedCommissionPanel" class="embedded-panel" aria-label="车税管理">
+                <iframe id="ifrCommission" src="commission-manager.html?v=embedded" title="车税管理"></iframe>
+            </div>
+        <!-- Active Trips Board (new): shows all trips simultaneously in large, readable cards -->
+        <div id="tripOverviewContainer" class="trip-board" style="display:none"></div>
+    </div>
+    <!-- Configuration Modal -->
+    <div class="modal-overlay" id="configModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>系统配置</span>
+                <span id="unsavedBadge" class="unsaved-badge" title="有未保存的更改" style="display:none">未保存更改</span>
+                <button class="btn btn-secondary" id="btnCloseConfig">关闭</button>
+            </div>
+            <div class="modal-body">
+                <div class="config-tabs">
+                    <button class="tab-btn active" data-tab="tab-lorry">车牌</button>
+                    <button class="tab-btn" data-tab="tab-pickup">取货地</button>
+                    <button class="tab-btn" data-tab="tab-product">产品</button>
+                    <button class="tab-btn" data-tab="tab-destination">目的地</button>
+                    <!-- 已移除：车税、默认 -->
+                    <button class="tab-btn" data-tab="tab-colors">颜色</button>
+                </div>
+
+                <div class="tab-panel active" id="tab-lorry">
+                    <div class="config-input-row">
+                        <input type="text" id="inputLorryPlate" placeholder="添加车牌">
+                        <button class="btn btn-primary" id="btnAddLorry">添加</button>
+                    </div>
+                    <div class="config-input-row">
+                        <input type="text" id="searchLorry" placeholder="搜索车牌">
+                    </div>
+                    <div class="config-split">
+                        <div class="config-block">
+                            <div class="config-block-title">活动车牌
+                                
+                            </div>
+                            <table class="config-table" id="tableLorry">
+                                <thead><tr><th>车牌</th><th>状态</th><th>操作</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <div class="tab-panel" id="tab-pickup">
+                    <div class="config-input-row">
+                        <input type="text" id="inputPickUp" placeholder="添加取货地">
+                        <button class="btn btn-primary" id="btnAddPickUp">添加</button>
+                    </div>
+                    <div class="config-input-row"><input type="text" id="searchPickUp" placeholder="搜索取货地"></div>
+                    <div class="alpha-index" id="alpha-pickup"></div>
+                    <table class="config-table" id="tablePickUp"><thead><tr><th>名称</th><th>操作</th></tr></thead><tbody></tbody></table>
+                </div>
+
+                <div class="tab-panel" id="tab-product">
+                    <div class="config-input-row">
+                        <input type="text" id="inputProduct" placeholder="添加产品">
+                        <button class="btn btn-primary" id="btnAddProduct">添加</button>
+                    </div>
+                    <div class="config-input-row"><input type="text" id="searchProduct" placeholder="搜索产品"></div>
+                    <div class="alpha-index" id="alpha-product"></div>
+                    <table class="config-table" id="tableProduct"><thead><tr><th>名称</th><th>操作</th></tr></thead><tbody></tbody></table>
+                </div>
+
+                <div class="tab-panel" id="tab-destination">
+                    <div class="config-input-row">
+                        <input type="text" id="inputDestination" placeholder="添加目的地">
+                        <button class="btn btn-primary" id="btnAddDestination">添加</button>
+                    </div>
+                    <div class="config-input-row"><input type="text" id="searchDestination" placeholder="搜索目的地"></div>
+                    <div class="alpha-index" id="alpha-destination"></div>
+                    <table class="config-table" id="tableDestination"><thead><tr><th>名称</th><th>操作</th></tr></thead><tbody></tbody></table>
+                </div>
+
+
+                <!-- 已移除：车税与默认配置面板 -->
+
+                <div class="tab-panel" id="tab-colors">
+                    <div class="config-card" style="border:none;padding:0;background:transparent">
+                        <div class="config-grid">
+                            <label>行程1颜色 <input type="color" id="colorTrip1"></label>
+                            <label>行程2颜色 <input type="color" id="colorTrip2"></label>
+                            <label>行程3颜色 <input type="color" id="colorTrip3"></label>
+                            <label>行程4颜色 <input type="color" id="colorTrip4"></label>
+                            <label>行程5颜色 <input type="color" id="colorTrip5"></label>
+                        </div>
+                        <small style="color:#6c757d">设置每个行程列的背景色。</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btnSaveConfig">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS for reading Excel commission rules -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script>
+        // Supabase client
+        const SUPABASE_URL = "https://ihafdntwtiyaykgmzimd.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloYWZkbnR3dGl5YXlrZ216aW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3MTk2MjUsImV4cCI6MjA3NTI5NTYyNX0.amf3iEFv1XK1h3h5_orUQfE4w0XY2ubSoD08dhtjyWw";
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Runtime dataset. Start empty to avoid resurrecting seeded demo rows on refresh.
+        let sampleData = [];
+        // Detect if Supabase 'schedules' table has per-trip remarks columns (t1_remarks ... t5_remarks)
+        let HAS_REMARKS_COLUMNS = false;
+
+        // Configuration handling
+        const defaultConfig = {
+            lorryPlates: ["8722","8915","4250","907","5708"],
+            hiddenLorryPlates: [],
+            archivedLorryPlates: [],
+            // When true, prefer local lorryPlates over DB values on load
+            overrideLorryPlates: false,
+            pickUps: [
+                "", "Highway Quarry", "Majumas Bestari", "RCJ", "LORI ROSAK", "CST",
+                "IJM", "Takali Sunway", "Pepsi", "Hanson Cheras", "Guna"
+            ],
+            products: [
+                "", "3/4 Agg", "C/Sand", "C/run", "Icp kapar", "Kajang Setia Mix",
+                "Langat Tong Ooi", "Kuchai Ytl", "Nilai MDC", "Belakong Ytl", "Setia mix semen",
+                "Subang Gy two", "Puchong ulus wt"
+            ],
+            destinations: [
+                "", "Nilai MDC", "Subang Gy two", "B. Jalil", "Tasik Selatan", "Icp kebun",
+                "kapar k345 lucat", "K345 Lucas", "sps chong", "Kuchai Ytl", "Kajang Setia Mix",
+                "Langat Tong Ooi", "Belakong Ytl", "Setia mix semen", "Suntiga Sg Rasa",
+                "Kapar U wajar", "kapar k345 lucat", "Puchong ulus wt", "K Garden Kapar"
+            ],
+            commissions: ["5.50","10.00","10.50","11.50","13.50","14.00"],
+            defaultCompletion: false,
+            tripColors: {
+                trip1: '#e3f2fd',
+                trip2: '#f3e5f5',
+                trip3: '#e8f5e8',
+                trip4: '#fff3e0',
+                trip5: '#fce4ec'
+            }
+        };
+
+        // Page-fit / custom zoom removed — rely on browser default zoom
+        const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+        function applyPageFit() {}
+        function disablePageFit() {}
+
+        function loadConfig() {
+            try {
+                const raw = localStorage.getItem('nanyang_config');
+                if (!raw) return { ...defaultConfig };
+                const parsed = JSON.parse(raw);
+                return { ...defaultConfig, ...parsed };
+            } catch (e) {
+                console.warn('Failed to load config, using defaults', e);
+                return { ...defaultConfig };
+            }
+        }
+
+        function applyTripColors(cfg) {
+            const colors = (cfg && cfg.tripColors) ? cfg.tripColors : defaultConfig.tripColors;
+            const root = document.documentElement;
+            root.style.setProperty('--trip1-bg', colors.trip1);
+            root.style.setProperty('--trip2-bg', colors.trip2);
+            root.style.setProperty('--trip3-bg', colors.trip3);
+            root.style.setProperty('--trip4-bg', colors.trip4);
+            root.style.setProperty('--trip5-bg', colors.trip5);
+        }
+
+        function saveConfig(cfg) {
+            localStorage.setItem('nanyang_config', JSON.stringify(cfg));
+        }
+
+        // Commission rules sources and final map
+        // Structure: Map key "pickUp|product|destination" (lowercased, trimmed) -> commission string
+        // COMMISSION_RULES value types:
+        // - number/string: flat rate (e.g., from Excel override)
+        // - array of { rate:number|string, start?:string, end?:string }: date-based rates
+        let COMMISSION_RULES = new Map();
+        let EXCEL_COMMISSION_RULES = new Map();
+        let SUPABASE_COMMISSION_RULES = new Map();
+
+        function normalizeKey(pu, pr, de) {
+            const norm = (s) => (s || '').toString().trim().toLowerCase();
+            return `${norm(pu)}|${norm(pr)}|${norm(de)}`;
+        }
+
+        function getCommissionFromRules(pu, pr, de, dateContext = currentDate) {
+            // Strict matching only: if any field is blank, do NOT apply commission
+            if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return null;
+            const puN = (pu || '').toString().trim();
+            const prN = (pr || '').toString().trim();
+            const deN = (de || '').toString().trim();
+            if (!puN || !prN || !deN) return null;
+            const key = normalizeKey(pu, pr, de);
+            let val = COMMISSION_RULES.get(key);
+            if (val == null) return null; // no match strictly
+            // If val is an array, pick by date range
+            if (Array.isArray(val)) {
+                const d = new Date(dateContext);
+                const iso = (dt) => {
+                    if (!dt) return null;
+                    const t = new Date(dt);
+                    if (Number.isNaN(t.getTime())) return null;
+                    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+                };
+                const curISO = iso(d);
+                // Prefer most recent start date that includes current date
+                const candidates = val.filter(r => {
+                    const sISO = iso(r.start);
+                    const eISO = iso(r.end);
+                    if (!sISO && !eISO) return true; // open-ended
+                    if (sISO && curISO < sISO) return false;
+                    if (eISO && curISO > eISO) return false;
+                    return true;
+                }).sort((a,b) => {
+                    const aS = iso(a.start) || '0000-00-00';
+                    const bS = iso(b.start) || '0000-00-00';
+                    // later start first
+                    return bS.localeCompare(aS);
+                });
+                const chosen = candidates[0];
+                if (!chosen) return null;
+                val = chosen.rate;
+            }
+            // number or string: normalize and return to 2 decimals
+            if (typeof val === 'number' && !isNaN(val)) {
+                return String(Number(val).toFixed(2));
+            }
+            const m = String(val).match(/[0-9]+(?:\.[0-9]+)?/);
+            if (!m) return null;
+            return String(Number(m[0]).toFixed(2));
+        }
+
+        async function loadCommissionRulesFromExcel(url) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`Failed to fetch Excel: ${res.status}`);
+                const ab = await res.arrayBuffer();
+                const wb = XLSX.read(ab, { type: 'array' });
+                const sheetName = wb.SheetNames[0];
+                const ws = wb.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                if (!rows || rows.length === 0) return;
+                // Detect header columns flexibly (supports English, Malay, Chinese labels)
+                let startIdx = 0;
+                let idxPU = 0, idxPR = 1, idxDE = 2, idxCM = 3;
+                const normH = (s) => (s || '').toString().trim().toLowerCase();
+                const header = rows[0] || [];
+                const normalizedHeader = header.map(normH);
+                const hasHeader = normalizedHeader.length > 0 && (
+                    normalizedHeader.some(h => h.includes('pick')) ||
+                    normalizedHeader.some(h => h.includes('source')) ||
+                    normalizedHeader.some(h => h.includes('from')) ||
+                    normalizedHeader.some(h => h.includes('地点') || h.includes('lokasi'))
+                );
+                if (hasHeader) {
+                    startIdx = 1;
+                    const findIdx = (cands) => {
+                        for (let i = 0; i < normalizedHeader.length; i++) {
+                            const h = normalizedHeader[i];
+                            if (cands.some(c => h.includes(c))) return i;
+                        }
+                        return -1;
+                    };
+                    idxPU = findIdx(['pick','pickup','from','source','地点','lokasi']);
+                    idxPR = findIdx(['product','prod','货','barang']);
+                    idxDE = findIdx(['destination','dest','to','地方','tempat']);
+                    idxCM = findIdx(['commission','rm','fee','车税','tax','harga']);
+                    if (idxPU < 0) idxPU = 0;
+                    if (idxPR < 0) idxPR = 1;
+                    if (idxDE < 0) idxDE = 2;
+                    if (idxCM < 0) idxCM = 3;
+                } else {
+                    startIdx = 0;
+                }
+                EXCEL_COMMISSION_RULES = new Map();
+                const puSet = new Set();
+                const prSet = new Set();
+                const deSet = new Set();
+                const rulesRows = [];
+                for (let i = startIdx; i < rows.length; i++) {
+                    const r = rows[i] || [];
+                    const pu = (r[idxPU] ?? '').toString();
+                    const pr = (r[idxPR] ?? '').toString();
+                    const de = (r[idxDE] ?? '').toString();
+                    let cmRaw = (r[idxCM] ?? '').toString();
+                    // Strict: only accept commission from the detected column
+                    if (!cmRaw) continue;
+                    // Strict: require all three fields and commission present
+                    if (!pu || !pr || !de) continue;
+                    const key = normalizeKey(pu, pr, de);
+                    // Extract numeric part of commission
+                    let cmNum = null;
+                    const m = String(cmRaw).match(/[0-9]+(?:\.[0-9]+)?/);
+                    if (m) cmNum = Number(parseFloat(m[0]).toFixed(2));
+                    // Only record rules with a non-empty commission
+                    if (cmNum != null) {
+                        EXCEL_COMMISSION_RULES.set(key, cmNum);
+                    } else {
+                        // Skip empty commission entries entirely
+                        continue;
+                    }
+                    if (pu) puSet.add(pu);
+                    if (pr) prSet.add(pr);
+                    if (de) deSet.add(de);
+                    rulesRows.push({ pick_up: pu, product: pr, destination: de, commission: cmNum, active: true });
+                }
+                // Update local CONFIG options and UI option arrays from Excel values (remove blank entries)
+                const puList = Array.from(puSet).filter(v => (v||'').trim().length > 0);
+                const prList = Array.from(prSet).filter(v => (v||'').trim().length > 0);
+                const deList = Array.from(deSet).filter(v => (v||'').trim().length > 0);
+                CONFIG.pickUps = puList;
+                CONFIG.products = prList;
+                CONFIG.destinations = deList;
+                saveConfig(CONFIG);
+                pickUpOptions = CONFIG.pickUps;
+                productOptions = CONFIG.products;
+                destinationOptions = CONFIG.destinations;
+
+                // Persist options to Supabase config_options
+                const optRows = [];
+                Array.from(puSet).forEach(name => optRows.push({ category: 'pickup', name, active: true }));
+                Array.from(prSet).forEach(name => optRows.push({ category: 'product', name, active: true }));
+                Array.from(deSet).forEach(name => optRows.push({ category: 'destination', name, active: true }));
+                if (optRows.length) {
+                    await sb.from('config_options').upsert(optRows, { onConflict: 'category,name' });
+                }
+                // Persist combination->commission rules to Supabase
+                if (rulesRows.length) {
+                    await sb.from('commission_rules').upsert(rulesRows, { onConflict: 'pick_up,product,destination' });
+                }
+            } catch (e) {
+                console.warn('Failed to load commission rules from Excel', e);
+            }
+        }
+
+        function applyCommissionToSampleData() {
+            if (!Array.isArray(sampleData)) return;
+            sampleData.forEach(row => {
+                [row.trip1, row.trip2, row.trip3, row.trip4, row.trip5].forEach(trip => {
+                    if (!trip) return;
+                    // Rule: If any of the three fields is empty, clear commission
+                    const puBlank = !(trip.pickUp || '').toString().trim();
+                    const prBlank = !(trip.product || '').toString().trim();
+                    const deBlank = !(trip.destination || '').toString().trim();
+                    if (puBlank || prBlank || deBlank) {
+                        trip.commission = '';
+                        return;
+                    }
+                    const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+                    // Only auto-fill when commission is non-empty; otherwise clear
+                    if (cm != null && cm !== '') {
+                        trip.commission = cm;
+                    } else {
+                        trip.commission = '';
+                    }
+                });
+            });
+        }
+
+        async function loadCommissionRulesFromSupabase() {
+            try {
+                const { data, error } = await sb.from('commission_rules')
+                    .select('pick_up,product,destination,commission,active,valid_from,valid_to');
+                if (error) throw error;
+                SUPABASE_COMMISSION_RULES = new Map();
+                (data || []).forEach(row => {
+                    const pu = (row.pick_up || '').toString().trim();
+                    const pr = (row.product || '').toString().trim();
+                    const de = (row.destination || '').toString().trim();
+                    const cm = row.commission;
+                    const active = row.active !== false; // default to true
+                    const start = row.valid_from || null;
+                    const end = row.valid_to || null;
+                    if (!active) return;
+                    if (!pu || !pr || !de) return; // ignore blank keys entirely
+                    if (cm == null || cm === '') return;
+                    const key = normalizeKey(pu, pr, de);
+                    const arr = SUPABASE_COMMISSION_RULES.get(key) || [];
+                    arr.push({ rate: cm, start, end });
+                    SUPABASE_COMMISSION_RULES.set(key, arr);
+                });
+            } catch (e) {
+                console.warn('Failed to load commission rules from Supabase', e);
+                SUPABASE_COMMISSION_RULES = new Map();
+            }
+        }
+
+        function mergeCommissionRulesPreferExcel() {
+            // Start with Supabase rules (date-based)
+            const merged = new Map(SUPABASE_COMMISSION_RULES);
+            // Override with Excel rules: treat as open-ended flat rate
+            for (const [k, v] of EXCEL_COMMISSION_RULES.entries()) {
+                merged.set(k, [{ rate: v, start: null, end: null }]);
+            }
+            COMMISSION_RULES = merged;
+        }
+
+        async function supabaseLoadOptions() {
+            try {
+                const [opts, settings] = await Promise.all([
+                    sb.from('config_options').select('category,name,active').eq('active', true),
+                    sb.from('app_settings').select('key,value').in('key',['defaultCompletion','tripColors'])
+                ]);
+                const local = loadConfig();
+                const cfg = { ...defaultConfig };
+                if (!opts.error && opts.data) {
+                    const byCat = (cat) => opts.data.filter(r => r.category === cat).map(r => r.name);
+                    // Use DB lorry plates unless local override is set
+                    if (local && local.overrideLorryPlates === true) {
+                        cfg.lorryPlates = (local.lorryPlates || []).map(v => String(v).trim()).filter(Boolean);
+                        cfg.overrideLorryPlates = true;
+                    } else {
+                        cfg.lorryPlates = byCat('lorry_plate');
+                        cfg.overrideLorryPlates = false;
+                    }
+                    // Remove empty values loaded from DB
+                    cfg.pickUps = byCat('pickup').map(v => String(v).trim()).filter(Boolean);
+                    cfg.products = byCat('product').map(v => String(v).trim()).filter(Boolean);
+                    cfg.destinations = byCat('destination').map(v => String(v).trim()).filter(Boolean);
+                    cfg.commissions = byCat('commission');
+                }
+                // Load app settings
+                if (!settings.error && Array.isArray(settings.data)) {
+                    const map = new Map(settings.data.map(r => [r.key, r.value]));
+                    const dc = map.get('defaultCompletion');
+                    if (dc && typeof dc.value === 'boolean') {
+                        cfg.defaultCompletion = !!dc.value;
+                    }
+                    const tc = map.get('tripColors');
+                    if (tc && typeof tc === 'object') {
+                        cfg.tripColors = {
+                            trip1: tc.trip1 || cfg.tripColors.trip1,
+                            trip2: tc.trip2 || cfg.tripColors.trip2,
+                            trip3: tc.trip3 || cfg.tripColors.trip3,
+                            trip4: tc.trip4 || cfg.tripColors.trip4,
+                            trip5: tc.trip5 || cfg.tripColors.trip5
+                        };
+                    }
+                }
+                // Merge in local hidden state so it persists client-side
+                const mergeSet = (a = [], b = []) => Array.from(new Set([...(a||[]), ...(b||[])]));
+                cfg.hiddenLorryPlates = mergeSet(cfg.hiddenLorryPlates, local.hiddenLorryPlates);
+                cfg.archivedLorryPlates = [];
+                CONFIG = cfg;
+                pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
+                productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
+                destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+                applyTripColors(CONFIG);
+            } catch (e) {
+                console.warn('Failed to load options from Supabase, using local config', e);
+                CONFIG = loadConfig();
+                pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
+                productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
+                destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+                applyTripColors(CONFIG);
+            }
+        }
+
+        async function supabaseSaveOptions() {
+            try {
+                // Normalize and build new active rows
+                const uniq = (arr=[]) => Array.from(new Set(arr.map(v => (v||'').trim()).filter(Boolean)));
+                const newByCat = {
+                    lorry_plate: uniq(CONFIG.lorryPlates || []),
+                    pickup: uniq((CONFIG.pickUps || []).filter(Boolean)),
+                    product: uniq((CONFIG.products || []).filter(Boolean)),
+                    destination: uniq((CONFIG.destinations || []).filter(Boolean)),
+                    commission: uniq((CONFIG.commissions || []).filter(Boolean))
+                };
+                const rows = [];
+                Object.entries(newByCat).forEach(([category, list]) => {
+                    list.forEach(name => rows.push({ category, name, active: true }));
+                });
+
+                // Fetch existing active rows to compute deletions/inactivations
+                const existing = await sb.from('config_options').select('category,name,active');
+                if (!existing.error && existing.data) {
+                    const toDeactivate = [];
+                    const groupExisting = {};
+                    existing.data.forEach(r => {
+                        if (!groupExisting[r.category]) groupExisting[r.category] = new Set();
+                        if (r.active) groupExisting[r.category].add(r.name);
+                    });
+                    Object.entries(groupExisting).forEach(([cat, set]) => {
+                        const newSet = new Set(newByCat[cat] || []);
+                        set.forEach(name => { if (!newSet.has(name)) toDeactivate.push({ category: cat, name }); });
+                    });
+                    if (toDeactivate.length) {
+                        // Group by category and mark removed items inactive
+                        const byCat = {};
+                        toDeactivate.forEach(r => { (byCat[r.category] ||= []).push(r.name); });
+                        for (const [cat, namesAll] of Object.entries(byCat)) {
+                            const namesUnique = Array.from(new Set(namesAll));
+                            for (const names of chunkArray(namesUnique, 50)) {
+                                await sb.from('config_options')
+                                    .update({ active: false })
+                                    .eq('category', cat)
+                                    .in('name', names);
+                            }
+                        }
+                    }
+                }
+
+                if (rows.length) {
+                    await sb.from('config_options').upsert(rows, { onConflict: 'category,name' });
+                }
+                await sb.from('app_settings').upsert(
+                    { key: 'defaultCompletion', value: { value: CONFIG.defaultCompletion } },
+                    { onConflict: 'key' }
+                );
+                // Persist trip colors
+                await sb.from('app_settings').upsert(
+                    { key: 'tripColors', value: {
+                        trip1: CONFIG.tripColors?.trip1 || defaultConfig.tripColors.trip1,
+                        trip2: CONFIG.tripColors?.trip2 || defaultConfig.tripColors.trip2,
+                        trip3: CONFIG.tripColors?.trip3 || defaultConfig.tripColors.trip3,
+                        trip4: CONFIG.tripColors?.trip4 || defaultConfig.tripColors.trip4,
+                        trip5: CONFIG.tripColors?.trip5 || defaultConfig.tripColors.trip5
+                    } },
+                    { onConflict: 'key' }
+                );
+                return true;
+            } catch (e) {
+                console.error('Failed saving options to Supabase', e);
+                return false;
+            }
+        }
+
+        // Helper: upsert a single option to Supabase and update local CONFIG/option arrays
+        async function upsertOptionAndSync(category, name) {
+            const val = String(name || '').trim();
+            if (!val) return;
+            try {
+                await sb.from('config_options').upsert({ category, name: val, active: true }, { onConflict: 'category,name' });
+            } catch (e) { console.warn('Upsert option failed', category, val, e); }
+            const addUnique = (arr, v) => {
+                const low = String(v).toLowerCase();
+                if (!arr.some(x => String(x).toLowerCase() === low)) arr.push(v);
+            };
+            if (category === 'pickup') { addUnique(CONFIG.pickUps, val); pickUpOptions = CONFIG.pickUps; }
+            if (category === 'product') { addUnique(CONFIG.products, val); productOptions = CONFIG.products; }
+            if (category === 'destination') { addUnique(CONFIG.destinations, val); destinationOptions = CONFIG.destinations; }
+
+            // Notify embedded commission manager to update its datalists immediately
+            try {
+                const ifr = document.getElementById('ifrCommission');
+                if (ifr && ifr.contentWindow) {
+                    ifr.contentWindow.postMessage({ type: 'optionsUpdated', added: [{ category, name: val }] }, '*');
+                }
+            } catch (_) { /* non-critical */ }
+        }
+
+        // Reset lorry plates to a specific list, removing others
+        async function resetLorryPlatesTo(targetPlates = []) {
+            try {
+                const desired = Array.from(new Set((targetPlates || []).map(p => String(p).trim()).filter(Boolean)));
+                // 1) Fetch current lorry_plates
+                let current = [];
+                try {
+                    const r = await sb.from('lorry_plates').select('plate_no');
+                    if (!r.error && r.data) current = r.data.map(d => String(d.plate_no));
+                } catch (_) { /* non-critical */ }
+
+                // 2) Delete plates not in desired
+                const toDelete = current.filter(p => !desired.includes(p));
+                if (toDelete.length) {
+                    try {
+                        const del = await sb.from('lorry_plates').delete().in('plate_no', toDelete);
+                        if (del && del.error) {
+                            // Fallback if hard delete blocked: mark plates inactive and hidden in bulk
+                            await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', toDelete);
+                        }
+                    } catch (_) {
+                        // Best-effort fallback even if delete throws
+                        try { await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', toDelete); } catch (_) {}
+                    }
+                    // Also remove ALL schedule rows for the current date to ensure nothing resurfaces
+                    try {
+                        const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
+                        await sb.from('schedules').delete().eq('work_date', dstr);
+                    } catch (_) {}
+                }
+
+                // 3) Upsert desired plates
+                const toAdd = desired.filter(p => !current.includes(p)).map(p => ({ plate_no: p, active: true }));
+                if (toAdd.length) {
+                    try { await sb.from('lorry_plates').upsert(toAdd, { onConflict: 'plate_no' }); } catch (_) {}
+                }
+
+                // 4) Update local CONFIG and persist options
+                CONFIG.lorryPlates = desired;
+                CONFIG.hiddenLorryPlates = [];
+                CONFIG.archivedLorryPlates = [];
+                saveConfig(CONFIG);
+                await supabaseSaveOptions();
+
+                // 5) Update current view rows to match desired
+                const desiredSet = new Set(desired);
+                sampleData = sampleData.filter(r => desiredSet.has(String(r.lorryPlate)));
+                desired.forEach(p => {
+                    if (!sampleData.some(r => String(r.lorryPlate) === String(p))) {
+                        sampleData.push({
+                            lorryPlate: p,
+                            trip1: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip2: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip3: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                        });
+                    }
+                });
+
+                // 6) Save schedule so persistence matches UI
+                await supabaseSaveSchedule(currentDate, sampleData);
+                sortSampleRows();
+                populateTable();
+            } catch (e) {
+                console.warn('Reset lorry plates failed', e);
+            }
+        }
+
+        // Hard clear all active lorry plates and today’s schedules, then refresh UI
+        async function clearAllActivePlates() {
+            try {
+                // Fetch all current plates
+                let all = [];
+                try {
+                    const r = await sb.from('lorry_plates').select('plate_no');
+                    if (!r.error && r.data) all = r.data.map(d => String(d.plate_no));
+                } catch (_) {}
+                if (all.length) {
+                    try {
+                        const del = await sb.from('lorry_plates').delete().in('plate_no', all);
+                        if (del && del.error) {
+                            await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', all);
+                        }
+                    } catch (_) {
+                        try { await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', all); } catch (_) {}
+                    }
+                }
+                // Clear today’s schedules entirely
+                try {
+                    const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
+                    await sb.from('schedules').delete().eq('work_date', dstr);
+                } catch (_) {}
+                // Reset local config and persist
+                CONFIG.lorryPlates = [];
+                CONFIG.hiddenLorryPlates = [];
+                CONFIG.archivedLorryPlates = [];
+                CONFIG.overrideLorryPlates = true;
+                saveConfig(CONFIG);
+                await supabaseSaveOptions();
+                // Clear current view and reload
+                sampleData = [];
+                await supabaseLoadSchedule(currentDate);
+                populateTable();
+                // Expose for manual triggers in console
+                window.debugClearAllPlatesDone = true;
+            } catch (e) {
+                console.warn('Clear all active plates failed', e);
+            }
+        }
+
+        // Helper to split arrays into chunks for DB operations
+        function chunkArray(arr, size) {
+            const out = [];
+            for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i+size));
+            return out;
+        }
+
+        let CONFIG = loadConfig();
+        // Apply customizable trip colors immediately
+        applyTripColors(CONFIG);
+        let pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
+        let productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
+        let destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+
+        // Utility casing helpers (for consistent display in overlay)
+        function norm(s) { return (s || '').toString().trim(); }
+        function titleCase(s) {
+            const v = norm(s).toLowerCase();
+            return v.replace(/(^|\s)([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase());
+        }
+
+        // Open large overlay picker (mobile-friendly, easy to read)
+        function openOptionsPanel(label, srcOptions, targetInput) {
+            const uniqItems = Array.from(
+                new Map((srcOptions||[]).map(raw => [norm(raw).toLowerCase(), titleCase(raw)])).values()
+            ).sort((a,b) => a.localeCompare(b));
+            const overlay = document.createElement('div'); overlay.className = 'options-overlay';
+            const panel = document.createElement('div'); panel.className = 'options-panel';
+            const header = document.createElement('div'); header.className = 'options-header';
+            const title = document.createElement('div'); title.className = 'options-title'; title.textContent = `选择：${label || ''}`;
+            const search = document.createElement('input'); search.className = 'options-search'; search.placeholder = '搜索...';
+            // Add a clear button to quickly reset accidental selections
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'btn btn-secondary';
+            clearBtn.textContent = '清除 Clear';
+            clearBtn.title = '清除所选值 / Clear selection';
+            const list = document.createElement('div'); list.className = 'options-list';
+            // Right-side A-Z index for quick jumping
+            const alphaIndex = document.createElement('div');
+            alphaIndex.className = 'alpha-index';
+            // panel.appendChild(header);
+            header.appendChild(title);
+            header.appendChild(search);
+            header.appendChild(clearBtn);
+            // Place the alpha index inside the scroll column, so it stays within the panel bounds
+            list.appendChild(alphaIndex);
+            panel.appendChild(list);
+            document.body.appendChild(overlay); document.body.appendChild(panel);
+            // 自动聚焦到搜索框，进入页面后可直接输入
+            setTimeout(() => { try { search.focus(); search.select(); } catch (_) {} }, 0);
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+            const getLetter = (s) => {
+                const ch = String(s).trim().charAt(0).toUpperCase();
+                if (ch >= 'A' && ch <= 'Z') return ch;
+                if (ch >= '0' && ch <= '9') return '#';
+                return '#';
+            };
+            const updateAlpha = (present) => {
+                alphaIndex.innerHTML = '';
+                letters.forEach(L => {
+                    const btn = document.createElement('button');
+                    btn.className = 'alpha-btn';
+                    btn.textContent = L;
+                    if (!present.has(L)) {
+                        btn.setAttribute('disabled', 'true');
+                    } else {
+                        btn.addEventListener('click', () => {
+                            const anchor = list.querySelector(`#anchor-overlay-${L}`);
+                            if (anchor) {
+                                const top = anchor.offsetTop;
+                                list.scrollTo({ top, behavior: 'smooth' });
+                            }
+                        });
+                    }
+                    alphaIndex.appendChild(btn);
+                });
+            };
+            const render = () => {
+                const q = (search.value || '').toLowerCase();
+                list.innerHTML = '';
+                const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
+                const seen = new Set();
+                const present = new Set();
+                filtered.forEach(v => present.add(getLetter(v)));
+                filtered.forEach(v => {
+                    const L = getLetter(v);
+                    if (!seen.has(L)) {
+                        const hdr = document.createElement('div');
+                        hdr.className = 'alpha-header';
+                        hdr.id = `anchor-overlay-${L}`;
+                        hdr.textContent = L;
+                        list.appendChild(hdr);
+                        seen.add(L);
+                    }
+                    const div = document.createElement('div'); div.className = 'option-item'; div.textContent = v;
+                    div.addEventListener('click', () => { targetInput.value = v; targetInput.dispatchEvent(new Event('input', { bubbles: true })); close(); });
+                    list.appendChild(div);
+                });
+                updateAlpha(present);
+            };
+            const close = () => { overlay.remove(); panel.remove(); window.__optionsPanel = null; };
+            clearBtn.addEventListener('click', () => {
+                targetInput.value = '';
+                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                close();
+            });
+            render();
+            search.addEventListener('input', render);
+            overlay.addEventListener('click', close);
+            window.__closeOptionsPanel = close;
+            window.__optionsPanel = { search, close, panel, overlay };
+        }
+
+        // Searchable dropdown using an input + datalist (native while typing) + big overlay on click
+        // Keeps the same API as before: returns an element with `.value` and calls `onChangeCallback`
+        // so existing code continues to work.
+        function createDropdown(options, selectedValue = "", onChangeCallback = null, overlayLabel = "") {
+            const input = document.createElement('input');
+            input.className = 'combo-input';
+            input.autocomplete = 'off';
+            input.placeholder = '';
+            input.value = selectedValue || '';
+            input.title = selectedValue || '';
+            // Make selection overlay-only: no typing in the field itself
+            input.readOnly = true;
+            input.setAttribute('aria-readonly', 'true');
+
+            // Normalize once and keep a copy for overlay
+            const fullOptions = (options || [])
+                .map(o => String(o).trim())
+                .filter(Boolean)
+                .sort((a,b) => a.localeCompare(b));
+
+            // Notify caller on programmatic value changes (from overlay)
+            const handler = () => {
+                input.title = input.value || '';
+                if (onChangeCallback) onChangeCallback({ target: input });
+            };
+            input.addEventListener('input', handler);
+            input.addEventListener('change', handler);
+
+            // Open large overlay list for easier selection
+            const open = () => {
+                if (!document.querySelector('.options-panel')) {
+                    openOptionsPanel(overlayLabel || '选择', fullOptions, input);
+                }
+                // sync typed content into overlay search for live filtering
+                if (window.__optionsPanel && window.__optionsPanel.search) {
+                    window.__optionsPanel.search.value = input.value || '';
+                    window.__optionsPanel.search.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            };
+            input.addEventListener('click', open);
+            input.addEventListener('focus', open);
+            // Block typing; open overlay instead
+            input.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab') {
+                    e.preventDefault();
+                    open();
+                }
+            });
+
+            return input;
+        }
+
+        // Overview layout (cards) for no-scroll view
+        function renderOverview() {
+            const container = document.getElementById('overviewContainer');
+            container.innerHTML = '';
+            container.style.display = 'grid';
+            // Responsive grid: 3 columns on wide screens, 2 on mid, 1 on small
+            container.style.gridTemplateColumns = 'repeat(auto-fit, minmax(360px, 1fr))';
+            container.style.gap = '16px';
+
+            sampleData.forEach((row, rowIndex) => {
+                const card = document.createElement('div');
+                card.className = 'lorry-card';
+                card.style.border = '1px solid var(--border)';
+                card.style.borderRadius = '12px';
+                card.style.background = 'var(--surface)';
+                card.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)';
+                card.style.padding = '12px 12px 8px';
+
+                const header = document.createElement('div');
+                header.style.display = 'flex';
+                header.style.justifyContent = 'space-between';
+                header.style.alignItems = 'center';
+                header.style.marginBottom = '8px';
+
+                const lp = document.createElement('div');
+                lp.textContent = `A · Lorry Plate: ${row.lorryPlate}`;
+                lp.style.fontWeight = '700';
+                lp.style.color = 'var(--primary)';
+                header.appendChild(lp);
+
+                card.appendChild(header);
+
+                const tripsWrap = document.createElement('div');
+                tripsWrap.style.display = 'grid';
+                tripsWrap.style.gridTemplateColumns = 'repeat(3, 1fr)';
+                tripsWrap.style.gap = '10px';
+                card.appendChild(tripsWrap);
+
+                const trips = [row.trip1, row.trip2, row.trip3];
+                const labels = ['Trip 1','Trip 2','Trip 3'];
+
+                trips.forEach((trip, i) => {
+                    const tbox = document.createElement('div');
+                    tbox.style.border = '1px solid var(--border)';
+                    tbox.style.borderRadius = '10px';
+                    tbox.style.background = 'var(--surface-2)';
+                    tbox.style.padding = '10px';
+
+                    const title = document.createElement('div');
+                    title.textContent = labels[i];
+                    title.style.fontWeight = '700';
+                    title.style.marginBottom = '6px';
+                    tbox.appendChild(title);
+
+                    const grid = document.createElement('div');
+                    grid.style.display = 'grid';
+                    grid.style.gridTemplateColumns = '1fr';
+                    grid.style.rowGap = '8px';
+
+                    // Commission auto-fill helper (strict)
+                    let commissionInput;
+                    const updateCommission = () => {
+                        const puBlank = !(trip.pickUp || '').toString().trim();
+                        const prBlank = !(trip.product || '').toString().trim();
+                        const deBlank = !(trip.destination || '').toString().trim();
+                        if (puBlank || prBlank || deBlank) {
+                            trip.commission = '';
+                            if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
+                            return;
+                        }
+                        const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+                        if (cm != null) {
+                            trip.commission = cm;
+                            if (commissionInput) { commissionInput.value = cm; commissionInput.classList.add('autofilled'); }
+                        } else {
+                            trip.commission = '';
+                            if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
+                        }
+                    };
+
+                    // Pick Up
+                    const puRow = document.createElement('div');
+                    puRow.textContent = 'Pick Up';
+                    puRow.style.fontSize = '12px';
+                    puRow.style.color = 'var(--text-muted)';
+                    const pu = createDropdown(pickUpOptions, trip.pickUp, () => {
+                        trip.pickUp = pu.value;
+                        queueAutosave();
+                        updateCommission();
+                    }, '取货地');
+                    pu.style.width = '100%';
+                    tbox.appendChild(puRow);
+                    tbox.appendChild(pu);
+
+                    // Product
+                    const prRow = document.createElement('div');
+                    prRow.textContent = 'Product';
+                    prRow.style.fontSize = '12px';
+                    prRow.style.color = 'var(--text-muted)';
+                    const pr = createDropdown(productOptions, trip.product, () => {
+                        trip.product = pr.value;
+                        queueAutosave();
+                        updateCommission();
+                    }, '产品');
+                    pr.style.width = '100%';
+                    tbox.appendChild(prRow);
+                    tbox.appendChild(pr);
+
+                    // Destination
+                    const deRow = document.createElement('div');
+                    deRow.textContent = 'Destination';
+                    deRow.style.fontSize = '12px';
+                    deRow.style.color = 'var(--text-muted)';
+                    const de = createDropdown(destinationOptions, trip.destination, () => {
+                        trip.destination = de.value;
+                        queueAutosave();
+                        updateCommission();
+                    }, '目的地');
+                    de.style.width = '100%';
+                    tbox.appendChild(deRow);
+                    tbox.appendChild(de);
+
+                    // Completion
+                    const compRow = document.createElement('div');
+                    compRow.textContent = 'Completion';
+                    compRow.style.fontSize = '12px';
+                    compRow.style.color = 'var(--text-muted)';
+                    const comp = document.createElement('input');
+                    comp.type = 'checkbox';
+                    comp.className = 'completion-checkbox';
+                    comp.checked = !!trip.completed;
+                    comp.addEventListener('change', () => {
+                        trip.completed = comp.checked;
+                        if (comp.checked) updateCommission();
+                        queueAutosave();
+                    });
+                    tbox.appendChild(compRow);
+                    tbox.appendChild(comp);
+
+                    // Commission (RM)
+                    const commRow = document.createElement('div');
+                    commRow.textContent = '车税（RM）';
+                    commRow.style.fontSize = '12px';
+                    commRow.style.color = 'var(--text-muted)';
+        commissionInput = document.createElement('input');
+        commissionInput.type = 'number';
+        commissionInput.step = '0.01';
+        commissionInput.min = '0';
+        commissionInput.placeholder = '';
+        commissionInput.className = 'commission-input';
+        commissionInput.value = trip.commission || '';
+                    commissionInput.addEventListener('input', () => {
+                        trip.commission = commissionInput.value;
+                        queueAutosave();
+                    });
+                    tbox.appendChild(commRow);
+                    tbox.appendChild(commissionInput);
+                    // Initial highlight if rule matches current values
+                    updateCommission();
+
+
+
+                    tripsWrap.appendChild(tbox);
+                });
+
+                container.appendChild(card);
+            });
+        }
+
+        // Toggle between table and overview
+        function applyOverviewMode(enabled) {
+            const tableContainer = document.querySelector('.table-container');
+            const overviewContainer = document.getElementById('overviewContainer');
+            const tripContainer = document.getElementById('tripOverviewContainer');
+            if (!tableContainer || !overviewContainer) return;
+            if (enabled) {
+                tableContainer.style.display = 'none';
+                overviewContainer.style.display = 'grid';
+                if (tripContainer) tripContainer.style.display = 'none';
+                renderOverview();
+            } else {
+                tableContainer.style.display = '';
+                overviewContainer.style.display = 'none';
+                if (tripContainer) tripContainer.style.display = 'none';
+            }
+            localStorage.setItem('overviewMode', enabled ? '1' : '0');
+        }
+
+        function ensureTripBoardToggle() {
+            return; // removed controls
+            const actions = document.querySelector('.toolbar-actions');
+            if (!actions || actions.__tripBoardAdded) return;
+            // Toggle button
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-secondary';
+            btn.id = 'tripBoardToggleBtn';
+            const enabled = localStorage.getItem('trip_board_mode') === '1';
+            btn.textContent = enabled ? '表格视图' : '活动行程';
+            btn.style.marginLeft = '8px';
+            btn.addEventListener('click', () => {
+                const nowEnabled = localStorage.getItem('trip_board_mode') === '1';
+                applyTripBoardMode(!nowEnabled);
+                btn.textContent = !nowEnabled ? '表格视图' : '活动行程';
+            });
+            actions.appendChild(btn);
+
+            // Show/Hide completed toggle
+            const chk = document.createElement('label');
+            chk.style.display = 'inline-flex';
+            chk.style.alignItems = 'center';
+            chk.style.gap = '6px';
+            chk.style.marginLeft = '8px';
+            const cbox = document.createElement('input'); cbox.type = 'checkbox';
+            cbox.id = 'toggleShowCompleted';
+            cbox.checked = localStorage.getItem('trip_board_show_completed') === '1';
+            const sp = document.createElement('span'); sp.textContent = '显示已完成'; sp.style.fontSize = '12px';
+            chk.appendChild(cbox); chk.appendChild(sp);
+            cbox.addEventListener('change', () => {
+                localStorage.setItem('trip_board_show_completed', cbox.checked ? '1' : '0');
+                if (localStorage.getItem('trip_board_mode') === '1') renderTripBoard();
+            });
+            actions.appendChild(chk);
+
+            actions.__tripBoardAdded = true;
+        }
+
+        function applyTripBoardMode(enabled) {
+            const tableContainer = document.querySelector('.table-container');
+            const tripContainer = document.getElementById('tripOverviewContainer');
+            if (!tableContainer || !tripContainer) return;
+            if (enabled) {
+                tableContainer.style.display = 'none';
+                tripContainer.style.display = 'grid';
+                renderTripBoard();
+            } else {
+                tableContainer.style.display = '';
+                tripContainer.style.display = 'none';
+            }
+            localStorage.setItem('trip_board_mode', enabled ? '1' : '0');
+        }
+
+        function renderTripBoard() {
+            const container = document.getElementById('tripOverviewContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            const showCompleted = localStorage.getItem('trip_board_show_completed') === '1';
+            // Flatten trips
+            const tripsAll = [];
+            sampleData.forEach(row => {
+                ['trip1','trip2','trip3','trip4','trip5'].forEach((k, idx) => {
+                    const t = row[k];
+                    const filled = (t.pickUp||'').trim() || (t.product||'').trim() || (t.destination||'').trim();
+                    if (!filled) return; // skip empty
+                    if (!showCompleted && t.completed) return; // skip completed unless enabled
+                    tripsAll.push({
+                        lorryPlate: row.lorryPlate,
+                        tripNo: idx+1,
+                        pickUp: t.pickUp || '',
+                        product: t.product || '',
+                        destination: t.destination || '',
+                        completed: !!t.completed,
+                        commission: t.commission || ''
+                    });
+                });
+            });
+            // Group by route (PickUp + Destination + Product)
+            const groups = new Map();
+            const keyOf = (t) => `${t.pickUp} → ${t.destination} · ${t.product}`.trim();
+            tripsAll.forEach(t => {
+                const k = keyOf(t);
+                if (!groups.has(k)) groups.set(k, []);
+                groups.get(k).push(t);
+            });
+            // Render groups
+            Array.from(groups.entries()).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([route, items]) => {
+                const group = document.createElement('div');
+                group.className = 'route-group';
+                const header = document.createElement('div');
+                header.className = 'route-group-header';
+                const title = document.createElement('div'); title.className = 'route-group-title'; title.textContent = `${route}`;
+                const count = document.createElement('div'); count.textContent = `${items.length} 行程`;
+                header.appendChild(title); header.appendChild(count);
+                group.appendChild(header);
+                const list = document.createElement('div'); list.className = 'trip-list';
+                items.sort((a,b)=>String(a.lorryPlate).localeCompare(String(b.lorryPlate))).forEach(t => {
+                    const card = document.createElement('div'); card.className = 'trip-card';
+                    const main = document.createElement('div'); main.className = 'trip-main';
+                    const routeLine = document.createElement('div'); routeLine.className = 'trip-route';
+                    routeLine.textContent = `${t.lorryPlate} · 行程 ${t.tripNo}`;
+                    const meta = document.createElement('div'); meta.className = 'trip-meta';
+                    meta.textContent = `${t.pickUp} → ${t.destination} · ${t.product}`;
+                    main.appendChild(routeLine); main.appendChild(meta);
+                    const actions = document.createElement('div'); actions.className = 'trip-actions';
+                    const badge = document.createElement('span'); badge.className = 'commission-badge'; badge.textContent = t.commission ? `RM ${t.commission}` : 'RM —';
+                    const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = !!t.completed; chk.title = '完成';
+                    chk.addEventListener('change', () => {
+                        // write back to sampleData
+                        const row = sampleData.find(r => r.lorryPlate === t.lorryPlate);
+                        if (!row) return;
+                        const tripKey = `trip${t.tripNo}`;
+                        row[tripKey].completed = chk.checked;
+                        queueAutosave();
+                        // remove card if we hide completed
+                        if (!showCompleted && chk.checked) renderTripBoard();
+                    });
+                    actions.appendChild(badge); actions.appendChild(chk);
+                    card.appendChild(main); card.appendChild(actions);
+                    list.appendChild(card);
+                });
+                group.appendChild(list);
+                container.appendChild(group);
+            });
+        }
+
+        // Trip-by-Trip view removed per request
+
+        // applyTripMode removed
+
+        // ensureTripToggle removed
+
+        // Initialization for Trip view removed; table view remains default
+
+        function createTableRow(data, index) {
+            const row = document.createElement('tr');
+            
+            // Lorry Plate (Frozen Column)
+            const lorryCell = document.createElement('td');
+            lorryCell.className = 'frozen-column';
+            lorryCell.textContent = data.lorryPlate;
+            row.appendChild(lorryCell);
+
+            // Create cells for all 5 trips
+            const trips = [data.trip1, data.trip2, data.trip3, data.trip4, data.trip5];
+            
+            trips.forEach((trip, tripIndex) => {
+                // Commission auto-fill per trip (strict)
+                let commissionInput;
+                // Reference to completion checkbox so we can reset it when fields change
+                let checkbox;
+                const updateCommission = () => {
+                    const puBlank = !(trip.pickUp || '').toString().trim();
+                    const prBlank = !(trip.product || '').toString().trim();
+                    const deBlank = !(trip.destination || '').toString().trim();
+                    if (puBlank || prBlank || deBlank) {
+                        trip.commission = '';
+                        if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
+                        return;
+                    }
+                    const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+                    if (cm != null) {
+                        trip.commission = cm;
+                        if (commissionInput) { commissionInput.value = cm; commissionInput.classList.add('autofilled'); }
+                    } else {
+                        trip.commission = '';
+                        if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
+                    }
+                };
+                // Pick Up column
+                const pickUpCell = document.createElement('td');
+                pickUpCell.className = tripIndex === 0 ? `dropdown-cell trip${tripIndex + 1}-bg` : `dropdown-cell trip-separator trip${tripIndex + 1}-bg`;
+                pickUpCell.appendChild(
+                    createDropdown(pickUpOptions, trip.pickUp, (e) => {
+                        trip.pickUp = e.target.value;
+                        // Ensure completion is manual-only: reset when fields change
+                        trip.completed = false;
+                        if (checkbox) checkbox.checked = false;
+                        queueAutosave();
+                        updateCommission();
+                    }, '取货地')
+                );
+                row.appendChild(pickUpCell);
+
+                // Product column
+                const productCell = document.createElement('td');
+                productCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
+                productCell.appendChild(
+                    createDropdown(productOptions, trip.product, (e) => {
+                        trip.product = e.target.value;
+                        // Ensure completion is manual-only: reset when fields change
+                        trip.completed = false;
+                        if (checkbox) checkbox.checked = false;
+                        queueAutosave();
+                        updateCommission();
+                    }, '产品')
+                );
+                row.appendChild(productCell);
+
+                // Destination column
+                const destinationCell = document.createElement('td');
+                destinationCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
+                destinationCell.appendChild(
+                    createDropdown(destinationOptions, trip.destination, (e) => {
+                        trip.destination = e.target.value;
+                        // Ensure completion is manual-only: reset when fields change
+                        trip.completed = false;
+                        if (checkbox) checkbox.checked = false;
+                        queueAutosave();
+                        updateCommission();
+                    }, '目的地')
+                );
+                row.appendChild(destinationCell);
+
+                // Completion column
+                const completionCell = document.createElement('td');
+                completionCell.className = `completion-cell trip${tripIndex + 1}-bg`;
+                checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'completion-checkbox';
+                checkbox.checked = trip.completed;
+                checkbox.addEventListener('change', () => {
+                    trip.completed = checkbox.checked;
+                    if (checkbox.checked) updateCommission();
+                    queueAutosave();
+                });
+                completionCell.appendChild(checkbox);
+                row.appendChild(completionCell);
+
+                // Commission column
+                const commissionCell = document.createElement('td');
+                commissionCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
+        commissionInput = document.createElement('input');
+        commissionInput.type = 'number';
+        commissionInput.step = '0.01';
+        commissionInput.min = '0';
+        commissionInput.placeholder = '';
+        commissionInput.className = 'commission-input';
+        commissionInput.value = trip.commission || '';
+                commissionInput.addEventListener('input', () => {
+                    trip.commission = commissionInput.value;
+                    queueAutosave();
+                });
+                commissionCell.appendChild(commissionInput);
+                row.appendChild(commissionCell);
+
+                // Remarks column (reason if not delivered)
+                const remarksCell = document.createElement('td');
+                remarksCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
+            const remarksInput = document.createElement('input');
+            remarksInput.type = 'text';
+            remarksInput.placeholder = '';
+            remarksInput.className = 'remarks-input';
+            remarksInput.value = trip.remarks || '';
+                remarksInput.addEventListener('input', () => {
+                    trip.remarks = remarksInput.value;
+                    queueAutosave();
+                });
+                remarksCell.appendChild(remarksInput);
+                row.appendChild(remarksCell);
+
+                // Initial highlight if rule matches current values
+                updateCommission();
+
+
+            });
+
+            return row;
+        }
+
+        function populateTable() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            // Only render non-hidden and non-archived lorry plates
+            const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+            const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+            let visibleRows = sampleData.filter(d => !(hiddenSet.has(d.lorryPlate) || archivedSet.has(d.lorryPlate)));
+
+            // Apply keyword search filter if present
+            if (SEARCH_KEYWORD && SEARCH_KEYWORD.trim()) {
+                const kw = SEARCH_KEYWORD.trim().toLowerCase();
+                const contains = (v) => (v||'').toString().toLowerCase().includes(kw);
+                visibleRows = visibleRows.filter(r => {
+                    // Match against lorry plate first
+                    if (contains(r.lorryPlate)) return true;
+                    // Then any trip's pickUp/product/destination
+                    const trips = [r.trip1, r.trip2, r.trip3, r.trip4, r.trip5];
+                    return trips.some(t => contains(t.pickUp) || contains(t.product) || contains(t.destination));
+                });
+            }
+
+            visibleRows.forEach((data, index) => {
+                const row = createTableRow(data, index);
+                if (Array.isArray(window.RECENT_ADDED_PLATES) && window.RECENT_ADDED_PLATES.includes(data.lorryPlate)) {
+                    row.classList.add('row-added');
+                    setTimeout(() => { row.classList.remove('row-added'); }, 2200);
+                }
+                tableBody.appendChild(row);
+            });
+        }
+
+        function addRow(selectedLorryPlate = null) {
+            const newData = {
+                lorryPlate: selectedLorryPlate || `NEW${Date.now()}`,
+                trip1: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: CONFIG && CONFIG.defaultCompletion ? true : false,
+                    commission: "",
+                    remarks: ""
+                },
+                trip2: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: CONFIG && CONFIG.defaultCompletion ? true : false,
+                    commission: "",
+                    remarks: ""
+                },
+                trip3: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: CONFIG && CONFIG.defaultCompletion ? true : false,
+                    commission: "",
+                    remarks: ""
+                },
+                trip4: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: CONFIG && CONFIG.defaultCompletion ? true : false,
+                    commission: "",
+                    remarks: ""
+                },
+                trip5: {
+                    pickUp: "",
+                    product: "",
+                    destination: "",
+                    completed: CONFIG && CONFIG.defaultCompletion ? true : false,
+                    commission: "",
+                    remarks: ""
+                }
+            };
+            
+            sampleData.push(newData);
+            const tableBody = document.getElementById('tableBody');
+            const row = createTableRow(newData, sampleData.length - 1);
+            tableBody.appendChild(row);
+            queueAutosave();
+        }
+
+        // Debounced autosave queue (faster and with flush-on-exit)
+        let autosaveTimer = null;
+        function queueAutosave(delay = 300) {
+            if (autosaveTimer) clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(() => {
+                supabaseSaveSchedule(currentDate, sampleData);
+                autosaveTimer = null;
+            }, Math.max(0, delay));
+        }
+
+        function flushAutosave() {
+            if (autosaveTimer) {
+                clearTimeout(autosaveTimer);
+                autosaveTimer = null;
+                supabaseSaveSchedule(currentDate, sampleData);
+            }
+        }
+
+        // Visual feedback helpers
+        function showToast(message, type = 'info') {
+            const ctr = document.getElementById('toastContainer');
+            if (!ctr) return;
+            const el = document.createElement('div');
+            el.className = 'toast' + (type === 'success' ? ' success' : type === 'warning' ? ' warning' : type === 'danger' ? ' danger' : '');
+            el.textContent = message;
+            ctr.appendChild(el);
+            setTimeout(() => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); }, 1600);
+        }
+
+        function markUnsaved() {
+            const b = document.getElementById('unsavedBadge');
+            if (b) { b.style.display = 'inline-block'; b.classList.add('pulse'); }
+            window.CONFIG_DIRTY = true;
+        }
+
+        function clearUnsaved() {
+            const b = document.getElementById('unsavedBadge');
+            if (b) { b.style.display = 'none'; b.classList.remove('pulse'); }
+            window.CONFIG_DIRTY = false;
+        }
+
+        // Keep table row order stable across refreshes
+        function sortSampleRows() {
+            try {
+                const orderMap = new Map();
+                (CONFIG.lorryPlates || []).forEach((p, i) => orderMap.set(String(p), i));
+                sampleData.sort((a, b) => {
+                    const sa = String(a.lorryPlate);
+                    const sb = String(b.lorryPlate);
+                    const ia = orderMap.has(sa) ? orderMap.get(sa) : Number.MAX_SAFE_INTEGER;
+                    const ib = orderMap.has(sb) ? orderMap.get(sb) : Number.MAX_SAFE_INTEGER;
+                    if (ia !== ib) return ia - ib;
+                    const na = Number(sa), nb = Number(sb);
+                    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+                    return sa.localeCompare(sb);
+                });
+            } catch (_) { /* non-critical */ }
+        }
+
+        // Date navigation functionality
+        let currentDate = new Date();
+        let SEARCH_KEYWORD = '';
+
+        function formatDate(date) {
+            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const dayName = days[date.getDay()];
+            
+            return `${day}-${month}-${year} (${dayName})`;
+        }
+
+        function formatDateISO(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${year}-${month}-${day}`;
+        }
+
+        function updateDateDisplay() {
+            const dateElement = document.getElementById('currentDate');
+            if (dateElement) dateElement.textContent = formatDate(currentDate);
+            const picker = document.getElementById('datePicker');
+            if (picker) picker.value = formatDateISO(currentDate);
+        }
+
+        async function navigateDate(direction) {
+            currentDate.setDate(currentDate.getDate() + direction);
+            updateDateDisplay();
+            await supabaseLoadSchedule(currentDate);
+            populateTable();
+        }
+
+        // Robust boolean parser for values returned from Supabase
+        function parseBoolean(v) {
+            if (typeof v === 'boolean') return v;
+            if (typeof v === 'number') return v !== 0;
+            if (typeof v === 'string') {
+                const t = v.trim().toLowerCase();
+                if (!t) return false;
+                return t === 'true' || t === 't' || t === '1' || t === 'yes' || t === 'y';
+            }
+            return false;
+        }
+
+        // Load schedule rows for a given date from Supabase
+        async function supabaseLoadSchedule(date) {
+            try {
+                const dstr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+                const { data, error } = await sb
+                    .from('schedules')
+                    .select('*')
+                    .eq('work_date', dstr);
+                if (error) throw error;
+
+                // Build allow-list from current lorry_plates in DB to avoid re-adding deleted plates
+                let allowSet = new Set();
+                // If local override is active, use local CONFIG list as allow-list
+                if (CONFIG && CONFIG.overrideLorryPlates === true) {
+                    allowSet = new Set((CONFIG.lorryPlates || []).map(p => String(p)));
+                } else {
+                    try {
+                        const lp = await sb.from('lorry_plates').select('plate_no');
+                        if (!lp.error && lp.data) allowSet = new Set(lp.data.map(r => String(r.plate_no)));
+                    } catch (_) { /* non-critical */ }
+                }
+
+                if (data && data.length) {
+                    // Detect remarks columns presence on the schedules table
+                    HAS_REMARKS_COLUMNS = ['t1_remarks','t2_remarks','t3_remarks','t4_remarks','t5_remarks'].some(k => k in (data[0] || {}));
+                    const filtered = allowSet.size === 0 ? [] : data.filter(s => allowSet.has(String(s.lorry_plate)));
+                    sampleData = filtered.map(s => ({
+                        lorryPlate: s.lorry_plate,
+                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', remarks: s.t1_remarks || '' },
+                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', remarks: s.t2_remarks || '' },
+                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', remarks: s.t3_remarks || '' },
+                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', remarks: s.t4_remarks || '' },
+                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', remarks: s.t5_remarks || '' }
+                    }));
+                    // Exclude hidden and archived lorry plates from display (persist across refresh)
+                    const hiddenSetLoad = new Set(CONFIG.hiddenLorryPlates || []);
+                    const archivedSetLoad = new Set(CONFIG.archivedLorryPlates || []);
+                    sampleData = sampleData.filter(r => !hiddenSetLoad.has(r.lorryPlate) && !archivedSetLoad.has(r.lorryPlate));
+                    // Ensure any active lorry plates from Config also appear, even if no schedule row exists yet
+                    try {
+                        const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+                        const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+                        const existing = new Set(sampleData.map(r => String(r.lorryPlate)));
+                        (CONFIG.lorryPlates || [])
+                            .filter(p => allowSet.has(String(p)))
+                            .filter(p => !hiddenSet.has(p) && !archivedSet.has(p))
+                            .forEach(p => {
+                                if (!existing.has(String(p))) {
+                                    sampleData.push({
+                                        lorryPlate: p,
+                                        trip1: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                                        trip2: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                                        trip3: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                                        trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                                        trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                                    });
+                                }
+                            });
+                    } catch (_) { /* non-critical */ }
+                } else {
+                    // No schedules yet for this date: seed rows from Supabase lorry_plates (fallback to local CONFIG)
+                    try {
+                        const lp = await sb.from('lorry_plates').select('plate_no');
+                        const activePlates = (!lp.error && lp.data) ? lp.data.map(r => String(r.plate_no)) : (CONFIG.lorryPlates || []);
+                        const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+                        sampleData = activePlates.filter(p => !hiddenSet.has(p)).map(plate => ({
+                            lorryPlate: plate,
+                            trip1: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip2: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip3: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                        }));
+                    } catch (_) {
+                        // Fallback to local CONFIG list if DB load fails
+                        sampleData = (CONFIG.lorryPlates || []).filter(p => !((CONFIG.hiddenLorryPlates||[]).includes(p))).map(plate => ({
+                            lorryPlate: plate,
+                            trip1: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip2: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip3: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                            trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                        }));
+                    }
+                }
+
+                // Keep Config list in sync with any plates observed in the table (e.g., from existing schedules)
+                // This ensures the Config modal matches the Lorry Plate column.
+                try {
+                    const observedPlates = Array.from(new Set(sampleData.map(r => r.lorryPlate))).filter(p => p && !((CONFIG.archivedLorryPlates||[]).includes(p)));
+                    const lpSet = new Set(CONFIG.lorryPlates || []);
+                    // Only sync plates that still exist in lorry_plates
+                    observedPlates.filter(p => allowSet.has(p)).forEach(p => lpSet.add(p));
+                    CONFIG.lorryPlates = Array.from(lpSet);
+                    saveConfig(CONFIG);
+                    // Ensure stable row order after loading
+                    sortSampleRows();
+                } catch (_) { /* non-critical */ }
+            } catch (e) {
+                console.error('Failed to load schedule from Supabase', e);
+                // On load failure, show empty rather than resurrecting any seeded rows
+                sampleData = [];
+            }
+        }
+
+        // Clear today's schedules (delete all rows for the selected date)
+        async function clearTodaySchedule() {
+            try {
+                const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
+                await sb.from('schedules').delete().eq('work_date', dstr);
+                // Reload after deletion; this will repopulate empty rows for active lorry plates
+                await supabaseLoadSchedule(currentDate);
+                applyCommissionToSampleData();
+                populateTable();
+            } catch (e) {
+                console.error('Failed to clear today schedules', e);
+            }
+        }
+
+        // Search wiring - moved to main DOMContentLoaded listener
+
+        // Helper to render chip lists (generic)
+        function renderList(container, items, onRemove) {
+            container.innerHTML = '';
+            items.forEach((item, idx) => {
+                const pill = document.createElement('span');
+                pill.className = 'config-pill';
+                pill.textContent = item;
+                const del = document.createElement('button');
+                del.textContent = '×';
+                del.title = 'Remove';
+                del.addEventListener('click', () => onRemove(idx));
+                pill.appendChild(del);
+                container.appendChild(pill);
+            });
+        }
+
+        // Alphabet index builder for quick jump within a table
+        function updateAlphaIndexFor(tableId, items, filterLow = '') {
+            const alphaMap = {
+                'tablePickUp': 'alpha-pickup',
+                'tableProduct': 'alpha-product',
+                'tableDestination': 'alpha-destination'
+            };
+            const alphaId = alphaMap[tableId];
+            if (!alphaId) return;
+            const host = document.getElementById(alphaId);
+            if (!host) return;
+
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+            // Determine which letters exist in current filtered items
+            const present = new Set();
+            const getLetter = (s) => {
+                const ch = String(s).trim().charAt(0).toUpperCase();
+                if (ch >= 'A' && ch <= 'Z') return ch;
+                if (ch >= '0' && ch <= '9') return '#';
+                return '#';
+            };
+            items
+                .map(v => String(v).trim())
+                .filter(v => v.length > 0)
+                .filter(v => !filterLow || v.toLowerCase().includes(filterLow))
+                .forEach(v => present.add(getLetter(v)));
+
+            host.innerHTML = '';
+            letters.forEach(L => {
+                const btn = document.createElement('button');
+                btn.className = 'alpha-btn';
+                btn.textContent = L;
+                if (!present.has(L)) {
+                    btn.setAttribute('disabled', 'true');
+                } else {
+                    btn.addEventListener('click', () => {
+                        const anchor = document.getElementById(`anchor-${tableId}-${L}`);
+                        if (anchor) {
+                            anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    });
+                }
+                host.appendChild(btn);
+            });
+        }
+
+        // 新增：标签切换与表格渲染，替换原有“标签块”视图，使界面更整齐
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+        }
+
+        function renderItemsTable(tableId, items, filter = '') {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            const low = filter.trim().toLowerCase();
+            // Track first occurrence per letter to create anchors
+            const seenLetters = new Set();
+            const getLetter = (s) => {
+                const ch = String(s).trim().charAt(0).toUpperCase();
+                if (ch >= 'A' && ch <= 'Z') return ch;
+                if (ch >= '0' && ch <= '9') return '#';
+                return '#';
+            };
+            items
+                .map(v => String(v).trim())
+                .filter(v => v.length > 0)
+                .filter(v => !low || v.toLowerCase().includes(low))
+                .forEach((it) => {
+                    const tr = document.createElement('tr');
+                    const letter = getLetter(it);
+                    if (!seenLetters.has(letter)) {
+                        tr.id = `anchor-${tableId}-${letter}`;
+                        seenLetters.add(letter);
+                    }
+                    const tdName = document.createElement('td'); tdName.textContent = it; tr.appendChild(tdName);
+                    const tdAct = document.createElement('td');
+                    const btnDel = document.createElement('button'); btnDel.className = 'mini-btn'; btnDel.textContent = '删除';
+                    btnDel.addEventListener('click', () => {
+                        const originalIdx = items.findIndex(v => String(v).trim() === it);
+                        if (originalIdx >= 0) items.splice(originalIdx, 1);
+                        renderItemsTable(tableId, items, filter);
+                        markUnsaved();
+                        showToast(`已删除项 ${it}`, 'danger');
+                    });
+                    tdAct.appendChild(btnDel);
+                    tr.appendChild(tdAct);
+                    tbody.appendChild(tr);
+                });
+
+            // Update alphabet index for this table
+            updateAlphaIndexFor(tableId, items, low);
+        }
+
+        // Lorry plates table renderer with status and actions
+        function renderLorryTable(filter = '') {
+            const table = document.getElementById('tableLorry');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            const low = filter.trim().toLowerCase();
+            const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+            const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+            const entries = [];
+            (CONFIG.lorryPlates || []).forEach(p => entries.push({ plate: p, status: hiddenSet.has(p) ? '隐藏' : '显示' }));
+
+            entries
+                .filter(e => !low || e.plate.toLowerCase().includes(low))
+                .forEach(e => {
+                    const tr = document.createElement('tr');
+                    const tdPlate = document.createElement('td'); tdPlate.textContent = e.plate; tr.appendChild(tdPlate);
+                    const tdStatus = document.createElement('td'); tdStatus.textContent = e.status; tr.appendChild(tdStatus);
+                    const tdAct = document.createElement('td'); tdAct.className = 'config-actions';
+
+                    if (e.status !== '归档') {
+                        const btnToggle = document.createElement('button'); btnToggle.className = 'mini-btn';
+                        btnToggle.textContent = e.status === '隐藏' ? '显示' : '隐藏';
+                        btnToggle.addEventListener('click', async () => {
+                            const willHide = e.status !== '隐藏';
+                            markUnsaved();
+                            await toggleHidePlate(e.plate, willHide);
+                            renderLorryTable(filter);
+                            renderDeletedLorryTable(filter);
+                            showToast(`${willHide ? '已隐藏' : '已显示'}车牌 ${e.plate}`, willHide ? 'warning' : 'success');
+                        });
+                        tdAct.appendChild(btnToggle);
+                    }
+
+                    // 已移除“归档”功能，仅保留 隐藏 / 删除
+
+                    const btnDel = document.createElement('button'); btnDel.className = 'mini-btn'; btnDel.textContent = '删除';
+                    btnDel.addEventListener('click', async () => { markUnsaved(); await deletePlatePermanent(e.plate); renderLorryTable(filter); renderDeletedLorryTable(filter); showToast(`已标记删除车牌 ${e.plate}`,'danger'); });
+                    tdAct.appendChild(btnDel);
+                    tr.appendChild(tdAct);
+
+                    tbody.appendChild(tr);
+                });
+        }
+
+        // Render deleted/archived lorry plates
+        function renderDeletedLorryTable(filter = '') {
+            const table = document.getElementById('tableLorryDeleted');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            const low = filter.trim().toLowerCase();
+            const entries = (CONFIG.archivedLorryPlates || []).map(p => ({ plate: p, status: '已删除' }));
+
+            entries
+                .filter(e => !low || e.plate.toLowerCase().includes(low))
+                .forEach(e => {
+                    const tr = document.createElement('tr');
+                    const tdPlate = document.createElement('td'); tdPlate.textContent = e.plate; tr.appendChild(tdPlate);
+                    const tdStatus = document.createElement('td'); tdStatus.textContent = e.status; tr.appendChild(tdStatus);
+                    const tdAct = document.createElement('td'); tdAct.className = 'config-actions';
+
+                    const btnRestore = document.createElement('button'); btnRestore.className = 'mini-btn'; btnRestore.textContent = '恢复';
+                    btnRestore.addEventListener('click', async () => { markUnsaved(); await restorePlate(e.plate); renderLorryTable(filter); renderDeletedLorryTable(filter); showToast(`已恢复车牌 ${e.plate}`,'success'); });
+                    tdAct.appendChild(btnRestore);
+
+                    const btnPurge = document.createElement('button'); btnPurge.className = 'mini-btn'; btnPurge.textContent = '彻底删除';
+                    btnPurge.addEventListener('click', async () => { markUnsaved(); await purgePlate(e.plate); renderDeletedLorryTable(filter); showToast(`已彻底删除车牌 ${e.plate}`,'danger'); });
+                    tdAct.appendChild(btnPurge);
+
+                    tr.appendChild(tdAct);
+                    tbody.appendChild(tr);
+                });
+        }
+
+        async function toggleHidePlate(plate, hide) {
+            const set = new Set(CONFIG.hiddenLorryPlates || []);
+            if (hide) set.add(plate); else set.delete(plate);
+            CONFIG.hiddenLorryPlates = Array.from(set);
+            // If inside config modal and not saved yet, stage only (no persistence)
+            if (window.IN_CONFIG_MODAL && !window.CONFIG_MODAL_SAVED) {
+                return;
+            }
+            // Outside modal: persist immediately
+            saveConfig(CONFIG);
+            try { await sb.from('lorry_plates').update({ hidden: hide }).eq('plate_no', plate); } catch (_) {}
+            await supabaseSaveOptions();
+            populateTable();
+        }
+
+        // 归档功能已移除
+
+        async function deletePlatePermanent(plate) {
+            // Stage-only delete: update the modal view and config locally, but do not persist
+            const act = new Set(CONFIG.lorryPlates || []); act.delete(plate);
+            CONFIG.lorryPlates = Array.from(act);
+            // Do not touch archived/hidden or Supabase here; persistence happens on 保存配置
+            renderLorryTable('');
+        }
+
+        async function restorePlate(plate) {
+            // Inside modal: stage-only
+            if (window.IN_CONFIG_MODAL && !window.CONFIG_MODAL_SAVED) {
+                const arch = new Set(CONFIG.archivedLorryPlates || []); arch.delete(plate);
+                CONFIG.archivedLorryPlates = Array.from(arch);
+                const act = new Set(CONFIG.lorryPlates || []); act.add(plate);
+                CONFIG.lorryPlates = Array.from(act);
+                return;
+            }
+            // Outside modal: persist
+            try { await sb.from('lorry_plates').upsert([{ plate_no: plate }], { onConflict: 'plate_no' }); } catch (_) {}
+            const arch = new Set(CONFIG.archivedLorryPlates || []); arch.delete(plate);
+            CONFIG.archivedLorryPlates = Array.from(arch);
+            const act = new Set(CONFIG.lorryPlates || []); act.add(plate);
+            CONFIG.lorryPlates = Array.from(act);
+            saveConfig(CONFIG);
+            await supabaseSaveOptions();
+            // Ensure row exists in the schedule view
+            const exists = sampleData.some(r => r.lorryPlate === plate);
+            if (!exists) {
+                sampleData.push({
+                    lorryPlate: plate,
+                    trip1: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                    trip2: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                    trip3: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                    trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                    trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                });
+            }
+            populateTable();
+            // Persist schedule add
+            queueAutosave();
+        }
+
+        async function purgePlate(plate) {
+            // Inside modal: stage-only remove from archived list
+            if (window.IN_CONFIG_MODAL && !window.CONFIG_MODAL_SAVED) {
+                CONFIG.archivedLorryPlates = (CONFIG.archivedLorryPlates || []).filter(p => p !== plate);
+                return;
+            }
+            // Remove from archived list and try deleting from Supabase as well
+            try {
+                const del = await sb.from('lorry_plates').delete().eq('plate_no', plate);
+                if (del && del.error) {
+                    await sb.from('lorry_plates').update({ active: false, hidden: true }).eq('plate_no', plate);
+                }
+            } catch (_) {
+                try { await sb.from('lorry_plates').update({ active: false, hidden: true }).eq('plate_no', plate); } catch (_) {}
+            }
+            CONFIG.archivedLorryPlates = (CONFIG.archivedLorryPlates || []).filter(p => p !== plate);
+            saveConfig(CONFIG);
+            await supabaseSaveOptions();
+        }
+
+        function openConfig() {
+            // Snapshot for cancel/close without saving
+            window.ORIG_LORRY_PLATES = Array.from(CONFIG.lorryPlates || []);
+            // Deep snapshot of entire config for full revert
+            window.CONFIG_SNAPSHOT = JSON.parse(JSON.stringify(CONFIG));
+            window.CONFIG_MODAL_SAVED = false;
+            window.IN_CONFIG_MODAL = true;
+            clearUnsaved();
+            const f = document.getElementById('searchLorry')?.value || '';
+            renderLorryTable(f);
+            renderItemsTable('tablePickUp', CONFIG.pickUps, document.getElementById('searchPickUp')?.value || '');
+            renderItemsTable('tableProduct', CONFIG.products, document.getElementById('searchProduct')?.value || '');
+            renderItemsTable('tableDestination', CONFIG.destinations, document.getElementById('searchDestination')?.value || '');
+            // 车税与默认设置已移除
+            // Prefill color inputs
+            const c = CONFIG.tripColors || defaultConfig.tripColors;
+            const c1 = document.getElementById('colorTrip1'); if (c1) c1.value = c.trip1;
+            const c2 = document.getElementById('colorTrip2'); if (c2) c2.value = c.trip2;
+            const c3 = document.getElementById('colorTrip3'); if (c3) c3.value = c.trip3;
+            const c4 = document.getElementById('colorTrip4'); if (c4) c4.value = c.trip4;
+            const c5 = document.getElementById('colorTrip5'); if (c5) c5.value = c.trip5;
+            document.getElementById('configModal').style.display = 'flex';
+            showTab('tab-lorry');
+        }
+
+        function closeConfig() {
+            // If user didn't save, revert the entire config from snapshot
+            if (!window.CONFIG_MODAL_SAVED && window.CONFIG_SNAPSHOT) {
+                try {
+                    CONFIG = JSON.parse(JSON.stringify(window.CONFIG_SNAPSHOT));
+                    saveConfig(CONFIG);
+                    populateTable();
+                } catch (_) {}
+            }
+            window.IN_CONFIG_MODAL = false;
+            clearUnsaved();
+            document.getElementById('configModal').style.display = 'none';
+        }
+
+        function wireConfigEvents() {
+            const btnConfigEl = document.getElementById('btnConfig');
+            if (btnConfigEl) btnConfigEl.addEventListener('click', openConfig);
+            const btnMgr = document.getElementById('btnCommissionManager');
+            if (btnMgr) {
+                btnMgr.addEventListener('click', () => {
+                    // Navigate in the same tab (no new window/tab)
+                    const target = './commission-manager.html';
+                    window.location.assign(target);
+                });
+            }
+            const btnCloseCfg = document.getElementById('btnCloseConfig');
+            if (btnCloseCfg) btnCloseCfg.addEventListener('click', closeConfig);
+            const btnSaveCfg = document.getElementById('btnSaveConfig');
+            if (btnSaveCfg) btnSaveCfg.addEventListener('click', async () => {
+                // 默认完成设置已移除
+                // Save color selections
+                const tcs = CONFIG.tripColors || { ...defaultConfig.tripColors };
+                tcs.trip1 = document.getElementById('colorTrip1')?.value || tcs.trip1;
+                tcs.trip2 = document.getElementById('colorTrip2')?.value || tcs.trip2;
+                tcs.trip3 = document.getElementById('colorTrip3')?.value || tcs.trip3;
+                tcs.trip4 = document.getElementById('colorTrip4')?.value || tcs.trip4;
+                tcs.trip5 = document.getElementById('colorTrip5')?.value || tcs.trip5;
+                CONFIG.tripColors = tcs;
+                applyTripColors(CONFIG);
+                saveConfig(CONFIG);
+                // Apply deletes only now: compute removed vs original snapshot
+                const origPlates = Array.isArray(window.ORIG_LORRY_PLATES) ? window.ORIG_LORRY_PLATES : Array.from(CONFIG.lorryPlates || []);
+                const newPlates = Array.from(CONFIG.lorryPlates || []);
+                const added = newPlates.filter(p => !origPlates.includes(p));
+                const removed = origPlates.filter(p => !newPlates.includes(p));
+                // Visual feedback summary
+                if (added.length) showToast(`已添加 ${added.length} 个车牌：${added.join(', ')}`, 'success');
+                if (removed.length) showToast(`已删除 ${removed.length} 个车牌：${removed.join(', ')}`,'danger');
+                // Track for table highlight
+                window.RECENT_ADDED_PLATES = added.slice();
+                window.RECENT_REMOVED_PLATES = removed.slice();
+                if (removed.length) {
+                    try {
+                        const del = await sb.from('lorry_plates').delete().in('plate_no', removed);
+                        if (del && del.error) {
+                            await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', removed);
+                        }
+                    } catch (_) {
+                        try { await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', removed); } catch (_) {}
+                    }
+                    // Also remove current-date schedule rows for removed plates
+                    try {
+                        const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
+                        await sb.from('schedules').delete().eq('work_date', dstr).in('lorry_plate', removed);
+                    } catch (_) {}
+                }
+                if (added.length) {
+                    try {
+                        await sb.from('lorry_plates').upsert(
+                            added.map(p => ({ plate_no: p, active: true })),
+                            { onConflict: 'plate_no' }
+                        );
+                    } catch (_) { /* non-blocking */ }
+                }
+                window.CONFIG_MODAL_SAVED = true;
+                clearUnsaved();
+                await supabaseSaveOptions();
+                pickUpOptions = CONFIG.pickUps;
+                productOptions = CONFIG.products;
+                destinationOptions = CONFIG.destinations;
+                // Ensure newly added lorry plates immediately appear as rows
+                const existingPlates = new Set(sampleData.map(r => r.lorryPlate));
+                CONFIG.lorryPlates.forEach(plate => {
+                    if (!existingPlates.has(plate)) {
+                        sampleData.push({
+                            lorryPlate: plate,
+                            trip1: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip2: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip3: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                            trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'' },
+                        });
+                    }
+                });
+                // Remove rows for plates that are no longer active (deleted or hidden/archived)
+                const activeSet = new Set(CONFIG.lorryPlates || []);
+                const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+                const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+                sampleData = sampleData.filter(r => activeSet.has(r.lorryPlate) && !hiddenSet.has(r.lorryPlate) && !archivedSet.has(r.lorryPlate));
+                // Re-render table so all dropdowns include the latest options
+                populateTable();
+                // Autosave schedule so new rows are persisted
+                flushAutosave();
+                // Reload schedule from DB to reflect removals and prevent ghost rows
+                await supabaseLoadSchedule(currentDate);
+                populateTable();
+                queueAutosave();
+                closeConfig();
+            });
+            const btnResetCfg = document.getElementById('btnResetConfig');
+            if (btnResetCfg) btnResetCfg.addEventListener('click', () => {
+                CONFIG = { ...defaultConfig };
+                saveConfig(CONFIG);
+                openConfig();
+            });
+
+            // Clear all lorry plates (and today's schedules) with one click
+            // Removed bulk delete and clear-all controls
+
+            // Tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+
+            // Live preview for color changes
+            ['colorTrip1','colorTrip2','colorTrip3','colorTrip4','colorTrip5'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        const tcs = {
+                            trip1: document.getElementById('colorTrip1')?.value || CONFIG.tripColors.trip1,
+                            trip2: document.getElementById('colorTrip2')?.value || CONFIG.tripColors.trip2,
+                            trip3: document.getElementById('colorTrip3')?.value || CONFIG.tripColors.trip3,
+                            trip4: document.getElementById('colorTrip4')?.value || CONFIG.tripColors.trip4,
+                            trip5: document.getElementById('colorTrip5')?.value || CONFIG.tripColors.trip5
+                        };
+                        applyTripColors({ tripColors: tcs });
+                        markUnsaved();
+                    });
+                }
+            });
+
+            // Add actions and search events
+            const btnAddLorry = document.getElementById('btnAddLorry');
+            if (btnAddLorry) btnAddLorry.addEventListener('click', async () => {
+                const val = document.getElementById('inputLorryPlate').value.trim();
+                if (!val) return;
+                // Stage-only: update local CONFIG while modal is open; persist on 保存配置
+                const lpSet = new Set(CONFIG.lorryPlates || []); lpSet.add(val);
+                CONFIG.lorryPlates = Array.from(lpSet);
+                CONFIG.hiddenLorryPlates = (CONFIG.hiddenLorryPlates || []).filter(p => p !== val);
+                CONFIG.archivedLorryPlates = (CONFIG.archivedLorryPlates || []).filter(p => p !== val);
+                // Do not persist or update main table until saved
+                document.getElementById('inputLorryPlate').value = '';
+                const f = document.getElementById('searchLorry')?.value || '';
+                renderLorryTable(f);
+                markUnsaved();
+                showToast(`已添加车牌 ${val}`, 'success');
+            });
+            const sl = document.getElementById('searchLorry'); if (sl) sl.addEventListener('input', () => { renderLorryTable(sl.value); });
+            const btnAddPickUp = document.getElementById('btnAddPickUp');
+            if (btnAddPickUp) btnAddPickUp.addEventListener('click', async () => {
+                const val = document.getElementById('inputPickUp').value.trim();
+                if (!val) return;
+                await upsertOptionAndSync('pickup', val);
+                document.getElementById('inputPickUp').value = '';
+                renderItemsTable('tablePickUp', CONFIG.pickUps, document.getElementById('searchPickUp')?.value || '');
+                markUnsaved();
+                showToast(`已添加取货地 ${val}`, 'success');
+            });
+            const sp = document.getElementById('searchPickUp'); if (sp) sp.addEventListener('input', () => renderItemsTable('tablePickUp', CONFIG.pickUps, sp.value));
+            const btnAddProduct = document.getElementById('btnAddProduct');
+            if (btnAddProduct) btnAddProduct.addEventListener('click', async () => {
+                const val = document.getElementById('inputProduct').value.trim();
+                if (!val) return;
+                await upsertOptionAndSync('product', val);
+                document.getElementById('inputProduct').value = '';
+                renderItemsTable('tableProduct', CONFIG.products, document.getElementById('searchProduct')?.value || '');
+                markUnsaved();
+                showToast(`已添加产品 ${val}`, 'success');
+            });
+            const sprod = document.getElementById('searchProduct'); if (sprod) sprod.addEventListener('input', () => renderItemsTable('tableProduct', CONFIG.products, sprod.value));
+            const btnAddDestination = document.getElementById('btnAddDestination');
+            if (btnAddDestination) btnAddDestination.addEventListener('click', async () => {
+                const val = document.getElementById('inputDestination').value.trim();
+                if (!val) return;
+                await upsertOptionAndSync('destination', val);
+                document.getElementById('inputDestination').value = '';
+                renderItemsTable('tableDestination', CONFIG.destinations, document.getElementById('searchDestination')?.value || '');
+                markUnsaved();
+                showToast(`已添加目的地 ${val}`, 'success');
+            });
+            const sd = document.getElementById('searchDestination'); if (sd) sd.addEventListener('input', () => renderItemsTable('tableDestination', CONFIG.destinations, sd.value));
+            // 已移除：车税添加与搜索事件绑定
+
+            // Add Row button removed per user request; guard in case element exists
+            const btnAddRow = document.getElementById('btnAddRow');
+            if (btnAddRow) {
+                btnAddRow.addEventListener('click', () => {
+                    const choice = prompt('Enter lorry plate or choose one:\n' + CONFIG.lorryPlates.join(', '), CONFIG.lorryPlates[0] || '');
+                    if (choice !== null) {
+                        addRow(choice.trim());
+                    }
+                });
+            }
+        }
+
+        async function getOrCreateId(table, keyColumn, value) {
+            if (!value) return null;
+            const existing = await sb.from(table).select('id,'+keyColumn).eq(keyColumn, value).limit(1).maybeSingle();
+            if (!existing.error && existing.data) return existing.data.id;
+            const ins = await sb.from(table).insert({ [keyColumn]: value, active: true }).select('id').maybeSingle();
+            return ins.data ? ins.data.id : null;
+        }
+
+        async function getLorryPlateId(plate) {
+            return getOrCreateId('lorry_plates','plate',plate);
+        }
+
+        async function supabaseSaveSchedule(date, rows) {
+            try {
+                const dstr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+                for (const row of rows) {
+                    const payload = {
+                        work_date: dstr,
+                        lorry_plate: row.lorryPlate,
+                        t1_pick_up: row.trip1.pickUp || null,
+                        t1_product: row.trip1.product || null,
+                        t1_destination: row.trip1.destination || null,
+                        t1_completed: !!row.trip1.completed,
+                        t1_commission: row.trip1.commission ? Number(row.trip1.commission) : null,
+                        t2_pick_up: row.trip2.pickUp || null,
+                        t2_product: row.trip2.product || null,
+                        t2_destination: row.trip2.destination || null,
+                        t2_completed: !!row.trip2.completed,
+                        t2_commission: row.trip2.commission ? Number(row.trip2.commission) : null,
+                        t3_pick_up: row.trip3.pickUp || null,
+                        t3_product: row.trip3.product || null,
+                        t3_destination: row.trip3.destination || null,
+                        t3_completed: !!row.trip3.completed,
+                        t3_commission: row.trip3.commission ? Number(row.trip3.commission) : null,
+                        t4_pick_up: row.trip4.pickUp || null,
+                        t4_product: row.trip4.product || null,
+                        t4_destination: row.trip4.destination || null,
+                        t4_completed: !!row.trip4.completed,
+                        t4_commission: row.trip4.commission ? Number(row.trip4.commission) : null,
+                        t5_pick_up: row.trip5.pickUp || null,
+                        t5_product: row.trip5.product || null,
+                        t5_destination: row.trip5.destination || null,
+                        t5_completed: !!row.trip5.completed,
+                        t5_commission: row.trip5.commission ? Number(row.trip5.commission) : null
+                    };
+                    // Conditionally include remarks fields if the table supports them
+                    if (HAS_REMARKS_COLUMNS) {
+                        payload.t1_remarks = row.trip1.remarks || null;
+                        payload.t2_remarks = row.trip2.remarks || null;
+                        payload.t3_remarks = row.trip3.remarks || null;
+                        payload.t4_remarks = row.trip4.remarks || null;
+                        payload.t5_remarks = row.trip5.remarks || null;
+                    }
+                    await sb.from('schedules').upsert(payload, { onConflict: 'work_date,lorry_plate' });
+                }
+                // Autosave succeeded
+            } catch (e) {
+                console.error('Save schedule failed', e);
+            }
+        }
+
+
+        // Initialize the table and date when the page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Theme initialization
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('nanyang_theme', theme);
+                const btn = document.getElementById('btnTheme');
+                if (btn) btn.textContent = theme === 'readable' ? 'Light Theme' : 'Readable Theme';
+            }
+            const savedTheme = localStorage.getItem('nanyang_theme') || 'readable';
+            applyTheme(savedTheme);
+
+            await supabaseLoadOptions();
+            // Load any existing rules from Supabase first
+            await loadCommissionRulesFromSupabase();
+            mergeCommissionRulesPreferExcel();
+            applyCommissionToSampleData();
+            await supabaseLoadSchedule(currentDate);
+            // After loading schedule rows from DB, apply commission based on active rules again
+            applyCommissionToSampleData();
+            populateTable();
+            updateDateDisplay();
+            wireConfigEvents();
+            ensureTripBoardToggle();
+            // Restore last mode
+            const startInBoard = localStorage.getItem('trip_board_mode') === '1';
+            applyTripBoardMode(startInBoard);
+
+            const btnTheme = document.getElementById('btnTheme');
+            if (btnTheme) {
+                btnTheme.addEventListener('click', () => {
+                    const current = document.documentElement.getAttribute('data-theme') || 'light';
+                    applyTheme(current === 'light' ? 'readable' : 'light');
+                });
+            }
+
+            // Cross-page sync: receive option updates from embedded Commission Manager
+            window.addEventListener('message', async (ev) => {
+                const d = ev?.data;
+                if (!d) return;
+                if (d.type === 'optionsUpdated' && Array.isArray(d.added)) {
+                    for (const item of d.added) {
+                        const cat = item.category; const name = item.name;
+                        await upsertOptionAndSync(cat, name);
+                    }
+                    // Refresh config modal tables if open
+                    if (window.IN_CONFIG_MODAL) {
+                        const sp = document.getElementById('searchPickUp');
+                        const sprod = document.getElementById('searchProduct');
+                        const sd = document.getElementById('searchDestination');
+                        renderItemsTable('tablePickUp', CONFIG.pickUps, sp?.value || '');
+                        renderItemsTable('tableProduct', CONFIG.products, sprod?.value || '');
+                        renderItemsTable('tableDestination', CONFIG.destinations, sd?.value || '');
+                    }
+                } else if (d.type === 'optionAdded' && d.category && d.name) {
+                    await upsertOptionAndSync(d.category, d.name);
+                }
+            });
+
+            // Search functionality
+            const input = document.getElementById('searchInput');
+            if (input) {
+                let t = null;
+                input.addEventListener('input', (e) => {
+                    SEARCH_KEYWORD = e.target.value || '';
+                    if (t) clearTimeout(t);
+                    t = setTimeout(() => populateTable(), 150);
+                });
+            }
+
+        // 顶部右侧标签切换（替代 3 点菜单）
+            const topTabPlanner = document.getElementById('topTabPlanner');
+            const topTabConfig = document.getElementById('topTabConfig');
+            const topTabCommission = document.getElementById('topTabCommission');
+            const embeddedPanel = document.getElementById('embeddedCommissionPanel');
+            const setActive = (el) => {
+                [topTabPlanner, topTabConfig, topTabCommission].forEach(b => b?.classList.remove('active'));
+                el?.classList.add('active');
+            };
+
+            if (topTabPlanner) {
+                topTabPlanner.addEventListener('click', () => {
+                    // Close everything and return to planner view
+                    embeddedPanel?.classList.remove('show');
+                    try { closeConfig(); } catch (_) {}
+                    try { window.__closeOptionsPanel?.(); } catch (_) {}
+                    setActive(topTabPlanner);
+                });
+            }
+            if (topTabConfig) {
+                topTabConfig.addEventListener('click', () => {
+                    // Show config modal, hide embedded commission and any overlays
+                    if (embeddedPanel) embeddedPanel.classList.remove('show');
+                    try { window.__closeOptionsPanel?.(); } catch (_) {}
+                    try { openConfig(); } catch (_) {}
+                    setActive(topTabConfig);
+                });
+            }
+            if (topTabCommission) {
+                topTabCommission.addEventListener('click', () => {
+                    // Open commission manager panel, and close other tabs (config modal and overlays)
+                    try { closeConfig(); } catch (_) {}
+                    try { window.__closeOptionsPanel?.(); } catch (_) {}
+                    // Cache-bust iframe to ensure latest UI is shown
+                    const ifr = document.getElementById('ifrCommission');
+                    if (ifr) {
+                        const base = 'commission-manager.html';
+                        const v = Date.now();
+                        const url = `${base}?v=${v}`;
+                        // Only update if URL changed to avoid unnecessary reloads
+                        if (ifr.src.indexOf(base) === -1 || !ifr.src.endsWith(String(v))) {
+                            ifr.src = url;
+                        }
+                    }
+                    if (embeddedPanel) embeddedPanel.classList.add('show');
+                    setActive(topTabCommission);
+                });
+            }
+
+            // 缩放控制（特别为平板优化）
+            const zoomOutBtn = document.getElementById('zoomOut');
+            const zoomInBtn = document.getElementById('zoomIn');
+            const zoomValueEl = document.getElementById('zoomValue');
+            const fitAllBtn = document.getElementById('fitAll');
+            const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+            let zoom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--zoom')) || 1;
+            const applyZoom = () => {
+                document.documentElement.style.setProperty('--zoom', String(zoom));
+                if (zoomValueEl) zoomValueEl.textContent = Math.round(zoom * 100) + '%';
+            };
+            applyZoom();
+            const step = 0.1;
+            const minZoom = 0.4, maxZoom = 2.0; // allow 40% to 200%
+            if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => { zoom = clamp(zoom - step, minZoom, maxZoom); applyZoom(); });
+            if (zoomInBtn) zoomInBtn.addEventListener('click', () => { zoom = clamp(zoom + step, minZoom, maxZoom); applyZoom(); });
+            if (fitAllBtn) fitAllBtn.addEventListener('click', () => {
+                const container = document.querySelector('.table-container');
+                const wrapper = document.querySelector('.table-wrapper');
+                if (!container || !wrapper) return;
+                const needed = container.clientWidth / (wrapper.scrollWidth || container.clientWidth);
+                zoom = clamp(needed, minZoom, maxZoom);
+                applyZoom();
+            });
+
+            // Keyboard shortcuts and ctrl+wheel zoom (useful for trackpads/tablets)
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoom = clamp(zoom + step, minZoom, maxZoom); applyZoom(); }
+                if (e.ctrlKey && e.key === '-') { e.preventDefault(); zoom = clamp(zoom - step, minZoom, maxZoom); applyZoom(); }
+                if (e.ctrlKey && e.key === '0') { e.preventDefault(); zoom = 1; applyZoom(); }
+            });
+            document.addEventListener('wheel', (e) => {
+                if (e.ctrlKey) { e.preventDefault(); const delta = e.deltaY > 0 ? -step : step; zoom = clamp(zoom + delta, minZoom, maxZoom); applyZoom(); }
+            }, { passive: false });
+
+            // Calendar date picker wiring
+            const dp = document.getElementById('datePicker');
+            if (dp) {
+                dp.addEventListener('change', async () => {
+                    const v = dp.value;
+                    if (!v) return;
+                    const [yy, mm, dd] = v.split('-').map(Number);
+                    currentDate = new Date(yy, (mm || 1) - 1, dd || 1);
+                    updateDateDisplay();
+                    await supabaseLoadSchedule(currentDate);
+                    populateTable();
+                });
+            }
+
+
+            // Fit-to-screen initialization
+            function applyFitMode(on) {
+                const root = document.body;
+                if (on) {
+                    root.classList.add('fit-width');
+                } else {
+                    root.classList.remove('fit-width');
+                }
+                localStorage.setItem('nanyang_fit_width', on ? '1' : '0');
+                const btn = document.getElementById('btnFit');
+                if (btn) btn.textContent = on ? 'Normal Width' : 'Fit to Screen';
+            }
+            const savedFit = localStorage.getItem('nanyang_fit_width');
+            applyFitMode(savedFit === null ? true : savedFit === '1');
+            const btnFit = document.getElementById('btnFit');
+            if (btnFit) {
+                btnFit.addEventListener('click', () => {
+                    const on = !document.body.classList.contains('fit-width');
+                    applyFitMode(on);
+                });
+            }
+
+            // Ensure any pending autosave is flushed when the page is being closed or hidden
+            window.addEventListener('beforeunload', flushAutosave);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') flushAutosave();
+            });
+
+            // Column sorting functionality
+            let currentSort = { column: null, direction: 'asc' };
+
+            function sortTable(column) {
+                const tableBody = document.getElementById('tableBody');
+                const rows = Array.from(tableBody.querySelectorAll('tr'));
+                
+                // Determine sort direction
+                if (currentSort.column === column) {
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.column = column;
+                    currentSort.direction = 'asc';
+                }
+
+                // Update header indicators
+                document.querySelectorAll('th.sortable').forEach(th => {
+                    th.classList.remove('sort-asc', 'sort-desc');
+                });
+                const headerCell = document.querySelector(`th[data-column="${column}"]`);
+                if (headerCell) {
+                    headerCell.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+
+                // Sort the data array
+                const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+                const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+                let visibleData = sampleData.filter(d => !(hiddenSet.has(d.lorryPlate) || archivedSet.has(d.lorryPlate)));
+
+                visibleData.sort((a, b) => {
+                    let valueA, valueB;
+                    
+                    if (column === 'plate') {
+                        valueA = a.lorryPlate || '';
+                        valueB = b.lorryPlate || '';
+                    } else {
+                        // Extract trip number and field from column name (e.g., 'pickup1', 'product2')
+                        const match = column.match(/^(\w+)(\d+)$/);
+                        if (match) {
+                            const [, field, tripNum] = match;
+                            const tripIndex = parseInt(tripNum) - 1;
+                            const tripA = [a.trip1, a.trip2, a.trip3, a.trip4, a.trip5][tripIndex];
+                            const tripB = [b.trip1, b.trip2, b.trip3, b.trip4, b.trip5][tripIndex];
+                            
+                            if (field === 'pickup') {
+                                valueA = tripA?.pickUp || '';
+                                valueB = tripB?.pickUp || '';
+                            } else if (field === 'product') {
+                                valueA = tripA?.product || '';
+                                valueB = tripB?.product || '';
+                            } else if (field === 'destination') {
+                                valueA = tripA?.destination || '';
+                                valueB = tripB?.destination || '';
+                            } else if (field === 'commission') {
+                                valueA = parseFloat(tripA?.commission || 0);
+                                valueB = parseFloat(tripB?.commission || 0);
+                            }
+                        }
+                    }
+
+                    // Handle numeric vs string comparison
+                    if (typeof valueA === 'number' && typeof valueB === 'number') {
+                        return currentSort.direction === 'asc' ? valueA - valueB : valueB - valueA;
+                    } else {
+                        const strA = String(valueA).toLowerCase();
+                        const strB = String(valueB).toLowerCase();
+                        if (currentSort.direction === 'asc') {
+                            return strA.localeCompare(strB);
+                        } else {
+                            return strB.localeCompare(strA);
+                        }
+                    }
+                });
+
+                // Update the global sampleData array to maintain sort order
+                const sortedIndices = visibleData.map(item => sampleData.indexOf(item));
+                const newSampleData = [...sampleData];
+                
+                // Reorder only the visible items in sampleData
+                let visibleIndex = 0;
+                for (let i = 0; i < newSampleData.length; i++) {
+                    if (!(hiddenSet.has(newSampleData[i].lorryPlate) || archivedSet.has(newSampleData[i].lorryPlate))) {
+                        if (visibleIndex < visibleData.length) {
+                            newSampleData[i] = visibleData[visibleIndex];
+                            visibleIndex++;
+                        }
+                    }
+                }
+                
+                sampleData.length = 0;
+                sampleData.push(...newSampleData);
+
+                // Repopulate the table
+                populateTable();
+            }
+
+            // Add click event listeners to sortable headers
+            document.querySelectorAll('th.sortable').forEach(th => {
+                const column = th.getAttribute('data-column');
+                if (column) {
+                    th.addEventListener('click', () => sortTable(column));
+                }
+            });
+        });
+    </script>
+</body>
+</html>
