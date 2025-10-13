@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/", "dest": "/logistics-planner.html" }
+  ]
+}

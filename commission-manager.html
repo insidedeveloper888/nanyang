@@ -230,9 +230,22 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
-    const SUPABASE_URL = "https://ihafdntwtiyaykgmzimd.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloYWZkbnR3dGl5YXlrZ216aW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3MTk2MjUsImV4cCI6MjA3NTI5NTYyNX0.amf3iEFv1XK1h3h5_orUQfE4w0XY2ubSoD08dhtjyWw";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Initialize Supabase via Vercel env function
+    let sb = null;
+    async function initSupabase() {
+      try {
+        const res = await fetch('/api/config', { cache: 'no-store' });
+        const env = await res.json();
+        const url = env.SUPABASE_URL || env.url;
+        const key = env.SUPABASE_ANON_KEY || env.key;
+        if (!url || !key) throw new Error('Missing Supabase environment variables');
+        sb = window.supabase.createClient(url, key);
+        window.__SB = sb;
+      } catch (e) {
+        console.error('Failed to initialize Supabase from /api/config', e);
+        alert('Supabase configuration missing. Please set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.');
+      }
+    }
     const optionsCache = { pickup: [], product: [], destination: [] };
 
     function norm(s) { return (s || '').toString().trim(); }
@@ -892,6 +905,8 @@
 
     // Init
     (async () => {
+      await initSupabase();
+      if (!sb) return;
       await loadOptions();
       await loadRules();
       // Auto-import Excel when requested via query param
