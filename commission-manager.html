@@ -273,6 +273,8 @@
       console.warn('Supabase not configured. Running in local-only mode.');
     }
     const optionsCache = { pickup: [], product: [], destination: [] };
+    // On tablets, the full-screen overlay can block the view. Enable typing-only mode here.
+    const OPEN_OVERLAY_ON_INPUT_CLICK = false; // Set to true if you want the big overlay on input click
     const defaultOptions = {
       pickup: ["", "Highway Quarry", "Majumas Bestari", "RCJ", "LORI ROSAK", "CST", "IJM", "Takali Sunway", "Pepsi", "Hanson Cheras", "Guna"],
       product: ["", "3/4 Agg", "C/Sand", "C/run", "Icp kapar", "Kajang Setia Mix", "Langat Tong Ooi", "Kuchai Ytl", "Nilai MDC", "Belakong Ytl", "Setia mix semen", "Subang Gy two", "Puchong ulus wt"],
@@ -363,9 +365,9 @@
           const e = row.valid_to ? String(row.valid_to) : '';
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td><div class="combo"><input type="text" class="inpPU" value="${pu}" placeholder="取货地"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
-            <td><div class="combo"><input type="text" class="inpPR" value="${pr}" placeholder="产品"><button class="combo-btn" data-cat="product">▼</button></div></td>
-            <td><div class="combo"><input type="text" class="inpDE" value="${de}" placeholder="目的地"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+            <td><div class="combo"><input type="text" class="inpPU" value="${pu}" placeholder="取货地" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+            <td><div class="combo"><input type="text" class="inpPR" value="${pr}" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
+            <td><div class="combo"><input type="text" class="inpDE" value="${de}" placeholder="目的地" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
             <td><input type="text" class="inpCM" value="${cm}" placeholder="RM"></td>
             <td>
               <div class="date-range">
@@ -381,9 +383,9 @@
       const empty = document.createElement('tr');
       empty.dataset.new = '1';
       empty.innerHTML = `
-        <td><div class="combo"><input type="text" class="inpPU" placeholder="取货地"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
-        <td><div class="combo"><input type="text" class="inpPR" placeholder="产品"><button class="combo-btn" data-cat="product">▼</button></div></td>
-        <td><div class="combo"><input type="text" class="inpDE" placeholder="目的地"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+        <td><div class="combo"><input type="text" class="inpPU" placeholder="取货地" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+        <td><div class="combo"><input type="text" class="inpPR" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
+        <td><div class="combo"><input type="text" class="inpDE" placeholder="目的地" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
         <td><input type="text" class="inpCM" placeholder="RM"></td>
         <td>
           <div class="date-range">
@@ -973,8 +975,10 @@
       }
     });
 
-    // Also open the overlay when clicking on the input itself
+    // Optional: open the overlay when clicking on the input itself
+    // Disabled by default to keep tablet UX typing-only with native datalist suggestions
     document.body.addEventListener('click', (ev) => {
+      if (!OPEN_OVERLAY_ON_INPUT_CLICK) return;
       // Ignore clicks inside the options panel
       if (ev.target.closest('.options-panel')) return;
       const input = ev.target.closest('input');
