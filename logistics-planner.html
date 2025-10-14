@@ -2495,8 +2495,8 @@
                     trip.reason = remarksInput.value;
                     queueAutosave();
                 });
-                remarksInput.addEventListener('click', () => {
-                    openReasonSelectionPanel(remarksInput);
+                remarksInput.addEventListener('click', async () => {
+                    await openReasonSelectionPanel(remarksInput);
                 });
                 remarksCell.appendChild(remarksInput);
                 row.appendChild(remarksCell);
@@ -3851,7 +3851,8 @@
 
         // Reason Management Functions
         let reasonGroups = [];
-        let reasons = [];
+        let reasons = []; // 用于表格显示的筛选后原因
+        let allReasons = []; // 存储所有原因的完整数据
         let selectedReasonGroupId = null;
 
         async function loadReasonGroups() {
@@ -3874,13 +3875,20 @@
         async function loadReasons(reasonGroupId = null) {
             if (!sb) return;
             try {
-                let query = sb.from('reasons').select('*');
+                // 总是加载所有原因到 allReasons
+                const { data: allData, error: allError } = await sb
+                    .from('reasons')
+                    .select('*')
+                    .order('name');
+                if (allError) throw allError;
+                allReasons = allData || [];
+                
+                // 根据筛选条件设置 reasons 用于表格显示
                 if (reasonGroupId) {
-                    query = query.eq('reason_group_id', reasonGroupId);
+                    reasons = allReasons.filter(r => r.reason_group_id === reasonGroupId);
+                } else {
+                    reasons = allReasons;
                 }
-                const { data, error } = await query.order('name');
-                if (error) throw error;
-                reasons = data || [];
                 renderReasonTable();
             } catch (error) {
                 console.error('Error loading reasons:', error);
@@ -3954,7 +3962,7 @@
                     .delete()
                     .eq('id', id);
                 if (error) throw error;
-                await loadReasons(selectedReasonGroupId);
+                await loadReasons();
                 await loadReasonGroups(); // Refresh to update reason count
                 showToast('已删除原因', 'success');
             } catch (error) {
@@ -4050,9 +4058,23 @@
         }
 
         // Open reason selection overlay for remarks input
-        function openReasonSelectionPanel(targetInput) {
+        async function openReasonSelectionPanel(targetInput) {
             if (!reasonGroups.length) {
                 showToast('请先在配置页面添加原因组合', 'warning');
+                return;
+            }
+
+            // 确保使用最新的完整原因数据
+            try {
+                const { data: latestReasons, error } = await sb
+                    .from('reasons')
+                    .select('*')
+                    .order('name');
+                if (error) throw error;
+                allReasons = latestReasons || [];
+            } catch (error) {
+                console.error('Error loading latest reasons:', error);
+                showToast('加载原因数据失败', 'danger');
                 return;
             }
 
@@ -4120,7 +4142,7 @@
                     list.appendChild(hdr);
                     
                     // Add reasons for this group
-                    const groupReasons = reasons.filter(r => r.reason_group_id === group.id);
+                    const groupReasons = allReasons.filter(r => r.reason_group_id === group.id);
                     groupReasons.forEach(reason => {
                         const div = document.createElement('div'); 
                         div.className = 'option-item'; 
