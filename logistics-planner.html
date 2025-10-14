@@ -824,8 +824,8 @@
         /* Overlay picker A–Z index: pin to the panel so it stays fixed while the list scrolls and fully inside the column */
         .options-panel { position: fixed; }
         .options-body { position: relative; flex: 1; }
-        .options-body .alpha-index { display: flex; flex-direction: column; position: absolute; top: 8px; right: 8px; bottom: 8px; width: 36px; padding: 6px 4px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: center; justify-content: space-between; gap: 0; z-index: 2002; overflow: hidden; }
-        .options-body .alpha-index .alpha-btn { color: #fff; font-size: clamp(9px, 1.5vh, 12px); font-weight: 700; padding: 0; margin: 0; line-height: 1; opacity: 0.9; border: none; background: transparent; cursor: pointer; border-radius: 4px; }
+        .options-body .alpha-index { display: flex; flex-direction: column; position: absolute; top: 8px; right: 8px; bottom: 8px; width: 34px; padding: 6px 4px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: center; justify-content: flex-start; gap: 2px; z-index: 2002; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+        .options-body .alpha-index .alpha-btn { color: #fff; font-size: clamp(9px, 1.4vh, 12px); font-weight: 700; padding: 0; margin: 0; line-height: 1; opacity: 0.9; border: none; background: transparent; cursor: pointer; border-radius: 4px; }
         .options-body .alpha-index .alpha-btn:hover { background: rgba(255,255,255,0.12); color: #fff; opacity: 1; }
         .options-body .alpha-index .alpha-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
 
@@ -2389,6 +2389,8 @@
             if (autosaveTimer) clearTimeout(autosaveTimer);
             autosaveTimer = setTimeout(() => {
                 supabaseSaveSchedule(currentDate, sampleData);
+                // Local fallback persistence
+                localSaveSchedule(currentDate, sampleData);
                 autosaveTimer = null;
             }, Math.max(0, delay));
         }
@@ -2398,7 +2400,29 @@
                 clearTimeout(autosaveTimer);
                 autosaveTimer = null;
                 supabaseSaveSchedule(currentDate, sampleData);
+                // Local fallback persistence
+                localSaveSchedule(currentDate, sampleData);
             }
+        }
+
+        // Local backup helpers so edits survive refresh even if Supabase is unavailable
+        function formatDateKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+        }
+        function localSaveSchedule(date, rows) {
+            try {
+                if (typeof localStorage === 'undefined') return;
+                const key = 'planner_schedule_' + formatDateKey(date);
+                localStorage.setItem(key, JSON.stringify(rows));
+            } catch (_) { /* ignore quota or serialization errors */ }
+        }
+        function localLoadSchedule(date) {
+            try {
+                if (typeof localStorage === 'undefined') return null;
+                const key = 'planner_schedule_' + formatDateKey(date);
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : null;
+            } catch (_) { return null; }
         }
 
         // Visual feedback helpers
@@ -2491,7 +2515,11 @@
 
         // Load schedule rows for a given date from Supabase
         async function supabaseLoadSchedule(date) {
-            if (!sb) { sampleData = []; return; }
+            if (!sb) {
+                const local = localLoadSchedule(date);
+                sampleData = Array.isArray(local) ? local : [];
+                return;
+            }
             try {
                 const dstr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
                 const { data, error } = await sb
@@ -2549,6 +2577,22 @@
                                 }
                             });
                     } catch (_) { /* non-critical */ }
+                    // Merge local cached edits (e.g., remarks) on top of DB data
+                    const local = localLoadSchedule(date);
+                    if (Array.isArray(local) && local.length) {
+                        const map = new Map(local.map(r => [String(r.lorryPlate), r]));
+                        sampleData = sampleData.map(r => {
+                            const lr = map.get(String(r.lorryPlate));
+                            if (!lr) return r;
+                            for (let i = 1; i <= 5; i++) {
+                                const k = 'trip'+i;
+                                if (lr[k] && typeof lr[k].remarks === 'string') {
+                                    r[k].remarks = lr[k].remarks || r[k].remarks || '';
+                                }
+                            }
+                            return r;
+                        });
+                    }
                 } else {
                     // No schedules yet for this date: seed rows from Supabase lorry_plates (fallback to local CONFIG)
                     try {
@@ -2563,6 +2607,22 @@
                             trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
                             trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
                         }));
+                        // Apply local cache if available
+                        const local = localLoadSchedule(date);
+                        if (Array.isArray(local) && local.length) {
+                            const map = new Map(local.map(r => [String(r.lorryPlate), r]));
+                            sampleData = sampleData.map(r => {
+                                const lr = map.get(String(r.lorryPlate));
+                                if (!lr) return r;
+                                for (let i = 1; i <= 5; i++) {
+                                    const k = 'trip'+i;
+                                    if (lr[k] && typeof lr[k].remarks === 'string') {
+                                        r[k].remarks = lr[k].remarks || r[k].remarks || '';
+                                    }
+                                }
+                                return r;
+                            });
+                        }
                     } catch (_) {
                         // Fallback to local CONFIG list if DB load fails
                         sampleData = (CONFIG.lorryPlates || []).filter(p => !((CONFIG.hiddenLorryPlates||[]).includes(p))).map(plate => ({
