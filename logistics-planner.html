@@ -1794,9 +1794,9 @@
             input.placeholder = '';
             input.value = selectedValue || '';
             input.title = selectedValue || '';
-            // Editable inline typing allowed
-            input.readOnly = false;
-            input.removeAttribute('aria-readonly');
+            // Open large overlay on single click for fast selection; keep input read-only to avoid accidental typing
+            input.readOnly = true;
+            input.setAttribute('aria-readonly', 'true');
 
             // Normalize once and keep a copy for overlay
             const fullOptions = (options || [])
@@ -1812,13 +1812,13 @@
             input.addEventListener('input', handler);
             input.addEventListener('change', handler);
 
-            // Optional: open overlay on double-click for quick large list browsing
+            // Open overlay on single click for better usability
             const open = () => {
                 if (!document.querySelector('.options-panel')) {
                     openOptionsPanel(overlayLabel || '选择', fullOptions, input);
                 }
             };
-            input.addEventListener('dblclick', open);
+            input.addEventListener('click', open);
 
             return input;
         }
@@ -2183,46 +2183,60 @@
                 // Pick Up column
                 const pickUpCell = document.createElement('td');
                 pickUpCell.className = tripIndex === 0 ? `dropdown-cell trip${tripIndex + 1}-bg` : `dropdown-cell trip-separator trip${tripIndex + 1}-bg`;
-                pickUpCell.appendChild(
-                    createDropdown(pickUpOptions, trip.pickUp, (e) => {
+                const puInput = createDropdown(pickUpOptions, trip.pickUp, (e) => {
                         trip.pickUp = e.target.value;
                         // Ensure completion is manual-only: reset when fields change
                         trip.completed = false;
                         if (checkbox) checkbox.checked = false;
                         queueAutosave();
                         updateCommission();
-                    }, '取货地')
-                );
+                    }, '取货地');
+                pickUpCell.appendChild(puInput);
+                // Make entire cell clickable to open overlay
+                pickUpCell.addEventListener('click', (ev) => {
+                    // Avoid double-trigger when clicking the input itself
+                    if (ev.target !== puInput) {
+                        puInput.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                });
                 row.appendChild(pickUpCell);
 
                 // Product column
                 const productCell = document.createElement('td');
                 productCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
-                productCell.appendChild(
-                    createDropdown(productOptions, trip.product, (e) => {
+                const prInput = createDropdown(productOptions, trip.product, (e) => {
                         trip.product = e.target.value;
                         // Ensure completion is manual-only: reset when fields change
                         trip.completed = false;
                         if (checkbox) checkbox.checked = false;
                         queueAutosave();
                         updateCommission();
-                    }, '产品')
-                );
+                    }, '产品');
+                productCell.appendChild(prInput);
+                productCell.addEventListener('click', (ev) => {
+                    if (ev.target !== prInput) {
+                        prInput.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                });
                 row.appendChild(productCell);
 
                 // Destination column
                 const destinationCell = document.createElement('td');
                 destinationCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
-                destinationCell.appendChild(
-                    createDropdown(destinationOptions, trip.destination, (e) => {
+                const deInput = createDropdown(destinationOptions, trip.destination, (e) => {
                         trip.destination = e.target.value;
                         // Ensure completion is manual-only: reset when fields change
                         trip.completed = false;
                         if (checkbox) checkbox.checked = false;
                         queueAutosave();
                         updateCommission();
-                    }, '目的地')
-                );
+                    }, '目的地');
+                destinationCell.appendChild(deInput);
+                destinationCell.addEventListener('click', (ev) => {
+                    if (ev.target !== deInput) {
+                        deInput.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    }
+                });
                 row.appendChild(destinationCell);
 
                 // Completion column
