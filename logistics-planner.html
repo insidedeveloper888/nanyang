@@ -3945,7 +3945,7 @@
                     })
                     .select();
                 if (error) throw error;
-                await loadReasons(selectedReasonGroupId);
+                await loadReasons();
                 await loadReasonGroups(); // Refresh to update reason count
                 showToast(`已添加原因: ${name}`, 'success');
             } catch (error) {
