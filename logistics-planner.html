@@ -282,12 +282,18 @@
             --trip3-bg: #e8f5e8; /* Light Green */
             --trip4-bg: #fff3e0; /* Light Orange */
             --trip5-bg: #fce4ec; /* Light Pink */
+            --additional-bg: #f5f5f5; /* Light Gray */
+            --stats-bg: #e8f4fd; /* Light Blue */
         }
         .trip1-bg { background-color: var(--trip1-bg) !important; }
         .trip2-bg { background-color: var(--trip2-bg) !important; }
         .trip3-bg { background-color: var(--trip3-bg) !important; }
         .trip4-bg { background-color: var(--trip4-bg) !important; }
         .trip5-bg { background-color: var(--trip5-bg) !important; }
+        .additional-column { background-color: var(--additional-bg) !important; }
+        .additional-header { background-color: var(--additional-bg) !important; }
+        .stats-header { background-color: var(--stats-bg) !important; }
+        .stats-column { background-color: var(--stats-bg) !important; text-align: center; font-weight: bold; }
 
         /* Prominent trip group headers row (sticks above column headers) */
         .trip-group-header th {
@@ -342,7 +348,7 @@
             text-overflow: ellipsis;
         }
 
-        /* 车牌列更紧凑 */
+        /* 啰里列更紧凑 */
         th.frozen-column {
             padding: 4px 4px;
             min-width: 70px;
@@ -383,7 +389,7 @@
             padding: 4px 6px; /* 下拉更小 */
             border: 1px solid #ced4da;
             border-radius: 6px;
-            font-size: 10px;
+            font-size: 14px;
             background: transparent; /* inherit column color */
             color: var(--text);
         }
@@ -412,6 +418,28 @@
             color: var(--text);
         }
         .remarks-input::placeholder { color: var(--text-muted); }
+
+        .tol-amount-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 10px;
+            background: transparent;
+            color: var(--text);
+        }
+        .tol-amount-input::placeholder { color: var(--text-muted); }
+
+        .petrol-amount-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 10px;
+            background: transparent;
+            color: var(--text);
+        }
+        .petrol-amount-input::placeholder { color: var(--text-muted); }
 
         select:focus, .combo-input:focus {
             outline: none;
@@ -560,7 +588,7 @@
         /* Large overlay picker (for trip dropdowns) */
         .options-overlay { position: fixed; inset: 0; background: transparent; z-index: 2000; }
         /* Compact, tablet-friendly overlay size */
-        .options-panel { position: fixed; top: 6%; left: 50%; transform: translateX(-50%); width: min(520px, 92vw); height: min(70vh, 620px); background: #1e1e1e; color: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2001; display: flex; flex-direction: column; box-sizing: border-box; padding-right: 0; overflow: hidden; }
+        .options-panel { position: fixed; top: 6%; left: 50%; transform: translateX(-50%); width: min(520px, 92vw); height: min(70vh, 620px); background: #1e1e1e; color: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2001; display: flex; flex-direction: column; box-sizing: border-box; padding-right: 0; overflow: scroll; }
         @media (max-width: 1024px) {
             .options-panel { width: min(480px, 92vw); height: min(68vh, 560px); }
         }
@@ -573,7 +601,7 @@
         .options-title { font-weight: 600; }
         .options-search { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #111; color: #fff; font-size: 16px; }
         /* Extra right padding so the A–Z index does not overlap items */
-        .options-list { flex: 1; overflow-y: auto; padding: 8px 48px 8px 12px; }
+        .options-list { flex: 1; overflow-y: auto; padding: 8px 8px 8px 12px; }
         .options-list::-webkit-scrollbar {
             display:none;
         }
@@ -823,8 +851,8 @@
         .tab-panel .alpha-index { display: none; }
         /* Overlay picker A–Z index: pin to the panel so it stays fixed while the list scrolls and fully inside the column */
         .options-panel { position: fixed; }
-        .options-body { position: relative; flex: 1; }
-        .options-body .alpha-index { display: flex; flex-direction: column; position: absolute; top: 8px; right: 8px; bottom: 8px; width: 34px; padding: 6px 4px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: center; justify-content: flex-start; gap: 2px; z-index: 2002; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+        .options-body { position: relative; flex: 1; overflow: scroll }
+        .options-body .alpha-index { display: none; flex-direction: column; position: fixed; top: 8px; right: 8px; bottom: 8px; width: 34px; padding: 6px 4px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: center; justify-content: flex-start; gap: 2px; z-index: 2002; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
         .options-body .alpha-index .alpha-btn { color: #fff; font-size: clamp(9px, 1.4vh, 12px); font-weight: 700; padding: 0; margin: 0; line-height: 1; opacity: 0.9; border: none; background: transparent; cursor: pointer; border-radius: 4px; }
         .options-body .alpha-index .alpha-btn:hover { background: rgba(255,255,255,0.12); color: #fff; opacity: 1; }
         .options-body .alpha-index .alpha-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
@@ -847,9 +875,10 @@
 
         /* Embedded commission panel (same page tab) */
         .embedded-panel { position: fixed; inset: 56px 12px 12px 12px; z-index: 2300; display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,0.25); overflow: hidden; }
-        .embedded-panel.show { display: block; }
-        .embedded-panel iframe { width: 100%; height: 100%; border: none; background: var(--surface); }
-        .alpha-header { padding: 6px 12px; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid #333; }
+.embedded-panel.show { display: block; }
+.embedded-panel iframe { width: 100%; height: 100%; border: none; background: var(--surface); }
+
+        .alpha-header { padding: 6px 12px; font-weight: 700; color: #c4c4c4; border-bottom: 1px solid #333; background-color: #d3d3d373; }
 
         /* Unsaved badge in modal header */
         .unsaved-badge { margin-left: 12px; padding: 4px 8px; border-radius: 999px; background: #ffb02e; color: #1f2937; font-size: 12px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
@@ -906,11 +935,11 @@
             </div>
             <!-- <div class="toolbar-actions">
                 <div class="search-box">
-                    <input id="searchInput" class="search-input" type="text" placeholder="搜索车牌/取货地/产品/目的地">
+                    <input id="searchInput" class="search-input" type="text" placeholder="搜索啰里/工厂/产品/地方">
                 </div>
                 <button class="btn btn-secondary" id="btnFit" title="Fit more trips on screen">Fit to Screen</button>
                 <button class="btn btn-secondary" id="btnConfig">配置</button>
-                <button class="btn btn-secondary" id="btnCommissionManager" title="管理取货地/产品/目的地与车税组合">车税规则</button>
+                <button class="btn btn-secondary" id="btnCommissionManager" title="管理工厂/产品/地方与车税组合">车税规则</button>
         </div> -->
         </div>
 
@@ -926,39 +955,43 @@
                             <th class="trip-header" colspan="6">行程 3</th>
                             <th class="trip-header" colspan="6">行程 4</th>
                             <th class="trip-header" colspan="6">行程 5</th>
+                            <th class="trip-header additional-header" colspan="2">额外费用</th>
+                            <th class="trip-header stats-header" rowspan="2">车税统计</th>
                         </tr>
                         <tr class="columns-header" >
-                            <th class="frozen-column sortable" data-column="plate"><span class="column-label">车牌</span></th>
-                            <th class="sortable trip1-bg" data-column="pickup1"><span class="column-label">取货地</span></th>
+                            <th class="frozen-column sortable" data-column="plate"><span class="column-label">啰里</span></th>
+                            <th class="sortable trip1-bg" data-column="pickup1"><span class="column-label">工厂</span></th>
                             <th class="sortable trip1-bg" data-column="product1"><span class="column-label">产品</span></th>
-                            <th class="sortable trip1-bg" data-column="destination1"><span class="column-label">目的地</span></th>
+                            <th class="sortable trip1-bg" data-column="destination1"><span class="column-label">地方</span></th>
                             <th class="completion-header trip1-bg"><span class="column-label">完成</span></th>
                             <th class="sortable trip1-bg" data-column="commission1"><span class="column-label">车税（RM）</span></th>
                             <th class="trip1-bg" data-column="remarks1"><span class="column-label">备注</span></th>
-                            <th class="trip-separator sortable trip2-bg" data-column="pickup2"><span class="column-label">取货地</span></th>
+                            <th class="trip-separator sortable trip2-bg" data-column="pickup2"><span class="column-label">工厂</span></th>
                             <th class="sortable trip2-bg" data-column="product2"><span class="column-label">产品</span></th>
-                            <th class="sortable trip2-bg" data-column="destination2"><span class="column-label">目的地</span></th>
+                            <th class="sortable trip2-bg" data-column="destination2"><span class="column-label">地方</span></th>
                             <th class="completion-header trip2-bg"><span class="column-label">完成</span></th>
                             <th class="sortable trip2-bg" data-column="commission2"><span class="column-label">车税（RM）</span></th>
                             <th class="trip2-bg" data-column="remarks2"><span class="column-label">备注</span></th>
-                            <th class="trip-separator sortable trip3-bg" data-column="pickup3"><span class="column-label">取货地</span></th>
+                            <th class="trip-separator sortable trip3-bg" data-column="pickup3"><span class="column-label">工厂</span></th>
                             <th class="sortable trip3-bg" data-column="product3"><span class="column-label">产品</span></th>
-                            <th class="sortable trip3-bg" data-column="destination3"><span class="column-label">目的地</span></th>
+                            <th class="sortable trip3-bg" data-column="destination3"><span class="column-label">地方</span></th>
                             <th class="completion-header trip3-bg"><span class="column-label">完成</span></th>
                             <th class="sortable trip3-bg" data-column="commission3"><span class="column-label">车税（RM）</span></th>
                             <th class="trip3-bg" data-column="remarks3"><span class="column-label">备注</span></th>
-                            <th class="trip-separator sortable trip4-bg" data-column="pickup4"><span class="column-label">取货地</span></th>
+                            <th class="trip-separator sortable trip4-bg" data-column="pickup4"><span class="column-label">工厂</span></th>
                             <th class="sortable trip4-bg" data-column="product4"><span class="column-label">产品</span></th>
-                            <th class="sortable trip4-bg" data-column="destination4"><span class="column-label">目的地</span></th>
+                            <th class="sortable trip4-bg" data-column="destination4"><span class="column-label">地方</span></th>
                             <th class="completion-header trip4-bg"><span class="column-label">完成</span></th>
                             <th class="sortable trip4-bg" data-column="commission4"><span class="column-label">车税（RM）</span></th>
                             <th class="trip4-bg" data-column="remarks4"><span class="column-label">备注</span></th>
-                            <th class="trip-separator sortable trip5-bg" data-column="pickup5"><span class="column-label">取货地</span></th>
+                            <th class="trip-separator sortable trip5-bg" data-column="pickup5"><span class="column-label">工厂</span></th>
                             <th class="sortable trip5-bg" data-column="product5"><span class="column-label">产品</span></th>
-                            <th class="sortable trip5-bg" data-column="destination5"><span class="column-label">目的地</span></th>
+                            <th class="sortable trip5-bg" data-column="destination5"><span class="column-label">地方</span></th>
                             <th class="completion-header trip5-bg"><span class="column-label">完成</span></th>
                             <th class="sortable trip5-bg" data-column="commission5"><span class="column-label">车税（RM）</span></th>
                             <th class="trip5-bg" data-column="remarks5"><span class="column-label">备注</span></th>
+                            <th class="additional-column sortable" data-column="tol_amount"><span class="column-label">过路费（RM）</span></th>
+                            <th class="additional-column sortable" data-column="petrol_amount"><span class="column-label">油费（RM）</span></th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
@@ -986,29 +1019,30 @@
             </div>
             <div class="modal-body">
                 <div class="config-tabs">
-                    <button class="tab-btn active" data-tab="tab-lorry">车牌</button>
-                    <button class="tab-btn" data-tab="tab-pickup">取货地</button>
+                    <button class="tab-btn active" data-tab="tab-lorry">啰里</button>
+                    <button class="tab-btn" data-tab="tab-pickup">工厂</button>
                     <button class="tab-btn" data-tab="tab-product">产品</button>
-                    <button class="tab-btn" data-tab="tab-destination">目的地</button>
+                    <button class="tab-btn" data-tab="tab-destination">地方</button>
                     <!-- 已移除：车税、默认 -->
                     <button class="tab-btn" data-tab="tab-colors">颜色</button>
+                    <button class="tab-btn" data-tab="tab-reasons">原因</button>
                 </div>
 
                 <div class="tab-panel active" id="tab-lorry">
                     <div class="config-input-row">
-                        <input type="text" id="inputLorryPlate" placeholder="添加车牌">
+                        <input type="text" id="inputLorryPlate" placeholder="添加啰里">
                         <button class="btn btn-primary" id="btnAddLorry">添加</button>
                     </div>
                     <div class="config-input-row">
-                        <input type="text" id="searchLorry" placeholder="搜索车牌">
+                        <input type="text" id="searchLorry" placeholder="搜索啰里">
                     </div>
                     <div class="config-split">
                         <div class="config-block">
-                            <div class="config-block-title">活动车牌
+                            <div class="config-block-title">活动啰里
                                 
                             </div>
                             <table class="config-table" id="tableLorry">
-                                <thead><tr><th>车牌</th><th>状态</th><th>操作</th></tr></thead>
+                                <thead><tr><th>啰里</th><th>状态</th><th>操作</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -1018,10 +1052,10 @@
 
                 <div class="tab-panel" id="tab-pickup">
                     <div class="config-input-row">
-                        <input type="text" id="inputPickUp" placeholder="添加取货地">
+                        <input type="text" id="inputPickUp" placeholder="添加工厂">
                         <button class="btn btn-primary" id="btnAddPickUp">添加</button>
                     </div>
-                    <div class="config-input-row"><input type="text" id="searchPickUp" placeholder="搜索取货地"></div>
+                    <div class="config-input-row"><input type="text" id="searchPickUp" placeholder="搜索工厂"></div>
                     <div class="alpha-index" id="alpha-pickup"></div>
                     <table class="config-table" id="tablePickUp"><thead><tr><th>名称</th><th>操作</th></tr></thead><tbody></tbody></table>
                 </div>
@@ -1038,10 +1072,10 @@
 
                 <div class="tab-panel" id="tab-destination">
                     <div class="config-input-row">
-                        <input type="text" id="inputDestination" placeholder="添加目的地">
+                        <input type="text" id="inputDestination" placeholder="添加地方">
                         <button class="btn btn-primary" id="btnAddDestination">添加</button>
                     </div>
-                    <div class="config-input-row"><input type="text" id="searchDestination" placeholder="搜索目的地"></div>
+                    <div class="config-input-row"><input type="text" id="searchDestination" placeholder="搜索地方"></div>
                     <div class="alpha-index" id="alpha-destination"></div>
                     <table class="config-table" id="tableDestination"><thead><tr><th>名称</th><th>操作</th></tr></thead><tbody></tbody></table>
                 </div>
@@ -1059,6 +1093,46 @@
                             <label>行程5颜色 <input type="color" id="colorTrip5"></label>
                         </div>
                         <small style="color:#6c757d">设置每个行程列的背景色。</small>
+                    </div>
+                </div>
+
+                <div class="tab-panel" id="tab-reasons">
+                    <div class="config-split">
+                        <div class="config-block">
+                            <div class="config-block-title">原因组合</div>
+                            <div class="config-input-row">
+                                <input type="text" id="inputReasonGroup" placeholder="添加原因组合 (例如: 客户, 司机, 啰里, JPJ)">
+                                <button class="btn btn-primary" id="btnAddReasonGroup">添加</button>
+                            </div>
+                            <div class="config-input-row">
+                                <input type="text" id="searchReasonGroup" placeholder="搜索原因组合">
+                            </div>
+                            <table class="config-table" id="tableReasonGroup">
+                                <thead><tr><th>原因组合</th><th>原因数量</th><th>操作</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="config-block">
+                            <div class="config-block-title">原因详情</div>
+                            <div id="reasonGroupSelector" style="margin-bottom: 10px;">
+                                <label>选择原因组合: </label>
+                                <select id="selectReasonGroup" style="padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="">请先选择原因组合</option>
+                                </select>
+                            </div>
+                            <div class="config-input-row">
+                                <input type="text" id="inputReason" placeholder="添加原因 (例如: MC, Buat IC, Balik Kampung)" disabled>
+                                <button class="btn btn-primary" id="btnAddReason" disabled>添加</button>
+                            </div>
+                            <div class="config-input-row">
+                                <input type="text" id="searchReason" placeholder="搜索原因" disabled>
+                            </div>
+                            <table class="config-table" id="tableReason">
+                                <thead><tr><th>原因</th><th>操作</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1106,8 +1180,8 @@
         }
         // Runtime dataset. Start empty to avoid resurrecting seeded demo rows on refresh.
         let sampleData = [];
-        // Detect if Supabase 'schedules' table has per-trip remarks columns (t1_remarks ... t5_remarks)
-        let HAS_REMARKS_COLUMNS = false;
+        // Detect if Supabase 'schedules' table has per-trip reason columns (t1_reason ... t5_reason)
+        let HAS_REASON_COLUMNS = false;
 
         // Configuration handling
         const defaultConfig = {
@@ -1185,6 +1259,58 @@
         function normalizeKey(pu, pr, de) {
             const norm = (s) => (s || '').toString().trim().toLowerCase();
             return `${norm(pu)}|${norm(pr)}|${norm(de)}`;
+        }
+
+        function getProductsForPickUp(pickUp) {
+            // Get unique products available for a specific pick up location
+            if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
+            
+            const puNorm = (pickUp || '').toString().trim().toLowerCase();
+            if (!puNorm) return [];
+            
+            const products = new Set();
+            
+            // Iterate through all commission rules to find matching pick up locations
+            for (const [key, value] of COMMISSION_RULES.entries()) {
+                const [keyPu, keyPr, keyDe] = key.split('|');
+                if (keyPu === puNorm && keyPr && keyDe) {
+                    // Find the original case-sensitive product name from productOptions
+                    const originalProduct = productOptions.find(p => 
+                        p.toString().trim().toLowerCase() === keyPr
+                    );
+                    if (originalProduct) {
+                        products.add(originalProduct);
+                    }
+                }
+            }
+            
+            return Array.from(products).sort((a, b) => a.localeCompare(b));
+        }
+
+        function getDestinationsForPickUp(pickUp) {
+            // Get unique destinations available for a specific pick up location
+            if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
+            
+            const puNorm = (pickUp || '').toString().trim().toLowerCase();
+            if (!puNorm) return [];
+            
+            const destinations = new Set();
+            
+            // Iterate through all commission rules to find matching pick up locations
+            for (const [key, value] of COMMISSION_RULES.entries()) {
+                const [keyPu, keyPr, keyDe] = key.split('|');
+                if (keyPu === puNorm && keyPr && keyDe) {
+                    // Find the original case-sensitive destination name from destinationOptions
+                    const originalDestination = destinationOptions.find(d => 
+                        d.toString().trim().toLowerCase() === keyDe
+                    );
+                    if (originalDestination) {
+                        destinations.add(originalDestination);
+                    }
+                }
+            }
+            
+            return Array.from(destinations).sort((a, b) => a.localeCompare(b));
         }
 
         function getCommissionFromRules(pu, pr, de, dateContext = currentDate) {
@@ -1330,7 +1456,22 @@
                 }
                 // Persist combination->commission rules to Supabase
                 if (rulesRows.length) {
-                    await sb.from('commission_rules').upsert(rulesRows, { onConflict: 'pick_up,product,destination' });
+                    // Try to insert each rule individually to handle exclusion constraint violations
+                    for (const rule of rulesRows) {
+                        try {
+                            const { error } = await sb.from('commission_rules').insert([rule]);
+                            if (error) {
+                                // If it's an exclusion constraint violation, we can skip or handle it
+                                if (error.code === '23P01') {
+                                    console.warn('Skipping overlapping rule:', rule);
+                                } else {
+                                    console.warn('Failed to insert rule:', rule, error);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Failed to insert rule:', rule, e);
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn('Failed to load commission rules from Excel', e);
@@ -1820,7 +1961,9 @@
             // Open overlay on single click for better usability
             const open = () => {
                 if (!document.querySelector('.options-panel')) {
-                    openOptionsPanel(overlayLabel || '选择', fullOptions, input);
+                    // Use filtered options if available, otherwise use full options
+                    const optionsToUse = input.filteredOptions || fullOptions;
+                    openOptionsPanel(overlayLabel || '选择', optionsToUse, input);
                 }
             };
             input.addEventListener('click', open);
@@ -1896,6 +2039,7 @@
                         if (puBlank || prBlank || deBlank) {
                             trip.commission = '';
                             if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
+                            updateRowStatistics(row, data);
                             return;
                         }
                         const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
@@ -1906,6 +2050,7 @@
                             trip.commission = '';
                             if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
                         }
+                        updateRowStatistics(row, data);
                     };
 
                     // Pick Up
@@ -1917,7 +2062,7 @@
                         trip.pickUp = pu.value;
                         queueAutosave();
                         updateCommission();
-                    }, '取货地');
+                    }, '工厂');
                     pu.style.width = '100%';
                     tbox.appendChild(puRow);
                     tbox.appendChild(pu);
@@ -1945,7 +2090,7 @@
                         trip.destination = de.value;
                         queueAutosave();
                         updateCommission();
-                    }, '目的地');
+                    }, '地方');
                     de.style.width = '100%';
                     tbox.appendChild(deRow);
                     tbox.appendChild(de);
@@ -1981,6 +2126,7 @@
         commissionInput.value = trip.commission || '';
                     commissionInput.addEventListener('input', () => {
                         trip.commission = commissionInput.value;
+                        updateRowStatistics(row, data);
                         queueAutosave();
                     });
                     tbox.appendChild(commRow);
@@ -2174,6 +2320,7 @@
                     if (puBlank || prBlank || deBlank) {
                         trip.commission = '';
                         if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
+                        updateRowStatistics(row, data);
                         return;
                     }
                     const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
@@ -2184,18 +2331,55 @@
                         trip.commission = '';
                         if (commissionInput) { commissionInput.value = ''; commissionInput.classList.remove('autofilled'); }
                     }
+                    updateRowStatistics(row, data);
                 };
                 // Pick Up column
                 const pickUpCell = document.createElement('td');
                 pickUpCell.className = tripIndex === 0 ? `dropdown-cell trip${tripIndex + 1}-bg` : `dropdown-cell trip-separator trip${tripIndex + 1}-bg`;
+                
+
+                
                 const puInput = createDropdown(pickUpOptions, trip.pickUp, (e) => {
                         trip.pickUp = e.target.value;
                         // Ensure completion is manual-only: reset when fields change
                         trip.completed = false;
                         if (checkbox) checkbox.checked = false;
+                        
+                        // Filter products based on selected pick up location
+                        const filteredProducts = getProductsForPickUp(trip.pickUp);
+                        if (filteredProducts.length > 0) {
+                            // Update the product dropdown with filtered options
+                            const productInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 3) + ') .combo-input');
+                            if (productInput) {
+                                // Clear current product selection if it's not in filtered list
+                                if (trip.product && !filteredProducts.includes(trip.product)) {
+                                    trip.product = '';
+                                    productInput.value = '';
+                                }
+                                // Store filtered options for this product input
+                                productInput.filteredOptions = filteredProducts;
+                            }
+                        }
+                        
+                        // Filter destinations based on selected pick up location
+                        const filteredDestinations = getDestinationsForPickUp(trip.pickUp);
+                        if (filteredDestinations.length > 0) {
+                            // Update the destination dropdown with filtered options
+                            const destinationInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 4) + ') .combo-input');
+                            if (destinationInput) {
+                                // Clear current destination selection if it's not in filtered list
+                                if (trip.destination && !filteredDestinations.includes(trip.destination)) {
+                                    trip.destination = '';
+                                    destinationInput.value = '';
+                                }
+                                // Store filtered options for this destination input
+                                destinationInput.filteredOptions = filteredDestinations;
+                            }
+                        }
+                        
                         queueAutosave();
                         updateCommission();
-                    }, '取货地');
+                    }, '工厂');
                 pickUpCell.appendChild(puInput);
                 // Make entire cell clickable to open overlay
                 pickUpCell.addEventListener('click', (ev) => {
@@ -2209,7 +2393,17 @@
                 // Product column
                 const productCell = document.createElement('td');
                 productCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
-                const prInput = createDropdown(productOptions, trip.product, (e) => {
+                
+                // Apply factory-based filtering for products
+                let filteredProducts = productOptions;
+                if (trip.pickUp && trip.pickUp.trim()) {
+                    const productsForPickUp = getProductsForPickUp(trip.pickUp);
+                    if (productsForPickUp.length > 0) {
+                        filteredProducts = productsForPickUp;
+                    }
+                }
+                
+                const prInput = createDropdown(filteredProducts, trip.product, (e) => {
                         trip.product = e.target.value;
                         // Ensure completion is manual-only: reset when fields change
                         trip.completed = false;
@@ -2228,14 +2422,24 @@
                 // Destination column
                 const destinationCell = document.createElement('td');
                 destinationCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
-                const deInput = createDropdown(destinationOptions, trip.destination, (e) => {
+                
+                // Apply factory-based filtering for destinations
+                let filteredDestinations = destinationOptions;
+                if (trip.pickUp && trip.pickUp.trim()) {
+                    const destinationsForPickUp = getDestinationsForPickUp(trip.pickUp);
+                    if (destinationsForPickUp.length > 0) {
+                        filteredDestinations = destinationsForPickUp;
+                    }
+                }
+                
+                const deInput = createDropdown(filteredDestinations, trip.destination, (e) => {
                         trip.destination = e.target.value;
                         // Ensure completion is manual-only: reset when fields change
                         trip.completed = false;
                         if (checkbox) checkbox.checked = false;
                         queueAutosave();
                         updateCommission();
-                    }, '目的地');
+                    }, '地方');
                 destinationCell.appendChild(deInput);
                 destinationCell.addEventListener('click', (ev) => {
                     if (ev.target !== deInput) {
@@ -2271,6 +2475,7 @@
         commissionInput.value = trip.commission || '';
                 commissionInput.addEventListener('input', () => {
                     trip.commission = commissionInput.value;
+                    updateRowStatistics(row, data);
                     queueAutosave();
                 });
                 commissionCell.appendChild(commissionInput);
@@ -2283,10 +2488,15 @@
             remarksInput.type = 'text';
             remarksInput.placeholder = '';
             remarksInput.className = 'remarks-input';
-            remarksInput.value = trip.remarks || '';
+            remarksInput.readOnly = true;
+            remarksInput.style.cursor = 'pointer';
+            remarksInput.value = trip.reason || '';
                 remarksInput.addEventListener('input', () => {
-                    trip.remarks = remarksInput.value;
+                    trip.reason = remarksInput.value;
                     queueAutosave();
+                });
+                remarksInput.addEventListener('click', () => {
+                    openReasonSelectionPanel(remarksInput);
                 });
                 remarksCell.appendChild(remarksInput);
                 row.appendChild(remarksCell);
@@ -2296,6 +2506,51 @@
 
 
             });
+
+            // Add toll amount column (only for the main row, not trip rows)
+            if (index !== undefined) {
+                const tolAmountCell = document.createElement('td');
+                tolAmountCell.className = 'additional-column';
+                const tolAmountInput = document.createElement('input');
+                tolAmountInput.type = 'number';
+                tolAmountInput.step = '0.01';
+                tolAmountInput.min = '0';
+                tolAmountInput.placeholder = '';
+                tolAmountInput.className = 'tol-amount-input';
+                tolAmountInput.value = data.tol_amount || '';
+                tolAmountInput.addEventListener('input', () => {
+                    data.tol_amount = tolAmountInput.value;
+                    queueAutosave();
+                });
+                tolAmountCell.appendChild(tolAmountInput);
+                row.appendChild(tolAmountCell);
+
+                // Add petrol amount column
+                const petrolAmountCell = document.createElement('td');
+                petrolAmountCell.className = 'additional-column';
+                const petrolAmountInput = document.createElement('input');
+                petrolAmountInput.type = 'number';
+                petrolAmountInput.step = '0.01';
+                petrolAmountInput.min = '0';
+                petrolAmountInput.placeholder = '';
+                petrolAmountInput.className = 'petrol-amount-input';
+                petrolAmountInput.value = data.petrol_amount || '';
+                petrolAmountInput.addEventListener('input', () => {
+                    data.petrol_amount = petrolAmountInput.value;
+                    queueAutosave();
+                });
+                petrolAmountCell.appendChild(petrolAmountInput);
+                row.appendChild(petrolAmountCell);
+            }
+
+            // Statistics cell - calculate total commission
+            const statsCell = document.createElement('td');
+            statsCell.className = 'stats-column';
+            const statsValue = document.createElement('span');
+            statsValue.className = 'stats-value';
+            statsValue.textContent = calculateTotalCommission(data);
+            statsCell.appendChild(statsValue);
+            row.appendChild(statsCell);
 
             return row;
         }
@@ -2513,6 +2768,27 @@
             return false;
         }
 
+        // Calculate total commission for all trips in a row
+        function calculateTotalCommission(data) {
+            let total = 0;
+            for (let i = 1; i <= 5; i++) {
+                const tripKey = `trip${i}`;
+                if (data[tripKey] && data[tripKey].commission) {
+                    const commission = parseFloat(data[tripKey].commission) || 0;
+                    total += commission;
+                }
+            }
+            return total.toFixed(2);
+        }
+
+        // Update statistics display for a specific row
+        function updateRowStatistics(row, data) {
+            const statsValue = row.querySelector('.stats-value');
+            if (statsValue) {
+                statsValue.textContent = calculateTotalCommission(data);
+            }
+        }
+
         // Load schedule rows for a given date from Supabase
         async function supabaseLoadSchedule(date) {
             if (!sb) {
@@ -2542,15 +2818,17 @@
 
                 if (data && data.length) {
                     // Detect remarks columns presence on the schedules table
-                    HAS_REMARKS_COLUMNS = ['t1_remarks','t2_remarks','t3_remarks','t4_remarks','t5_remarks'].some(k => k in (data[0] || {}));
+                    HAS_REASON_COLUMNS = ['t1_reason','t2_reason','t3_reason','t4_reason','t5_reason'].some(k => k in (data[0] || {}));
                     const filtered = allowSet.size === 0 ? [] : data.filter(s => allowSet.has(String(s.lorry_plate)));
                     sampleData = filtered.map(s => ({
                         lorryPlate: s.lorry_plate,
-                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', remarks: s.t1_remarks || '' },
-                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', remarks: s.t2_remarks || '' },
-                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', remarks: s.t3_remarks || '' },
-                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', remarks: s.t4_remarks || '' },
-                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', remarks: s.t5_remarks || '' }
+                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', reason: s.t1_reason || '' },
+                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', reason: s.t2_reason || '' },
+                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', reason: s.t3_reason || '' },
+                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', reason: s.t4_reason || '' },
+                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', reason: s.t5_reason || '' },
+                        tol_amount: s.tol_amount != null && Number(s.tol_amount) > 0 ? String(Number(s.tol_amount).toFixed(2)) : '',
+                        petrol_amount: s.petrol_amount != null && Number(s.petrol_amount) > 0 ? String(Number(s.petrol_amount).toFixed(2)) : ''
                     }));
                     // Exclude hidden and archived lorry plates from display (persist across refresh)
                     const hiddenSetLoad = new Set(CONFIG.hiddenLorryPlates || []);
@@ -2573,6 +2851,8 @@
                                         trip3: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
                                         trip4: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
                                         trip5: { pickUp:'', product:'', destination:'', completed: CONFIG.defaultCompletion || false, commission:'', remarks:'' },
+                                        tol_amount: '',
+                                        petrol_amount: ''
                                     });
                                 }
                             });
@@ -2812,7 +3092,7 @@
                             await toggleHidePlate(e.plate, willHide);
                             renderLorryTable(filter);
                             renderDeletedLorryTable(filter);
-                            showToast(`${willHide ? '已隐藏' : '已显示'}车牌 ${e.plate}`, willHide ? 'warning' : 'success');
+                            showToast(`${willHide ? '已隐藏' : '已显示'}啰里 ${e.plate}`, willHide ? 'warning' : 'success');
                         });
                         tdAct.appendChild(btnToggle);
                     }
@@ -2820,7 +3100,7 @@
                     // 已移除“归档”功能，仅保留 隐藏 / 删除
 
                     const btnDel = document.createElement('button'); btnDel.className = 'mini-btn'; btnDel.textContent = '删除';
-                    btnDel.addEventListener('click', async () => { markUnsaved(); await deletePlatePermanent(e.plate); renderLorryTable(filter); renderDeletedLorryTable(filter); showToast(`已标记删除车牌 ${e.plate}`,'danger'); });
+                    btnDel.addEventListener('click', async () => { markUnsaved(); await deletePlatePermanent(e.plate); renderLorryTable(filter); renderDeletedLorryTable(filter); showToast(`已标记删除啰里 ${e.plate}`,'danger'); });
                     tdAct.appendChild(btnDel);
                     tr.appendChild(tdAct);
 
@@ -2846,11 +3126,11 @@
                     const tdAct = document.createElement('td'); tdAct.className = 'config-actions';
 
                     const btnRestore = document.createElement('button'); btnRestore.className = 'mini-btn'; btnRestore.textContent = '恢复';
-                    btnRestore.addEventListener('click', async () => { markUnsaved(); await restorePlate(e.plate); renderLorryTable(filter); renderDeletedLorryTable(filter); showToast(`已恢复车牌 ${e.plate}`,'success'); });
+                    btnRestore.addEventListener('click', async () => { markUnsaved(); await restorePlate(e.plate); renderLorryTable(filter); renderDeletedLorryTable(filter); showToast(`已恢复啰里 ${e.plate}`,'success'); });
                     tdAct.appendChild(btnRestore);
 
                     const btnPurge = document.createElement('button'); btnPurge.className = 'mini-btn'; btnPurge.textContent = '彻底删除';
-                    btnPurge.addEventListener('click', async () => { markUnsaved(); await purgePlate(e.plate); renderDeletedLorryTable(filter); showToast(`已彻底删除车牌 ${e.plate}`,'danger'); });
+                    btnPurge.addEventListener('click', async () => { markUnsaved(); await purgePlate(e.plate); renderDeletedLorryTable(filter); showToast(`已彻底删除啰里 ${e.plate}`,'danger'); });
                     tdAct.appendChild(btnPurge);
 
                     tr.appendChild(tdAct);
@@ -3008,8 +3288,8 @@
                 const added = newPlates.filter(p => !origPlates.includes(p));
                 const removed = origPlates.filter(p => !newPlates.includes(p));
                 // Visual feedback summary
-                if (added.length) showToast(`已添加 ${added.length} 个车牌：${added.join(', ')}`, 'success');
-                if (removed.length) showToast(`已删除 ${removed.length} 个车牌：${removed.join(', ')}`,'danger');
+                if (added.length) showToast(`已添加 ${added.length} 个啰里：${added.join(', ')}`, 'success');
+                if (removed.length) showToast(`已删除 ${removed.length} 个啰里：${removed.join(', ')}`,'danger');
                 // Track for table highlight
                 window.RECENT_ADDED_PLATES = added.slice();
                 window.RECENT_REMOVED_PLATES = removed.slice();
@@ -3117,7 +3397,7 @@
                 const f = document.getElementById('searchLorry')?.value || '';
                 renderLorryTable(f);
                 markUnsaved();
-                showToast(`已添加车牌 ${val}`, 'success');
+                showToast(`已添加啰里 ${val}`, 'success');
             });
             const sl = document.getElementById('searchLorry'); if (sl) sl.addEventListener('input', () => { renderLorryTable(sl.value); });
             const btnAddPickUp = document.getElementById('btnAddPickUp');
@@ -3128,7 +3408,7 @@
                 document.getElementById('inputPickUp').value = '';
                 renderItemsTable('tablePickUp', CONFIG.pickUps, document.getElementById('searchPickUp')?.value || '');
                 markUnsaved();
-                showToast(`已添加取货地 ${val}`, 'success');
+                showToast(`已添加工厂 ${val}`, 'success');
             });
             const sp = document.getElementById('searchPickUp'); if (sp) sp.addEventListener('input', () => renderItemsTable('tablePickUp', CONFIG.pickUps, sp.value));
             const btnAddProduct = document.getElementById('btnAddProduct');
@@ -3150,7 +3430,7 @@
                 document.getElementById('inputDestination').value = '';
                 renderItemsTable('tableDestination', CONFIG.destinations, document.getElementById('searchDestination')?.value || '');
                 markUnsaved();
-                showToast(`已添加目的地 ${val}`, 'success');
+                showToast(`已添加地方 ${val}`, 'success');
             });
             const sd = document.getElementById('searchDestination'); if (sd) sd.addEventListener('input', () => renderItemsTable('tableDestination', CONFIG.destinations, sd.value));
             // 已移除：车税添加与搜索事件绑定
@@ -3210,15 +3490,17 @@
                         t5_product: row.trip5.product || null,
                         t5_destination: row.trip5.destination || null,
                         t5_completed: !!row.trip5.completed,
-                        t5_commission: row.trip5.commission ? Number(row.trip5.commission) : null
+                        t5_commission: row.trip5.commission ? Number(row.trip5.commission) : null,
+                        tol_amount: row.tol_amount ? Number(row.tol_amount) : null,
+                        petrol_amount: row.petrol_amount ? Number(row.petrol_amount) : null
                     };
-                    // Conditionally include remarks fields if the table supports them
-                    if (HAS_REMARKS_COLUMNS) {
-                        payload.t1_remarks = row.trip1.remarks || null;
-                        payload.t2_remarks = row.trip2.remarks || null;
-                        payload.t3_remarks = row.trip3.remarks || null;
-                        payload.t4_remarks = row.trip4.remarks || null;
-                        payload.t5_remarks = row.trip5.remarks || null;
+                    // Conditionally include reason fields if the table supports them
+                    if (HAS_REASON_COLUMNS) {
+                        payload.t1_reason = row.trip1.reason || null;
+                payload.t2_reason = row.trip2.reason || null;
+                payload.t3_reason = row.trip3.reason || null;
+                payload.t4_reason = row.trip4.reason || null;
+                payload.t5_reason = row.trip5.reason || null;
                     }
                     await sb.from('schedules').upsert(payload, { onConflict: 'work_date,lorry_plate' });
                 }
@@ -3250,6 +3532,9 @@
                 await loadCommissionRulesFromSupabase();
                 mergeCommissionRulesPreferExcel();
                 applyCommissionToSampleData();
+                // Load reason data for reason selection popup
+                await loadReasonGroups();
+                await loadReasons();
                 await supabaseLoadSchedule(currentDate);
             } else {
                 // Local-only: use defaults and any excel commission; no DB schedule
@@ -3356,6 +3641,27 @@
                     setActive(topTabCommission);
                 });
             }
+
+            // 关闭车税管理面板的函数
+            function closeCommissionPanel() {
+                const embeddedPanel = document.getElementById('embeddedCommissionPanel');
+                if (embeddedPanel) {
+                    embeddedPanel.classList.remove('show');
+                }
+                // 重新激活规划器标签
+                const topTabPlanner = document.getElementById('topTabPlanner');
+                if (topTabPlanner) {
+                    setActive(topTabPlanner);
+                }
+            }
+
+            // Listen for messages from iframe to close commission panel
+            window.addEventListener('message', function(event) {
+                // For security, you might want to check event.origin in production
+                if (event.data && event.data.action === 'closeCommissionPanel') {
+                    closeCommissionPanel();
+                }
+            });
 
             // 缩放控制（特别为平板优化）
             const zoomOutBtn = document.getElementById('zoomOut');
@@ -3538,7 +3844,382 @@
                     th.addEventListener('click', () => sortTable(column));
                 }
             });
+
+            // Reason management functionality
+            setupReasonManagement();
         });
+
+        // Reason Management Functions
+        let reasonGroups = [];
+        let reasons = [];
+        let selectedReasonGroupId = null;
+
+        async function loadReasonGroups() {
+            if (!sb) return;
+            try {
+                const { data, error } = await sb
+                    .from('reason_groups')
+                    .select('*')
+                    .order('name');
+                if (error) throw error;
+                reasonGroups = data || [];
+                renderReasonGroupTable();
+                updateReasonGroupSelector();
+            } catch (error) {
+                console.error('Error loading reason groups:', error);
+                showToast('加载原因组合失败', 'danger');
+            }
+        }
+
+        async function loadReasons(reasonGroupId = null) {
+            if (!sb) return;
+            try {
+                let query = sb.from('reasons').select('*');
+                if (reasonGroupId) {
+                    query = query.eq('reason_group_id', reasonGroupId);
+                }
+                const { data, error } = await query.order('name');
+                if (error) throw error;
+                reasons = data || [];
+                renderReasonTable();
+            } catch (error) {
+                console.error('Error loading reasons:', error);
+                showToast('加载原因失败', 'danger');
+            }
+        }
+
+        async function addReasonGroup(name, description = '') {
+            if (!sb) return;
+            try {
+                const { data, error } = await sb
+                    .from('reason_groups')
+                    .insert({ name: name.trim(), description: description.trim() })
+                    .select();
+                if (error) throw error;
+                await loadReasonGroups();
+                showToast(`已添加原因组合: ${name}`, 'success');
+            } catch (error) {
+                console.error('Error adding reason group:', error);
+                showToast('添加原因组合失败', 'danger');
+            }
+        }
+
+        async function deleteReasonGroup(id) {
+            if (!sb) return;
+            try {
+                const { error } = await sb
+                    .from('reason_groups')
+                    .delete()
+                    .eq('id', id);
+                if (error) throw error;
+                await loadReasonGroups();
+                if (selectedReasonGroupId === id) {
+                    selectedReasonGroupId = null;
+                    await loadReasons();
+                    updateReasonInputs();
+                }
+                showToast('已删除原因组合', 'success');
+            } catch (error) {
+                console.error('Error deleting reason group:', error);
+                showToast('删除原因组合失败', 'danger');
+            }
+        }
+
+        async function addReason(reasonGroupId, name, description = '') {
+            if (!sb) return;
+            try {
+                const { data, error } = await sb
+                    .from('reasons')
+                    .insert({ 
+                        reason_group_id: reasonGroupId, 
+                        name: name.trim(), 
+                        description: description.trim() 
+                    })
+                    .select();
+                if (error) throw error;
+                await loadReasons(selectedReasonGroupId);
+                await loadReasonGroups(); // Refresh to update reason count
+                showToast(`已添加原因: ${name}`, 'success');
+            } catch (error) {
+                console.error('Error adding reason:', error);
+                showToast('添加原因失败', 'danger');
+            }
+        }
+
+        async function deleteReason(id) {
+            if (!sb) return;
+            try {
+                const { error } = await sb
+                    .from('reasons')
+                    .delete()
+                    .eq('id', id);
+                if (error) throw error;
+                await loadReasons(selectedReasonGroupId);
+                await loadReasonGroups(); // Refresh to update reason count
+                showToast('已删除原因', 'success');
+            } catch (error) {
+                console.error('Error deleting reason:', error);
+                showToast('删除原因失败', 'danger');
+            }
+        }
+
+        function renderReasonGroupTable(filter = '') {
+            const tbody = document.querySelector('#tableReasonGroup tbody');
+            if (!tbody) return;
+
+            const filteredGroups = reasonGroups.filter(group => 
+                group.name.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            tbody.innerHTML = filteredGroups.map(group => {
+                const reasonCount = reasons.filter(r => r.reason_group_id === group.id).length;
+                return `
+                    <tr>
+                        <td>${group.name}</td>
+                        <td>${reasonCount}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="selectReasonGroup(${group.id})">选择</button>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDeleteReasonGroup(${group.id}, '${group.name}')">删除</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderReasonTable(filter = '') {
+            const tbody = document.querySelector('#tableReason tbody');
+            if (!tbody) return;
+
+            const filteredReasons = reasons.filter(reason => 
+                reason.name.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            tbody.innerHTML = filteredReasons.map(reason => `
+                <tr>
+                    <td>${reason.name}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDeleteReason(${reason.id}, '${reason.name}')">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateReasonGroupSelector() {
+            const select = document.getElementById('selectReasonGroup');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">请先选择原因组合</option>' +
+                reasonGroups.map(group => 
+                    `<option value="${group.id}" ${group.id === selectedReasonGroupId ? 'selected' : ''}>${group.name}</option>`
+                ).join('');
+        }
+
+        function updateReasonInputs() {
+            const inputReason = document.getElementById('inputReason');
+            const btnAddReason = document.getElementById('btnAddReason');
+            const searchReason = document.getElementById('searchReason');
+
+            if (selectedReasonGroupId) {
+                if (inputReason) inputReason.disabled = false;
+                if (btnAddReason) btnAddReason.disabled = false;
+                if (searchReason) searchReason.disabled = false;
+            } else {
+                if (inputReason) inputReason.disabled = true;
+                if (btnAddReason) btnAddReason.disabled = true;
+                if (searchReason) searchReason.disabled = true;
+            }
+        }
+
+        function selectReasonGroup(id) {
+            selectedReasonGroupId = id;
+            updateReasonGroupSelector();
+            updateReasonInputs();
+            loadReasons(id);
+        }
+
+        function confirmDeleteReasonGroup(id, name) {
+            if (confirm(`确定要删除原因组合 "${name}" 吗？这将同时删除该组合下的所有原因。`)) {
+                deleteReasonGroup(id);
+            }
+        }
+
+        function confirmDeleteReason(id, name) {
+            if (confirm(`确定要删除原因 "${name}" 吗？`)) {
+                deleteReason(id);
+            }
+        }
+
+        // Open reason selection overlay for remarks input
+        function openReasonSelectionPanel(targetInput) {
+            if (!reasonGroups.length) {
+                showToast('请先在配置页面添加原因组合', 'warning');
+                return;
+            }
+
+            const overlay = document.createElement('div'); 
+            overlay.className = 'options-overlay';
+            const panel = document.createElement('div'); 
+            panel.className = 'options-panel';
+            const header = document.createElement('div'); 
+            header.className = 'options-header';
+            const title = document.createElement('div'); 
+            title.className = 'options-title'; 
+            title.textContent = '选择原因';
+            
+            // Add a clear button
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'btn btn-secondary';
+            clearBtn.textContent = '清除 Clear';
+            clearBtn.title = '清除所选值 / Clear selection';
+            
+            const list = document.createElement('div'); 
+            list.className = 'options-list';
+            
+            // Right-side index for reason groups
+            const alphaIndex = document.createElement('div');
+            alphaIndex.className = 'alpha-index';
+            
+            header.appendChild(title);
+            header.appendChild(clearBtn);
+            
+            const body = document.createElement('div');
+            body.className = 'options-body';
+            body.appendChild(alphaIndex);
+            body.appendChild(list);
+            panel.appendChild(body);
+            
+            document.body.appendChild(overlay); 
+            document.body.appendChild(panel);
+            
+            const updateIndex = () => {
+                alphaIndex.innerHTML = '';
+                reasonGroups.forEach(group => {
+                    const btn = document.createElement('button');
+                    btn.className = 'alpha-btn';
+                    btn.textContent = group.name;
+                    btn.addEventListener('click', () => {
+                        const anchor = list.querySelector(`#anchor-reason-group-${group.id}`);
+                        if (anchor) {
+                            const top = anchor.offsetTop;
+                            list.scrollTo({ top, behavior: 'smooth' });
+                        }
+                    });
+                    alphaIndex.appendChild(btn);
+                });
+            };
+            
+            const render = () => {
+                list.innerHTML = '';
+                
+                reasonGroups.forEach(group => {
+                    // Add reason group header
+                    const hdr = document.createElement('div');
+                    hdr.className = 'alpha-header';
+                    hdr.id = `anchor-reason-group-${group.id}`;
+                    hdr.textContent = group.name;
+                    list.appendChild(hdr);
+                    
+                    // Add reasons for this group
+                    const groupReasons = reasons.filter(r => r.reason_group_id === group.id);
+                    groupReasons.forEach(reason => {
+                        const div = document.createElement('div'); 
+                        div.className = 'option-item'; 
+                        div.textContent = reason.name;
+                        div.addEventListener('click', () => { 
+                            targetInput.value = reason.name; 
+                            targetInput.dispatchEvent(new Event('input', { bubbles: true })); 
+                            close(); 
+                        });
+                        list.appendChild(div);
+                    });
+                    
+                    // Add empty state if no reasons
+                    if (groupReasons.length === 0) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = 'option-item';
+                        emptyDiv.style.fontStyle = 'italic';
+                        emptyDiv.style.color = '#888';
+                        emptyDiv.textContent = '暂无原因';
+                        list.appendChild(emptyDiv);
+                    }
+                });
+                
+                updateIndex();
+            };
+            
+            const close = () => { 
+                overlay.remove(); 
+                panel.remove(); 
+                window.__reasonSelectionPanel = null; 
+            };
+            
+            clearBtn.addEventListener('click', () => {
+                targetInput.value = '';
+                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                close();
+            });
+            
+            render();
+            overlay.addEventListener('click', close);
+            window.__closeReasonSelectionPanel = close;
+            window.__reasonSelectionPanel = { close, panel, overlay };
+        }
+
+        function setupReasonManagement() {
+            // Load initial data
+            loadReasonGroups();
+
+            // Reason Group events
+            const btnAddReasonGroup = document.getElementById('btnAddReasonGroup');
+            if (btnAddReasonGroup) {
+                btnAddReasonGroup.addEventListener('click', () => {
+                    const input = document.getElementById('inputReasonGroup');
+                    const value = input.value.trim();
+                    if (value) {
+                        addReasonGroup(value);
+                        input.value = '';
+                    }
+                });
+            }
+
+            const searchReasonGroup = document.getElementById('searchReasonGroup');
+            if (searchReasonGroup) {
+                searchReasonGroup.addEventListener('input', (e) => {
+                    renderReasonGroupTable(e.target.value);
+                });
+            }
+
+            // Reason events
+            const btnAddReason = document.getElementById('btnAddReason');
+            if (btnAddReason) {
+                btnAddReason.addEventListener('click', () => {
+                    if (!selectedReasonGroupId) return;
+                    const input = document.getElementById('inputReason');
+                    const value = input.value.trim();
+                    if (value) {
+                        addReason(selectedReasonGroupId, value);
+                        input.value = '';
+                    }
+                });
+            }
+
+            const searchReason = document.getElementById('searchReason');
+            if (searchReason) {
+                searchReason.addEventListener('input', (e) => {
+                    renderReasonTable(e.target.value);
+                });
+            }
+
+            const selectReasonGroup = document.getElementById('selectReasonGroup');
+            if (selectReasonGroup) {
+                selectReasonGroup.addEventListener('change', (e) => {
+                    const id = e.target.value ? parseInt(e.target.value) : null;
+                    selectedReasonGroupId = id;
+                    updateReasonInputs();
+                    loadReasons(id);
+                });
+            }
+        }
     </script>
 </body>
 </html>
