@@ -252,15 +252,32 @@
         const env = await res.json();
         const url = env.SUPABASE_URL || env.url;
         const key = env.SUPABASE_ANON_KEY || env.key;
-        if (!url || !key) throw new Error('Missing Supabase environment variables');
-        sb = window.supabase.createClient(url, key);
-        window.__SB = sb;
-      } catch (e) {
-        console.error('Failed to initialize Supabase from /api/config', e);
-        alert('Supabase configuration missing. Please set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.');
-      }
+        if (url && key) {
+          sb = window.supabase.createClient(url, key);
+          window.__SB = sb;
+          return;
+        }
+      } catch (_) { /* fall through */ }
+      // Local dev fallback (no serverless): read from window or localStorage
+      try {
+        const url = window.__SUPABASE_URL || localStorage.getItem('SUPABASE_URL');
+        const key = window.__SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY');
+        if (url && key) {
+          sb = window.supabase.createClient(url, key);
+          window.__SB = sb;
+          console.warn('Supabase initialized from local fallback variables');
+          return;
+        }
+      } catch (_) {}
+      sb = null;
+      console.warn('Supabase not configured. Running in local-only mode.');
     }
     const optionsCache = { pickup: [], product: [], destination: [] };
+    const defaultOptions = {
+      pickup: ["", "Highway Quarry", "Majumas Bestari", "RCJ", "LORI ROSAK", "CST", "IJM", "Takali Sunway", "Pepsi", "Hanson Cheras", "Guna"],
+      product: ["", "3/4 Agg", "C/Sand", "C/run", "Icp kapar", "Kajang Setia Mix", "Langat Tong Ooi", "Kuchai Ytl", "Nilai MDC", "Belakong Ytl", "Setia mix semen", "Subang Gy two", "Puchong ulus wt"],
+      destination: ["", "Nilai MDC", "Subang Gy two", "B. Jalil", "Tasik Selatan", "Icp kebun", "kapar k345 lucat", "K345 Lucas", "sps chong", "Kuchai Ytl", "Kajang Setia Mix", "Langat Tong Ooi", "Belakong Ytl", "Setia mix semen", "Suntiga Sg Rasa", "Kapar U wajar", "kapar k345 lucat", "Puchong ulus wt", "K Garden Kapar"]
+    };
 
     function norm(s) { return (s || '').toString().trim(); }
     function titleCase(s) {
@@ -275,6 +292,30 @@
     }
 
     async function loadOptions() {
+      // If Supabase is not available, use local config/defaults
+      if (!sb) {
+        const dlPU = document.getElementById('dlPickups');
+        const dlPR = document.getElementById('dlProducts');
+        const dlDE = document.getElementById('dlDestinations');
+        function fillDL(dl, items) { dl.innerHTML = ''; items.forEach(v => { const o = document.createElement('option'); o.value = v; dl.appendChild(o); }); }
+        const byLocal = (() => { try { return JSON.parse(localStorage.getItem('nanyang_config')) || {}; } catch(_) { return {}; } })();
+        const dedupeAndFormat = (items) => {
+          const map = new Map();
+          for (const raw of items) {
+            const key = norm(raw).toLowerCase();
+            if (!key) continue;
+            if (!map.has(key)) map.set(key, titleCase(raw));
+          }
+          return Array.from(map.values()).sort((a,b)=> a.localeCompare(b));
+        };
+        optionsCache.pickup = dedupeAndFormat(byLocal.pickUps || defaultOptions.pickup);
+        optionsCache.product = dedupeAndFormat(byLocal.products || defaultOptions.product);
+        optionsCache.destination = dedupeAndFormat(byLocal.destinations || defaultOptions.destination);
+        fillDL(dlPU, optionsCache.pickup);
+        fillDL(dlPR, optionsCache.product);
+        fillDL(dlDE, optionsCache.destination);
+        return;
+      }
       try {
         const { data, error } = await sb.from('config_options').select('category,name,active').eq('active', true);
         if (error) throw error;
@@ -744,6 +785,7 @@
     tbodyEl.addEventListener('input', (ev) => {
       const tr = ev.target.closest('tr');
       if (!tr) return;
+      if (!sb) { console.warn('Supabase not initialized, skipping auto-save'); return; }
       // Only save when editing meaningful fields
       if (ev.target.classList && (
         ev.target.classList.contains('inpPU') ||
@@ -778,8 +820,13 @@
                   <td><div class="combo"><input type="text" class="inpPR" placeholder="产品"><button class="combo-btn" data-cat="product">▼</button></div></td>
                   <td><div class="combo"><input type="text" class="inpDE" placeholder="目的地"><button class="combo-btn" data-cat="destination">▼</button></div></td>
                   <td><input type="text" class="inpCM" placeholder="RM"></td>
-                  <td><input type="date" class="inpStart"></td>
-                  <td><input type="date" class="inpEnd"></td>
+                  <td>
+                    <div class="date-range">
+                      <input type="date" class="inpStart">
+                      <span class="range-sep">至</span>
+                      <input type="date" class="inpEnd">
+                    </div>
+                  </td>
                   <td><button class="btn btn-danger btnDelete">删除</button></td>`;
                 tr.parentElement.appendChild(blank);
               }
@@ -812,6 +859,12 @@
         timers.set(tr, t);
       }
     });
+    // Also save on blur for reliability
+    tbodyEl.addEventListener('blur', (ev) => {
+      if (!ev.target || !ev.target.classList) return;
+      if (!ev.target.classList.contains('inpPU') && !ev.target.classList.contains('inpPR') && !ev.target.classList.contains('inpDE') && !ev.target.classList.contains('inpCM') && !ev.target.classList.contains('inpStart') && !ev.target.classList.contains('inpEnd')) return;
+      ev.target.dispatchEvent(new Event('input', { bubbles: true }));
+    }, true);
     // 已移除“导入Excel”按钮，以简化顶部区域，仅保留“滚到底部”
 
     // Mobile-friendly full list overlay for datalist alternatives
@@ -863,6 +916,9 @@
       const render = () => {
         const q = (search.value || '').toLowerCase();
         list.innerHTML = '';
+        // Re-attach the right-side A–Z rail after clearing the list so it stays visible
+        // on each re-render triggered by search input.
+        try { list.appendChild(alphaIndex); } catch(_){}
         const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
         const seen = new Set();
         const present = new Set();

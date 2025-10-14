@@ -1075,17 +1075,33 @@
         let sb = null;
         async function initSupabase() {
             try {
+                // Try serverless config first (Vercel/prod)
                 const res = await fetch('/api/config', { cache: 'no-store' });
                 const env = await res.json();
                 const url = env.SUPABASE_URL || env.url;
                 const key = env.SUPABASE_ANON_KEY || env.key;
-                if (!url || !key) throw new Error('Missing Supabase environment variables');
-                sb = window.supabase.createClient(url, key);
-                window.__SB = sb;
-            } catch (e) {
-                console.error('Failed to initialize Supabase from /api/config', e);
-                alert('Supabase configuration missing. Please set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel environment variables.');
+                if (url && key) {
+                    sb = window.supabase.createClient(url, key);
+                    window.__SB = sb;
+                    return;
+                }
+            } catch (_) {
+                /* fall through to local fallback */
             }
+            // Local fallback: allow testing without serverless /api/config
+            try {
+                const url = window.__SUPABASE_URL || localStorage.getItem('SUPABASE_URL');
+                const key = window.__SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY');
+                if (url && key) {
+                    sb = window.supabase.createClient(url, key);
+                    window.__SB = sb;
+                    console.warn('Supabase initialized from local fallback variables');
+                    return;
+                }
+            } catch (_) {}
+            // No Supabase available; continue in local-only mode
+            sb = null;
+            console.warn('Supabase not configured. Running in local-only mode.');
         }
         // Runtime dataset. Start empty to avoid resurrecting seeded demo rows on refresh.
         let sampleData = [];
@@ -1383,6 +1399,17 @@
         }
 
         async function supabaseLoadOptions() {
+            if (!sb) {
+                // No Supabase: rely on local config/defaults already loaded into CONFIG
+                try {
+                    CONFIG = loadConfig();
+                    applyTripColors(CONFIG);
+                    pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
+                    productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
+                    destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+                } catch (e) { console.warn('Local options fallback failed', e); }
+                return;
+            }
             try {
                 const [opts, settings] = await Promise.all([
                     sb.from('config_options').select('category,name,active').eq('active', true),
@@ -1728,6 +1755,9 @@
             const render = () => {
                 const q = (search.value || '').toLowerCase();
                 list.innerHTML = '';
+                // Re-attach the right-side A–Z rail after clearing the list so it remains visible
+                // during re-renders triggered by search input.
+                try { list.appendChild(alphaIndex); } catch (_) {}
                 const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
                 const seen = new Set();
                 const present = new Set();
@@ -2462,6 +2492,7 @@
 
         // Load schedule rows for a given date from Supabase
         async function supabaseLoadSchedule(date) {
+            if (!sb) { sampleData = []; return; }
             try {
                 const dstr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
                 const { data, error } = await sb
@@ -3151,16 +3182,21 @@
             const savedTheme = localStorage.getItem('nanyang_theme') || 'readable';
             applyTheme(savedTheme);
 
-            // Ensure Supabase client is ready
+            // Ensure Supabase client is ready (with graceful local fallback)
             await initSupabase();
-            if (!sb) return;
 
-            await supabaseLoadOptions();
-            // Load any existing rules from Supabase first
-            await loadCommissionRulesFromSupabase();
-            mergeCommissionRulesPreferExcel();
-            applyCommissionToSampleData();
-            await supabaseLoadSchedule(currentDate);
+            if (sb) {
+                await supabaseLoadOptions();
+                // Load any existing rules from Supabase first
+                await loadCommissionRulesFromSupabase();
+                mergeCommissionRulesPreferExcel();
+                applyCommissionToSampleData();
+                await supabaseLoadSchedule(currentDate);
+            } else {
+                // Local-only: use defaults and any excel commission; no DB schedule
+                mergeCommissionRulesPreferExcel();
+                applyCommissionToSampleData();
+            }
             // After loading schedule rows from DB, apply commission based on active rules again
             applyCommissionToSampleData();
             populateTable();
