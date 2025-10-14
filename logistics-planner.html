@@ -821,12 +821,14 @@
         /* Place the index at the right edge of the tab panel */
         .tab-panel { position: relative; }
         .tab-panel .alpha-index { display: none; }
-        /* Overlay picker A–Z index: keep inside the scroll column */
-        .options-list { position: relative; }
-        .options-list .alpha-index { display: inline-flex; position: absolute; top: 4px; right: 4px; bottom: 4px; width: 36px; padding: 8px 6px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: flex-start; justify-content: flex-start; gap: 2px; z-index: 1; }
-        .options-list .alpha-index .alpha-btn { color: #fff; font-size: 14px; font-weight: 600; padding: 2px 4px; opacity: 0.9; }
-        .options-list .alpha-index .alpha-btn:hover { background: rgba(255,255,255,0.12); color: #fff; opacity: 1; }
-        .options-list .alpha-index .alpha-btn[disabled] { opacity: 0.35; }
+        /* Overlay picker A–Z index: pin to the panel so it stays fixed while the list scrolls */
+        .options-panel { position: fixed; }
+        .options-panel .alpha-index { display: inline-flex; position: absolute; top: 10px; right: 10px; bottom: 10px; width: 36px; padding: 8px 6px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: flex-start; justify-content: flex-start; gap: 2px; z-index: 2002; }
+        .options-panel .alpha-index .alpha-btn { color: #fff; font-size: 14px; font-weight: 600; padding: 2px 4px; opacity: 0.9; border: none; background: transparent; cursor: pointer; border-radius: 6px; }
+        .options-panel .alpha-index .alpha-btn:hover { background: rgba(255,255,255,0.12); color: #fff; opacity: 1; }
+        .options-panel .alpha-index .alpha-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
+        /* Add right padding so list items don't sit underneath the index */
+        .options-list { position: relative; padding-right: 48px; }
 
         /* Top-right tab switches replacing the 3-dot menu */
         .top-right-tabs { position: fixed; top: 4px; right: 10px; z-index: 2400; display: inline-flex; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
