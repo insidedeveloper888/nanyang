@@ -879,14 +879,12 @@
       const panel = document.createElement('div'); panel.className = 'options-panel';
       const header = document.createElement('div'); header.className = 'options-header';
       const title = document.createElement('div'); title.className = 'options-title'; title.textContent = `选择：${category}`;
-      const search = document.createElement('input'); search.className = 'options-search'; search.placeholder = '搜索...';
       const list = document.createElement('div'); list.className = 'options-list';
       // Right-side A–Z index
       const alphaIndex = document.createElement('div'); alphaIndex.className = 'alpha-index';
-      list.appendChild(alphaIndex);
-      panel.appendChild(header); header.appendChild(title); header.appendChild(search); panel.appendChild(list);
+      panel.appendChild(alphaIndex);
+      panel.appendChild(header); header.appendChild(title); panel.appendChild(list);
       document.body.appendChild(overlay); document.body.appendChild(panel);
-      setTimeout(() => { try { search.focus(); search.select(); } catch(_){} }, 0);
       const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
       const getLetter = (s) => {
         const ch = String(s).trim().charAt(0).toUpperCase();
@@ -914,11 +912,8 @@
         });
       };
       const render = () => {
-        const q = (search.value || '').toLowerCase();
+        const q = '';
         list.innerHTML = '';
-        // Re-attach the right-side A–Z rail after clearing the list so it stays visible
-        // on each re-render triggered by search input.
-        try { list.appendChild(alphaIndex); } catch(_){}
         const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
         const seen = new Set();
         const present = new Set();
@@ -941,7 +936,6 @@
         }
       };
       render();
-      search.addEventListener('input', render);
       overlay.addEventListener('click', closeOptionsPanel);
       function closeOptionsPanel(){ overlay.remove(); panel.remove(); }
       window.__closeOptionsPanel = closeOptionsPanel;

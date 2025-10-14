@@ -1705,7 +1705,6 @@
             const panel = document.createElement('div'); panel.className = 'options-panel';
             const header = document.createElement('div'); header.className = 'options-header';
             const title = document.createElement('div'); title.className = 'options-title'; title.textContent = `选择：${label || ''}`;
-            const search = document.createElement('input'); search.className = 'options-search'; search.placeholder = '搜索...';
             // Add a clear button to quickly reset accidental selections
             const clearBtn = document.createElement('button');
             clearBtn.className = 'btn btn-secondary';
@@ -1717,14 +1716,12 @@
             alphaIndex.className = 'alpha-index';
             // panel.appendChild(header);
             header.appendChild(title);
-            header.appendChild(search);
             header.appendChild(clearBtn);
-            // Place the alpha index inside the scroll column, so it stays within the panel bounds
-            list.appendChild(alphaIndex);
+            // Place the alpha index pinned to panel so it doesn't move with list scroll
+            panel.appendChild(alphaIndex);
             panel.appendChild(list);
             document.body.appendChild(overlay); document.body.appendChild(panel);
-            // 自动聚焦到搜索框，进入页面后可直接输入
-            setTimeout(() => { try { search.focus(); search.select(); } catch (_) {} }, 0);
+            // 无搜索框，直接显示列表
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
             const getLetter = (s) => {
                 const ch = String(s).trim().charAt(0).toUpperCase();
@@ -1753,11 +1750,8 @@
                 });
             };
             const render = () => {
-                const q = (search.value || '').toLowerCase();
+                const q = '';
                 list.innerHTML = '';
-                // Re-attach the right-side A–Z rail after clearing the list so it remains visible
-                // during re-renders triggered by search input.
-                try { list.appendChild(alphaIndex); } catch (_) {}
                 const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
                 const seen = new Set();
                 const present = new Set();
@@ -1785,10 +1779,9 @@
                 close();
             });
             render();
-            search.addEventListener('input', render);
             overlay.addEventListener('click', close);
             window.__closeOptionsPanel = close;
-            window.__optionsPanel = { search, close, panel, overlay };
+            window.__optionsPanel = { close, panel, overlay };
         }
 
         // Searchable dropdown using an input + datalist (native while typing) + big overlay on click
@@ -1801,9 +1794,9 @@
             input.placeholder = '';
             input.value = selectedValue || '';
             input.title = selectedValue || '';
-            // Make selection overlay-only: no typing in the field itself
-            input.readOnly = true;
-            input.setAttribute('aria-readonly', 'true');
+            // Editable inline typing allowed
+            input.readOnly = false;
+            input.removeAttribute('aria-readonly');
 
             // Normalize once and keep a copy for overlay
             const fullOptions = (options || [])
@@ -1819,26 +1812,13 @@
             input.addEventListener('input', handler);
             input.addEventListener('change', handler);
 
-            // Open large overlay list for easier selection
+            // Optional: open overlay on double-click for quick large list browsing
             const open = () => {
                 if (!document.querySelector('.options-panel')) {
                     openOptionsPanel(overlayLabel || '选择', fullOptions, input);
                 }
-                // sync typed content into overlay search for live filtering
-                if (window.__optionsPanel && window.__optionsPanel.search) {
-                    window.__optionsPanel.search.value = input.value || '';
-                    window.__optionsPanel.search.dispatchEvent(new Event('input', { bubbles: true }));
-                }
             };
-            input.addEventListener('click', open);
-            input.addEventListener('focus', open);
-            // Block typing; open overlay instead
-            input.addEventListener('keydown', (e) => {
-                if (e.key !== 'Tab') {
-                    e.preventDefault();
-                    open();
-                }
-            });
+            input.addEventListener('dblclick', open);
 
             return input;
         }
