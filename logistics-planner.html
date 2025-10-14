@@ -560,7 +560,7 @@
         /* Large overlay picker (for trip dropdowns) */
         .options-overlay { position: fixed; inset: 0; background: transparent; z-index: 2000; }
         /* Compact, tablet-friendly overlay size */
-        .options-panel { position: fixed; top: 6%; left: 50%; transform: translateX(-50%); width: min(520px, 92vw); height: min(70vh, 620px); background: #1e1e1e; color: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2001; display: flex; flex-direction: column; }
+        .options-panel { position: fixed; top: 6%; left: 50%; transform: translateX(-50%); width: min(520px, 92vw); height: min(70vh, 620px); background: #1e1e1e; color: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 2001; display: flex; flex-direction: column; box-sizing: border-box; padding-right: 52px; overflow: hidden; }
         @media (max-width: 1024px) {
             .options-panel { width: min(480px, 92vw); height: min(68vh, 560px); }
         }
@@ -573,7 +573,7 @@
         .options-title { font-weight: 600; }
         .options-search { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #111; color: #fff; font-size: 16px; }
         /* Extra right padding so the A–Z index does not overlap items */
-        .options-list { flex: 1; overflow-y: auto; padding: 8px 48px 8px 12px; }
+        .options-list { flex: 1; overflow-y: auto; padding: 8px 12px; }
         .options-list::-webkit-scrollbar {
             display:none;
         }
@@ -821,9 +821,9 @@
         /* Place the index at the right edge of the tab panel */
         .tab-panel { position: relative; }
         .tab-panel .alpha-index { display: none; }
-        /* Overlay picker A–Z index: pin to the panel so it stays fixed while the list scrolls */
+        /* Overlay picker A–Z index: pin to the panel so it stays fixed while the list scrolls and fully inside the column */
         .options-panel { position: fixed; }
-        .options-panel .alpha-index { display: inline-flex; position: absolute; top: 10px; right: 10px; bottom: 10px; width: 36px; padding: 8px 6px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: flex-start; justify-content: flex-start; gap: 2px; z-index: 2002; }
+        .options-panel .alpha-index { display: inline-flex; position: absolute; top: 8px; right: 8px; bottom: 8px; width: 36px; padding: 8px 6px; background: rgba(0,0,0,0.85); border-radius: 10px 10px 0 10px; align-items: flex-start; justify-content: flex-start; gap: 2px; z-index: 2002; }
         .options-panel .alpha-index .alpha-btn { color: #fff; font-size: 14px; font-weight: 600; padding: 2px 4px; opacity: 0.9; border: none; background: transparent; cursor: pointer; border-radius: 6px; }
         .options-panel .alpha-index .alpha-btn:hover { background: rgba(255,255,255,0.12); color: #fff; opacity: 1; }
         .options-panel .alpha-index .alpha-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
