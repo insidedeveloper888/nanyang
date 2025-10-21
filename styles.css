@@ -922,8 +922,8 @@ select:focus,
 
 .modal {
     background: var(--surface);
-    width: 86%;
-    max-width: 900px;
+    width: 95%;
+    /* max-width: 900px; */
     /* 更紧凑的配置面板，适合平板 */
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
@@ -960,17 +960,6 @@ select:focus,
 
 .close-btn:hover {
     background-color: rgba(255, 255, 255, 0.2);
-}
-
-.dashboard-modal {
-    width: 95%;
-    max-width: 1200px;
-    max-height: 90vh;
-}
-
-.dashboard-modal .modal-body {
-    max-height: 80vh;
-    overflow-y: auto;
 }
 
 .dashboard-title {
@@ -1725,6 +1714,14 @@ select:focus,
     margin-bottom: 1rem;
 }
 
+.vehicle-details-table h3,
+.destination-details-table h3 {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 .vehicle-details-table h3 {
     margin: 0 0 20px ;
     color: var(--text);
@@ -1737,6 +1734,7 @@ select:focus,
     padding: 24px;
     border-radius: 12px;
     border: 1px solid var(--border);
+    margin-bottom: 1rem;
 }
 
 .destination-details-table h3 {
@@ -1744,6 +1742,17 @@ select:focus,
     color: var(--text);
     font-size: 20px;
     font-weight: 600;
+}
+
+.accordion-indicator {
+    margin-left: 8px;
+    color: var(--muted-text, #6c757d);
+    font-size: 14px;
+}
+
+.vehicle-details-table.collapsed .table-wrapper,
+.destination-details-table.collapsed .table-wrapper {
+    display: none;
 }
 
 .dashboard-table {

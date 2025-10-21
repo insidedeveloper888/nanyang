@@ -201,8 +201,11 @@
                     </div>
 
 
-                    <div class="vehicle-details-table">
-                        <h3>车辆详细统计</h3>
+                    <div class="vehicle-details-table" id="accordionVehicles">
+                        <h3 class="accordion-header" role="button" aria-expanded="true">
+                            <span>车辆详细统计</span>
+                            <span class="accordion-indicator" aria-hidden="true">▾</span>
+                        </h3>
                         <div class="table-wrapper">
                             <table id="vehicleStatsTable" class="dashboard-table">
                                 <thead>
@@ -223,8 +226,11 @@
                     </div>
 
                     <!-- Destination Last Delivery Table -->
-                    <div class="destination-details-table">
-                        <h3>地方订单统计</h3>
+                    <div class="destination-details-table" id="accordionDestinations">
+                        <h3 class="accordion-header" role="button" aria-expanded="true">
+                            <span>地方订单统计</span>
+                            <span class="accordion-indicator" aria-hidden="true">▾</span>
+                        </h3>
                         <div class="table-wrapper">
                             <table id="destinationStatsTable" class="dashboard-table">
                                 <thead>
@@ -251,7 +257,7 @@
             <div class="modal-header">
                 <span>系统配置</span>
                 <span id="unsavedBadge" class="unsaved-badge" title="有未保存的更改" style="display:none">未保存更改</span>
-                <button class="btn btn-secondary" id="btnCloseConfig">关闭</button>
+                <button class="close-btn" id="btnCloseConfig">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="config-tabs">
@@ -3687,6 +3693,8 @@
             // 绑定表头排序事件
             setupVehicleTableSorting();
             setupDestinationTableSorting();
+            // 绑定统计区手风琴折叠
+            setupAccordionSections();
 
             // 初始加载数据
             refreshDashboard();
@@ -4202,6 +4210,27 @@
                         }
                     });
                     applyDestinationSortingAndRender();
+                });
+            });
+        }
+
+        function setupAccordionSections() {
+            const sections = [
+                document.getElementById('accordionVehicles'),
+                document.getElementById('accordionDestinations')
+            ];
+            sections.forEach(sec => {
+                if (!sec) return;
+                const header = sec.querySelector('.accordion-header');
+                const indicator = sec.querySelector('.accordion-indicator');
+                if (!header) return;
+                // 初始状态：展开
+                sec.classList.remove('collapsed');
+                header.setAttribute('aria-expanded', 'true');
+                header.addEventListener('click', () => {
+                    const isCollapsed = sec.classList.toggle('collapsed');
+                    header.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                    if (indicator) indicator.textContent = isCollapsed ? '▸' : '▾';
                 });
             });
         }
