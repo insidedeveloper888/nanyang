@@ -817,8 +817,10 @@ select:focus,
     color: #0ea5e9; /* info */
     background: rgba(14, 165, 233, 0.10);
     border: 1px solid rgba(14, 165, 233, 0.25);
-    padding: 2px 6px;
+    padding: 2px 4px; /* tighter for number-only display */
     border-radius: 999px;
+    min-width: 18px;
+    text-align: center;
 }
 
 /* Read-only Estimated Ton display */
@@ -915,6 +917,12 @@ select:focus,
     overflow: scroll;
 }
 
+/* Compact mode when search is focused (helps avoid keyboard overlap) */
+.options-panel.compact {
+    top: 2%;
+    height: min(58vh, 520px);
+}
+
 @media (max-width: 1024px) {
     .options-panel {
         width: min(480px, 92vw);
@@ -964,7 +972,8 @@ select:focus,
 .options-list {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 8px 8px 12px;
+    /* add right padding so the fixed A–Z index never overlaps items */
+    padding: 8px 44px 8px 12px;
 }
 
 .options-list::-webkit-scrollbar {
@@ -1450,7 +1459,7 @@ select:focus,
 }
 
 .options-body .alpha-index {
-    display: none;
+    display: flex;
     flex-direction: column;
     position: fixed;
     top: 8px;

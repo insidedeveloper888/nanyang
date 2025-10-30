@@ -1334,36 +1334,50 @@
             return v.replace(/(^|\s)([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase());
         }
 
-        // Open large overlay picker (mobile-friendly, easy to read)
+        // Open large overlay picker (mobile-friendly, with search + A–Z index)
         function openOptionsPanel(label, srcOptions, targetInput) {
             const uniqItems = Array.from(
                 new Map((srcOptions || []).map(raw => [norm(raw).toLowerCase(), titleCase(raw)])).values()
             ).sort((a, b) => a.localeCompare(b));
+
             const overlay = document.createElement('div'); overlay.className = 'options-overlay';
             const panel = document.createElement('div'); panel.className = 'options-panel';
             const header = document.createElement('div'); header.className = 'options-header';
             const title = document.createElement('div'); title.className = 'options-title'; title.textContent = `选择：${label || ''}`;
+
+            // Search input to quickly filter
+            const searchInput = document.createElement('input');
+            searchInput.className = 'options-search';
+            searchInput.placeholder = '搜索 / Search';
+            searchInput.autocomplete = 'off';
+
             // Add a clear button to quickly reset accidental selections
             const clearBtn = document.createElement('button');
             clearBtn.className = 'btn btn-secondary';
             clearBtn.textContent = '清除 Clear';
             clearBtn.title = '清除所选值 / Clear selection';
+
             const list = document.createElement('div'); list.className = 'options-list';
-            // Right-side A-Z index for quick jumping
+            // Right-side A–Z index for quick jumping
             const alphaIndex = document.createElement('div');
             alphaIndex.className = 'alpha-index';
-            // Optional header (currently hidden)
-            // panel.appendChild(header);
+            alphaIndex.style.display = 'flex';
+
+            // Compose header and body
             header.appendChild(title);
+            header.appendChild(searchInput);
             header.appendChild(clearBtn);
-            // Body container to keep alpha index inside the panel column
+
             const body = document.createElement('div');
             body.className = 'options-body';
             body.appendChild(alphaIndex);
             body.appendChild(list);
+
+            panel.appendChild(header);
             panel.appendChild(body);
+
             document.body.appendChild(overlay); document.body.appendChild(panel);
-            // 无搜索框，直接显示列表
+
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
             const getLetter = (s) => {
                 const ch = String(s).trim().charAt(0).toUpperCase();
@@ -1391,8 +1405,9 @@
                     alphaIndex.appendChild(btn);
                 });
             };
+
             const render = () => {
-                const q = '';
+                const q = (searchInput.value || '').toLowerCase().trim();
                 list.innerHTML = '';
                 const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
                 const seen = new Set();
@@ -1409,17 +1424,31 @@
                         seen.add(L);
                     }
                     const div = document.createElement('div'); div.className = 'option-item'; div.textContent = v;
-                    div.addEventListener('click', () => { targetInput.value = v; targetInput.dispatchEvent(new Event('input', { bubbles: true })); close(); });
+                    div.addEventListener('click', () => {
+                        targetInput.value = v;
+                        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        close();
+                    });
                     list.appendChild(div);
                 });
                 updateAlpha(present);
             };
+
+            // Compact mode when focusing search (helps avoid keyboard overlap on iPad)
+            const isSmallScreen = window.matchMedia('(max-width: 1024px)').matches;
+            const compactOn = () => { if (isSmallScreen) panel.classList.add('compact'); };
+            const compactOff = () => { panel.classList.remove('compact'); };
+            searchInput.addEventListener('focus', compactOn);
+            searchInput.addEventListener('blur', compactOff);
+            searchInput.addEventListener('input', render);
+
             const close = () => { overlay.remove(); panel.remove(); window.__optionsPanel = null; };
             clearBtn.addEventListener('click', () => {
                 targetInput.value = '';
                 targetInput.dispatchEvent(new Event('input', { bubbles: true }));
                 close();
             });
+
             render();
             overlay.addEventListener('click', close);
             window.__closeOptionsPanel = close;
@@ -1838,7 +1867,8 @@
                 if (!groupEnabled && tyreCount != null && String(tyreCount).trim() !== '' && Number(tyreCount) > 0) {
                     const tyreBadge = document.createElement('span');
                     tyreBadge.className = 'tyre-badge';
-                    tyreBadge.textContent = `${tyreCount} Tyres`;
+                    // Short label: just show the number to reduce width
+                    tyreBadge.textContent = String(tyreCount);
                     lorryWrap.appendChild(tyreBadge);
                 }
             } catch (_) { /* non-critical */ }
@@ -2165,7 +2195,7 @@
             }
 
             // Optional grouping by tyre count
-            const groupEnabled = localStorage.getItem('group_by_tyres') === '1';
+                const groupEnabled = localStorage.getItem('group_by_tyres') === '1';
             // When grouping is enabled, do NOT sort by tyre count; preserve original row order.
             // Instead, render groups in the order they first appear.
 
@@ -2187,7 +2217,8 @@
                 const order = [];
                 visibleRows.forEach((data) => {
                     const tyres = getTyreCountForPlate(data.lorryPlate);
-                    const key = tyres == null ? 'Without Tyres' : `${tyres} Tyres`;
+                    // Short group labels: numeric only, or "Without" if missing
+                    const key = tyres == null ? 'Without' : String(tyres);
                     if (!groups.has(key)) {
                         groups.set(key, { rows: [], tyres });
                         order.push(key);
