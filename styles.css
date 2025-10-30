@@ -246,14 +246,13 @@ body {
     justify-content: flex-start; /* Keep label at the left for easy visibility */
 }
 
-/* Keep the coloured tyre group label visible at the top on tablets */
+/* Remove sticky-full-width group row; we'll pin only the left label chip */
 @media (max-width: 1024px) {
     .tyre-group-row td {
-        position: sticky;
-        top: 0;
-        z-index: 30; /* above frozen left column */
-        /* Allow clicks through so it doesn't block first row interactions */
-        pointer-events: none;
+        position: static;
+        top: auto;
+        z-index: auto;
+        pointer-events: auto;
     }
 }
 
@@ -313,10 +312,25 @@ screen {
 @media (max-width: 1024px) {
     .tyre-group-row .tyre-group-chip {
         position: sticky;
+        top: 0;
         left: 8px; /* pin near the frozen first column */
         z-index: 31;
         pointer-events: none; /* avoid blocking clicks on first row */
     }
+}
+
+/* Dedicated left cell for group label when present */
+.tyre-group-left {
+    position: sticky;
+    left: 0;
+    top: 0;
+    z-index: 31;
+    background: var(--surface);
+    border-right: 2px solid var(--primary);
+    pointer-events: none;
+}
+.tyre-group-left .tyre-group-chip {
+    position: static; /* inside sticky cell, no extra stickiness needed */
 }
 
 /* ===================== Table Styles ===================== */

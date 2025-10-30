@@ -2262,13 +2262,19 @@
                         else tyreClass = 'tyre-group-16';
                     }
                     grpTr.className = `tyre-group-row ${tyreClass}`;
-                    const grpTd = document.createElement('td');
-                    grpTd.colSpan = colCount;
+                    // Create a dedicated left sticky cell to hold the group chip
+                    const leftTd = document.createElement('td');
+                    leftTd.className = 'tyre-group-left';
                     const chip = document.createElement('span');
                     chip.className = 'tyre-group-chip';
                     chip.textContent = key;
-                    grpTd.appendChild(chip);
-                    grpTr.appendChild(grpTd);
+                    leftTd.appendChild(chip);
+                    grpTr.appendChild(leftTd);
+
+                    // Create a spacer cell that spans the remaining columns
+                    const spanTd = document.createElement('td');
+                    spanTd.colSpan = Math.max(0, colCount - 1);
+                    grpTr.appendChild(spanTd);
                     tableBody.appendChild(grpTr);
                     grp.rows.forEach((data, index) => {
                         const row = createTableRow(data, index);
