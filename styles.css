@@ -246,6 +246,17 @@ body {
     justify-content: flex-start; /* Keep label at the left for easy visibility */
 }
 
+/* Keep the coloured tyre group label visible at the top on tablets */
+@media (max-width: 1024px) {
+    .tyre-group-row td {
+        position: sticky;
+        top: 0;
+        z-index: 30; /* above frozen left column */
+        /* Allow clicks through so it doesn't block first row interactions */
+        pointer-events: none;
+    }
+}
+
 /* Tablet-specific styles for fit-to-page layout */
 @media screen and (orientation: landscape),
 screen {
@@ -920,13 +931,13 @@ select:focus,
 /* Compact mode when search is focused (helps avoid keyboard overlap) */
 .options-panel.compact {
     top: 2%;
-    height: min(58vh, 520px);
+    height: min(52vh, 520px);
 }
 
 @media (max-width: 1024px) {
     .options-panel {
         width: min(480px, 92vw);
-        height: min(68vh, 560px);
+        height: min(64vh, 560px);
     }
 }
 
@@ -934,7 +945,7 @@ select:focus,
     .options-panel {
         top: 8%;
         width: 92vw;
-        height: min(65vh, 520px);
+        height: min(60vh, 520px);
     }
 
     .option-item {
@@ -1473,7 +1484,8 @@ select:focus,
     justify-content: flex-start;
     gap: 2px;
     z-index: 2002;
-    overflow-y: auto;
+    /* The index itself should not scroll; hide any scrollbar artifacts on iPad */
+    overflow-y: hidden;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
 }

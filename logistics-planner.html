@@ -1385,6 +1385,17 @@
                 if (ch >= '0' && ch <= '9') return '#';
                 return '#';
             };
+            const scrollToOffset = (el, top) => {
+                try {
+                    el.scrollTo({ top, behavior: 'smooth' });
+                } catch (_) {
+                    // Fallback for older Safari
+                    el.scrollTop = top;
+                }
+                // Ensure we land exactly at target
+                el.scrollTop = top;
+            };
+
             const updateAlpha = (present) => {
                 alphaIndex.innerHTML = '';
                 letters.forEach(L => {
@@ -1394,13 +1405,16 @@
                     if (!present.has(L)) {
                         btn.setAttribute('disabled', 'true');
                     } else {
-                        btn.addEventListener('click', () => {
+                        const go = (ev) => {
+                            if (ev && ev.preventDefault) ev.preventDefault();
                             const anchor = list.querySelector(`#anchor-overlay-${L}`);
                             if (anchor) {
                                 const top = anchor.offsetTop;
-                                list.scrollTo({ top, behavior: 'smooth' });
+                                scrollToOffset(list, top);
                             }
-                        });
+                        };
+                        btn.addEventListener('click', go);
+                        btn.addEventListener('touchstart', go, { passive: false });
                     }
                     alphaIndex.appendChild(btn);
                 });
@@ -1434,15 +1448,44 @@
                 updateAlpha(present);
             };
 
-            // Compact mode when focusing search (helps avoid keyboard overlap on iPad)
+            // Compact mode and dynamic height when keyboard appears (iPad/tablet)
             const isSmallScreen = window.matchMedia('(max-width: 1024px)').matches;
-            const compactOn = () => { if (isSmallScreen) panel.classList.add('compact'); };
-            const compactOff = () => { panel.classList.remove('compact'); };
-            searchInput.addEventListener('focus', compactOn);
-            searchInput.addEventListener('blur', compactOff);
-            searchInput.addEventListener('input', render);
+            const applyViewportCompact = () => {
+                if (!isSmallScreen) return;
+                panel.classList.add('compact');
+                const vv = window.visualViewport;
+                const margin = 24; // leave space for header
+                let h;
+                if (vv && vv.height) {
+                    h = Math.max(280, Math.floor(vv.height - margin));
+                } else {
+                    h = Math.max(280, Math.floor(window.innerHeight * 0.52));
+                }
+                panel.style.height = h + 'px';
+                panel.style.top = '2%';
+            };
+            const clearViewportCompact = () => {
+                panel.classList.remove('compact');
+                panel.style.height = '';
+                panel.style.top = '';
+            };
+            searchInput.addEventListener('focus', applyViewportCompact);
+            searchInput.addEventListener('input', (e) => { render(); applyViewportCompact(); });
+            searchInput.addEventListener('blur', clearViewportCompact);
 
-            const close = () => { overlay.remove(); panel.remove(); window.__optionsPanel = null; };
+            let vvListener = null;
+            if (window.visualViewport) {
+                vvListener = () => applyViewportCompact();
+                window.visualViewport.addEventListener('resize', vvListener);
+            }
+
+            const close = () => {
+                overlay.remove(); panel.remove();
+                if (window.visualViewport && vvListener) {
+                    window.visualViewport.removeEventListener('resize', vvListener);
+                }
+                window.__optionsPanel = null;
+            };
             clearBtn.addEventListener('click', () => {
                 targetInput.value = '';
                 targetInput.dispatchEvent(new Event('input', { bubbles: true }));
