@@ -28,22 +28,25 @@
                         <polyline points="15,18 9,12 15,6"></polyline>
                     </svg>
                 </button>
-                <input type="date" id="datePicker" class="date-input" aria-label="选择日期">
-                <!-- <span class="current-date" id="currentDate"></span> -->
+                <div class="date-display">
+                    <input type="date" id="datePicker" class="date-input" aria-label="选择日期">
+                    <span class="weekday-display" id="currentDate" aria-live="polite"></span>
+                </div>
                 <button class="btn btn-nav" onclick="navigateDate(1)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="9,18 15,12 9,6"></polyline>
                     </svg>
                 </button>
-            </div>
-            <div class="toolbar-actions" style="display:flex;gap:8px;align-items:center">
-                <div class="zoom-controls" aria-label="缩放">
+                <!-- Moved zoom controls next to the date chooser -->
+                <div class="zoom-controls" aria-label="缩放" style="margin-left: 8px;">
                     <button id="fitAll" class="zoom-btn primary" title="适配整页">Fit All</button>
                     <button id="zoomOut" class="zoom-btn" title="缩小">—</button>
                     <span id="zoomValue" style="min-width:48px;text-align:center">100%</span>
                     <button id="zoomIn" class="zoom-btn" title="放大">＋</button>
                 </div>
             </div>
+            <!-- toolbar-actions container kept minimal; group toggles will be injected next to date via ensureTyreGroupToggle() -->
+            <div class="toolbar-actions" style="display:none"></div>
             <!-- <div class="toolbar-actions">
                 <div class="search-box">
                     <input id="searchInput" class="search-input" type="text" placeholder="搜索啰里/工厂/产品/地方">
@@ -61,11 +64,11 @@
                         <thead>
                             <tr class="trip-group-header">
                                 <th class="frozen-column"></th>
-                                <th class="trip-header" colspan="6">行程 1</th>
-                                <th class="trip-header" colspan="6">行程 2</th>
-                                <th class="trip-header" colspan="6">行程 3</th>
-                                <th class="trip-header" colspan="6">行程 4</th>
-                                <th class="trip-header" colspan="6">行程 5</th>
+                                <th class="trip-header" colspan="7">行程 1</th>
+                                <th class="trip-header" colspan="7">行程 2</th>
+                                <th class="trip-header" colspan="7">行程 3</th>
+                                <th class="trip-header" colspan="7">行程 4</th>
+                                <th class="trip-header" colspan="7">行程 5</th>
                                 <th class="trip-header additional-header" colspan="2">额外费用</th>
                                 <th class="trip-header stats-header" rowspan="2">车税统计</th>
                             </tr>
@@ -78,50 +81,55 @@
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip1-bg" data-column="destination1"><span
                                         class="column-label">地方</span></th>
+                                <th class="trip1-bg" data-column="estimatedTon1"><span class="column-label">预计吨位(吨)</span></th>
                                 <th class="completion-header trip1-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip1-bg" data-column="commission1"><span
                                         class="column-label">车税（RM）</span></th>
-                                <th class="trip1-bg" data-column="remarks1"><span class="column-label">备注</span></th>
+                                <th class="trip1-bg" data-column="remarks1"><span class="column-label">原因</span></th>
                                 <th class="trip-separator sortable trip2-bg" data-column="pickup2"><span
                                         class="column-label">工厂</span></th>
                                 <th class="sortable trip2-bg" data-column="product2"><span
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip2-bg" data-column="destination2"><span
                                         class="column-label">地方</span></th>
+                                <th class="trip2-bg" data-column="estimatedTon2"><span class="column-label">预计吨位(吨)</span></th>
                                 <th class="completion-header trip2-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip2-bg" data-column="commission2"><span
                                         class="column-label">车税（RM）</span></th>
-                                <th class="trip2-bg" data-column="remarks2"><span class="column-label">备注</span></th>
+                                <th class="trip2-bg" data-column="remarks2"><span class="column-label">原因</span></th>
                                 <th class="trip-separator sortable trip3-bg" data-column="pickup3"><span
                                         class="column-label">工厂</span></th>
                                 <th class="sortable trip3-bg" data-column="product3"><span
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip3-bg" data-column="destination3"><span
                                         class="column-label">地方</span></th>
+                                <th class="trip3-bg" data-column="estimatedTon3"><span class="column-label">预计吨位(吨)</span></th>
                                 <th class="completion-header trip3-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip3-bg" data-column="commission3"><span
                                         class="column-label">车税（RM）</span></th>
-                                <th class="trip3-bg" data-column="remarks3"><span class="column-label">备注</span></th>
+                                <th class="trip3-bg" data-column="remarks3"><span class="column-label">原因</span></th>
                                 <th class="trip-separator sortable trip4-bg" data-column="pickup4"><span
                                         class="column-label">工厂</span></th>
                                 <th class="sortable trip4-bg" data-column="product4"><span
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip4-bg" data-column="destination4"><span
                                         class="column-label">地方</span></th>
+                                <th class="trip4-bg" data-column="estimatedTon4"><span class="column-label">预计吨位(吨)</span></th>
                                 <th class="completion-header trip4-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip4-bg" data-column="commission4"><span
                                         class="column-label">车税（RM）</span></th>
-                                <th class="trip4-bg" data-column="remarks4"><span class="column-label">备注</span></th>
+                                <th class="trip4-bg" data-column="remarks4"><span class="column-label">原因</span></th>
                                 <th class="trip-separator sortable trip5-bg" data-column="pickup5"><span
                                         class="column-label">工厂</span></th>
                                 <th class="sortable trip5-bg" data-column="product5"><span
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip5-bg" data-column="destination5"><span
                                         class="column-label">地方</span></th>
+                                <th class="trip5-bg" data-column="estimatedTon5"><span class="column-label">预计吨位(吨)</span></th>
                                 <th class="completion-header trip5-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip5-bg" data-column="commission5"><span
                                         class="column-label">车税（RM）</span></th>
-                                <th class="trip5-bg" data-column="remarks5"><span class="column-label">备注</span></th>
+                                <th class="trip5-bg" data-column="remarks5"><span class="column-label">原因</span></th>
                                 <th class="additional-column sortable" data-column="tol_amount"><span
                                         class="column-label">过路费（RM）</span></th>
                                 <th class="additional-column sortable" data-column="petrol_amount"><span
@@ -191,6 +199,10 @@
                             <div class="stat-value" id="totalTrips">-</div>
                         </div>
                         <div class="stat-card">
+                            <h3>总预计吨位（吨）</h3>
+                            <div class="stat-value" id="totalEstimatedTon">-</div>
+                        </div>
+                        <div class="stat-card">
                             <h3>总车税</h3>
                             <div class="stat-value" id="totalCommission">RM -</div>
                         </div>
@@ -212,6 +224,7 @@
                                     <tr>
                                         <th class="sortable" data-key="plate">啰里 <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="trips">行程数 <span class="sort-indicator"></span></th>
+                                        <th class="sortable" data-key="estimatedTon">预计吨位(吨) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="commission">车税 (RM) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="tollFees">过路费 (RM) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="fuelCosts">油费 (RM) <span class="sort-indicator"></span></th>
@@ -266,7 +279,9 @@
                     <button class="tab-btn" data-tab="tab-product">产品</button>
                     <button class="tab-btn" data-tab="tab-destination">地方</button>
                     <!-- 已移除：车税、默认 -->
+                    <button class="tab-btn" data-tab="tab-ton-tyres">吨位规则(轮胎)</button>
                     <button class="tab-btn" data-tab="tab-colors">颜色</button>
+                    <!-- 已移除：Supabase 连接面板（使用环境变量自动配置） -->
                     <button class="tab-btn" data-tab="tab-reasons">原因</button>
                 </div>
 
@@ -287,6 +302,7 @@
                                 <thead>
                                     <tr>
                                         <th>啰里</th>
+                                        <th>轮胎数</th>
                                         <th>状态</th>
                                         <th>操作</th>
                                     </tr>
@@ -356,6 +372,47 @@
 
                 <!-- 已移除：车税与默认配置面板 -->
 
+                <!-- 吨位规则（按轮胎） -->
+                <div class="tab-panel" id="tab-ton-tyres">
+                    <div class="config-card" style="border:none;padding:0;background:transparent">
+                        <div class="config-grid">
+                            <label>轮胎数
+                                <input type="number" id="inputTyres" placeholder="例如: 10" min="0" step="1">
+                            </label>
+                            <label>产品
+                                <input type="text" id="inputTyreRuleProduct" list="dlTyreProducts" placeholder="选择或输入产品">
+                                <button type="button" class="mini-btn" id="btnPickTyreProduct" title="从列表选择">选项</button>
+                            </label>
+                            <label>地方
+                                <input type="text" id="inputTyreRuleDestination" list="dlTyreDestinations" placeholder="选择或输入地方">
+                                <button type="button" class="mini-btn" id="btnPickTyreDestination" title="从列表选择">选项</button>
+                            </label>
+                            <label>预计吨位(吨)
+                                <input type="number" id="inputTyreRuleTon" placeholder="例如: 28" min="0" step="0.01">
+                            </label>
+                        </div>
+                        <!-- 为产品/地方输入提供下拉选项（与主表一致） -->
+                        <datalist id="dlTyreProducts"></datalist>
+                        <datalist id="dlTyreDestinations"></datalist>
+                        <div class="config-input-row">
+                            <button class="btn btn-primary" id="btnAddTyreTonRule">添加规则</button>
+                            <input type="text" id="searchTyreTonRules" placeholder="搜索规则 (轮胎/产品/地方)">
+                        </div>
+                        <table class="config-table" id="tableTyreTonRules">
+                            <thead>
+                                <tr>
+                                    <th>轮胎数</th>
+                                    <th>产品</th>
+                                    <th>地方</th>
+                                    <th>预计吨位(吨)</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="tab-panel" id="tab-colors">
                     <div class="config-card" style="border:none;padding:0;background:transparent">
                         <div class="config-grid">
@@ -368,6 +425,8 @@
                         <small style="color:#6c757d">设置每个行程列的背景色。</small>
                     </div>
                 </div>
+
+                <!-- 已移除：Supabase 连接设置（改为自动读取环境变量） -->
 
                 <div class="tab-panel" id="tab-reasons">
                     <div class="config-split">
@@ -421,6 +480,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" id="btnSaveConfig">保存配置</button>
@@ -432,107 +492,34 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SheetJS for reading Excel commission rules -->
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- Date utilities extracted for modularization -->
+    <script src="js/date-utils.js"></script>
+    <!-- Dashboard utilities and stats -->
+    <script src="js/dashboard-utils.js"></script>
+    <script src="js/dashboard-stats.js"></script>
+    <!-- Modularized core helpers -->
+        <!-- Optional: local env injection for Supabase URL/anon key. If present, this runs before client init. -->
+        <script src="../env.local.js"></script>
+        <script src="js/supabase-client.js"></script>
+    <script src="js/config-store.js"></script>
+    <script src="js/tyre-rules.js"></script>
     <script>
-        // Supabase client via Vercel env: fetched from /api/config
-        let sb = null;
-        async function initSupabase() {
-            try {
-                // Try serverless config first (Vercel/prod)
-                const res = await fetch('/api/config', { cache: 'no-store' });
-                const env = await res.json();
-                const url = env.SUPABASE_URL || env.url;
-                const key = env.SUPABASE_ANON_KEY || env.key;
-                if (url && key) {
-                    sb = window.supabase.createClient(url, key);
-                    window.__SB = sb;
-                    return;
-                }
-            } catch (_) {
-                /* fall through to local fallback */
-            }
-            // Local fallback: allow testing without serverless /api/config
-            try {
-                const url = window.__SUPABASE_URL || localStorage.getItem('SUPABASE_URL');
-                const key = window.__SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY');
-                if (url && key) {
-                    sb = window.supabase.createClient(url, key);
-                    window.__SB = sb;
-                    console.warn('Supabase initialized from local fallback variables');
-                    return;
-                }
-            } catch (_) { }
-            // No Supabase available; continue in local-only mode
-            sb = null;
-            console.warn('Supabase not configured. Running in local-only mode.');
-        }
+        // Bridge to modularized helpers
+        var sb = window.sb || null;
+        const { initSupabase, loadSupabaseLocalConfig, saveSupabaseLocalConfig, clearSupabaseLocalConfig, testSupabaseConnection } = window;
+        const { defaultConfig, loadConfig, saveConfig, applyTripColors } = window;
+        const { buildLorryTyreCountMap, buildTyreTonRulesMap, getTyreCountForPlate, setTyreCountForPlate, getEstimatedTonFromTyreRules } = window;
         // Runtime dataset. Start empty to avoid resurrecting seeded demo rows on refresh.
         let sampleData = [];
         // Detect if Supabase 'schedules' table has per-trip reason columns (t1_reason ... t5_reason)
         let HAS_REASON_COLUMNS = false;
-
-        // Configuration handling
-        const defaultConfig = {
-            lorryPlates: ["8722", "8915", "4250", "907", "5708"],
-            hiddenLorryPlates: [],
-            archivedLorryPlates: [],
-            // When true, prefer local lorryPlates over DB values on load
-            overrideLorryPlates: false,
-            pickUps: [
-                "", "Highway Quarry", "Majumas Bestari", "RCJ", "LORI ROSAK", "CST",
-                "IJM", "Takali Sunway", "Pepsi", "Hanson Cheras", "Guna"
-            ],
-            products: [
-                "", "3/4 Agg", "C/Sand", "C/run", "Icp kapar", "Kajang Setia Mix",
-                "Langat Tong Ooi", "Kuchai Ytl", "Nilai MDC", "Belakong Ytl", "Setia mix semen",
-                "Subang Gy two", "Puchong ulus wt"
-            ],
-            destinations: [
-                "", "Nilai MDC", "Subang Gy two", "B. Jalil", "Tasik Selatan", "Icp kebun",
-                "kapar k345 lucat", "K345 Lucas", "sps chong", "Kuchai Ytl", "Kajang Setia Mix",
-                "Langat Tong Ooi", "Belakong Ytl", "Setia mix semen", "Suntiga Sg Rasa",
-                "Kapar U wajar", "kapar k345 lucat", "Puchong ulus wt", "K Garden Kapar"
-            ],
-            commissions: ["5.50", "10.00", "10.50", "11.50", "13.50", "14.00"],
-            defaultCompletion: false,
-            tripColors: {
-                trip1: '#e3f2fd',
-                trip2: '#f3e5f5',
-                trip3: '#e8f5e8',
-                trip4: '#fff3e0',
-                trip5: '#fce4ec'
-            }
-        };
-
+        // Detect if Supabase 'schedules' table has per-trip estimated ton columns (t1_estimated_ton ... t5_estimated_ton)
+        let HAS_TON_COLUMNS = false;
         // Page-fit / custom zoom removed — rely on browser default zoom
         const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
         function applyPageFit() { }
         function disablePageFit() { }
-
-        function loadConfig() {
-            try {
-                const raw = localStorage.getItem('nanyang_config');
-                if (!raw) return { ...defaultConfig };
-                const parsed = JSON.parse(raw);
-                return { ...defaultConfig, ...parsed };
-            } catch (e) {
-                console.warn('Failed to load config, using defaults', e);
-                return { ...defaultConfig };
-            }
-        }
-
-        function applyTripColors(cfg) {
-            const colors = (cfg && cfg.tripColors) ? cfg.tripColors : defaultConfig.tripColors;
-            const root = document.documentElement;
-            root.style.setProperty('--trip1-bg', colors.trip1);
-            root.style.setProperty('--trip2-bg', colors.trip2);
-            root.style.setProperty('--trip3-bg', colors.trip3);
-            root.style.setProperty('--trip4-bg', colors.trip4);
-            root.style.setProperty('--trip5-bg', colors.trip5);
-        }
-
-        function saveConfig(cfg) {
-            localStorage.setItem('nanyang_config', JSON.stringify(cfg));
-        }
+        
 
         // Commission rules sources and final map
         // Structure: Map key "pickUp|product|destination" (lowercased, trimmed) -> commission string
@@ -542,6 +529,15 @@
         let COMMISSION_RULES = new Map();
         let EXCEL_COMMISSION_RULES = new Map();
         let SUPABASE_COMMISSION_RULES = new Map();
+
+        // Estimated Ton rules sources and final map
+        // Structure: Map key "pickUp|product|destination" (lowercased, trimmed) -> ton value
+        // TON_RULES value types:
+        // - number/string: flat ton value (e.g., from Excel override)
+        // - array of { ton:number|string, start?:string, end?:string }: date-based ton ranges
+        let TON_RULES = new Map();
+        let EXCEL_TON_RULES = new Map();
+        let SUPABASE_TON_RULES = new Map();
 
         function normalizeKey(pu, pr, de) {
             const norm = (s) => (s || '').toString().trim().toLowerCase();
@@ -646,6 +642,62 @@
             if (!m) return null;
             return String(Number(m[0]).toFixed(2));
         }
+
+        function getEstimatedTonFromRules(pu, pr, de, dateContext = currentDate) {
+            // Strict matching only: if any field is blank, do NOT apply ton
+            if (!TON_RULES || TON_RULES.size === 0) return null;
+            const puN = (pu || '').toString().trim();
+            const prN = (pr || '').toString().trim();
+            const deN = (de || '').toString().trim();
+            if (!puN || !prN || !deN) return null;
+            const key = normalizeKey(pu, pr, de);
+            let val = TON_RULES.get(key);
+            if (val == null) return null; // no match strictly
+            // If val is an array, pick by date range
+            if (Array.isArray(val)) {
+                const d = new Date(dateContext);
+                const iso = (dt) => {
+                    if (!dt) return null;
+                    const t = new Date(dt);
+                    if (Number.isNaN(t.getTime())) return null;
+                    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+                };
+                const curISO = iso(d);
+                // Prefer most recent start date that includes current date
+                const candidates = val.filter(r => {
+                    const sISO = iso(r.start);
+                    const eISO = iso(r.end);
+                    if (!sISO && !eISO) return true; // open-ended
+                    if (sISO && curISO < sISO) return false;
+                    if (eISO && curISO > eISO) return false;
+                    return true;
+                }).sort((a, b) => {
+                    const aS = iso(a.start) || '0000-00-00';
+                    const bS = iso(b.start) || '0000-00-00';
+                    // later start first
+                    return bS.localeCompare(aS);
+                });
+                const chosen = candidates[0];
+                if (!chosen) return null;
+                val = chosen.ton;
+            }
+            // number or string: normalize and return to 2 decimals
+            if (typeof val === 'number' && !isNaN(val)) {
+                return String(Number(val).toFixed(2));
+            }
+            const m = String(val).match(/[0-9]+(?:\.[0-9]+)?/);
+            if (!m) return null;
+            return String(Number(m[0]).toFixed(2));
+        }
+
+        // Tyre-based helpers and maps have been modularized into js/tyre-rules.js
+        // The following global functions are available and used throughout this file:
+        // - buildLorryTyreCountMap()
+        // - buildTyreTonRulesMap()
+        // - getTyreCountForPlate(plate)
+        // - setTyreCountForPlate(plate, tyres)
+        // - getEstimatedTonFromTyreRules(product, destination, tyres, dateContext)
+        // - normalizeTyreKey(tyres, product, destination)
 
         async function loadCommissionRulesFromExcel(url) {
             try {
@@ -789,6 +841,36 @@
             });
         }
 
+        function applyEstimatedTonToSampleData() {
+            if (!Array.isArray(sampleData)) return;
+            sampleData.forEach(row => {
+                [row.trip1, row.trip2, row.trip3, row.trip4, row.trip5].forEach(trip => {
+                    if (!trip) return;
+                    const puBlank = !(trip.pickUp || '').toString().trim();
+                    const prBlank = !(trip.product || '').toString().trim();
+                    const deBlank = !(trip.destination || '').toString().trim();
+                    if (puBlank || prBlank || deBlank) {
+                        trip.estimatedTon = '';
+                        return;
+                    }
+                    // Prefer tyre-based rules when a tyre count exists for the lorry
+                    const tyres = getTyreCountForPlate(row.lorryPlate);
+                    let ton = null;
+                    if (tyres != null) {
+                        ton = getEstimatedTonFromTyreRules(trip.product, trip.destination, tyres, currentDate);
+                    }
+                    if (ton == null || ton === '') {
+                        ton = getEstimatedTonFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+                    }
+                    if (ton != null && ton !== '') {
+                        trip.estimatedTon = ton;
+                    } else {
+                        trip.estimatedTon = '';
+                    }
+                });
+            });
+        }
+
         async function loadCommissionRulesFromSupabase() {
             try {
                 const { data, error } = await sb.from('commission_rules')
@@ -817,6 +899,35 @@
             }
         }
 
+        async function loadTonRulesFromSupabase() {
+            if (!sb) { SUPABASE_TON_RULES = new Map(); return; }
+            try {
+                const { data, error } = await sb.from('ton_rules')
+                    .select('pick_up,product,destination,estimated_ton,active,valid_from,valid_to');
+                if (error) throw error;
+                SUPABASE_TON_RULES = new Map();
+                (data || []).forEach(row => {
+                    const pu = (row.pick_up || '').toString().trim();
+                    const pr = (row.product || '').toString().trim();
+                    const de = (row.destination || '').toString().trim();
+                    const tn = row.estimated_ton;
+                    const active = row.active !== false; // default to true
+                    const start = row.valid_from || null;
+                    const end = row.valid_to || null;
+                    if (!active) return;
+                    if (!pu || !pr || !de) return;
+                    if (tn == null || tn === '') return;
+                    const key = normalizeKey(pu, pr, de);
+                    const arr = SUPABASE_TON_RULES.get(key) || [];
+                    arr.push({ ton: tn, start, end });
+                    SUPABASE_TON_RULES.set(key, arr);
+                });
+            } catch (e) {
+                console.warn('Failed to load ton rules from Supabase', e);
+                SUPABASE_TON_RULES = new Map();
+            }
+        }
+
         function mergeCommissionRulesPreferExcel() {
             // Start with Supabase rules (date-based)
             const merged = new Map(SUPABASE_COMMISSION_RULES);
@@ -827,22 +938,43 @@
             COMMISSION_RULES = merged;
         }
 
+        function mergeTonRulesPreferExcel() {
+            // Start with Supabase ton rules (date-based)
+            const merged = new Map(SUPABASE_TON_RULES);
+            // Override with Excel ton rules: treat as open-ended flat value
+            for (const [k, v] of EXCEL_TON_RULES.entries()) {
+                merged.set(k, [{ ton: v, start: null, end: null }]);
+            }
+            TON_RULES = merged;
+        }
+
         async function supabaseLoadOptions() {
             if (!sb) {
                 // No Supabase: rely on local config/defaults already loaded into CONFIG
                 try {
                     CONFIG = loadConfig();
+                    window.CONFIG = CONFIG;
                     applyTripColors(CONFIG);
                     pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
                     productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
                     destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
                 } catch (e) { console.warn('Local options fallback failed', e); }
+                // Ensure tyre maps are built when operating without Supabase
+                try {
+                    buildLorryTyreCountMap();
+                    buildTyreTonRulesMap();
+                } catch (_) { /* non-critical */ }
                 return;
             }
             try {
-                const [opts, settings] = await Promise.all([
+                const [opts, settings, plates, tyreRules] = await Promise.all([
                     sb.from('config_options').select('category,name,active').eq('active', true),
-                    sb.from('app_settings').select('key,value').in('key', ['defaultCompletion', 'tripColors'])
+                    // Only keep defaultCompletion from app_settings; do not use tripColors/lorryTyreCounts/tyreTonRules
+                    sb.from('app_settings').select('key,value').in('key', ['defaultCompletion']),
+                    // Read tyre counts directly from lorry_plates
+                    sb.from('lorry_plates').select('plate_no,tyre_count'),
+                    // Read tyre-based ton rules directly from ton_rules
+                    sb.from('ton_rules').select('tyre_count,product,destination,estimated_ton,active')
                 ]);
                 const local = loadConfig();
                 const cfg = { ...defaultConfig };
@@ -879,22 +1011,49 @@
                     if (dc && typeof dc.value === 'boolean') {
                         cfg.defaultCompletion = !!dc.value;
                     }
-                    const tc = map.get('tripColors');
-                    if (tc && typeof tc === 'object') {
-                        cfg.tripColors = {
-                            trip1: tc.trip1 || cfg.tripColors.trip1,
-                            trip2: tc.trip2 || cfg.tripColors.trip2,
-                            trip3: tc.trip3 || cfg.tripColors.trip3,
-                            trip4: tc.trip4 || cfg.tripColors.trip4,
-                            trip5: tc.trip5 || cfg.tripColors.trip5
-                        };
-                    }
+                }
+                // Load lorry tyre counts from lorry_plates
+                if (!plates.error && Array.isArray(plates.data)) {
+                    const list = plates.data
+                        .map(row => {
+                            const plate = String(row.plate_no || '').trim();
+                            const tyres = Number.parseInt(row.tyre_count, 10);
+                            if (!plate || Number.isNaN(tyres)) return null;
+                            return { plate, tyres };
+                        })
+                        .filter(Boolean);
+                    cfg.lorryTyreCounts = list;
+                }
+                // Load tyre-based ton rules from ton_rules (where tyre_count is set and rule is active)
+                if (!tyreRules.error && Array.isArray(tyreRules.data)) {
+                    const list = tyreRules.data
+                        .filter(r => r.active !== false && r.tyre_count != null)
+                        .map(r => ({
+                            tyres: Number.parseInt(r.tyre_count, 10),
+                            product: String(r.product || '').trim(),
+                            destination: String(r.destination || '').trim(),
+                            ton: r.estimated_ton != null ? Number.parseFloat(r.estimated_ton) : NaN
+                        }))
+                        .filter(r => Number.isFinite(r.tyres) && r.product && r.destination && Number.isFinite(r.ton));
+                    cfg.tyreTonRules = list;
+                }
+                // Fallback: if DB has no tyre counts, merge from local config
+                if (!Array.isArray(cfg.lorryTyreCounts) || cfg.lorryTyreCounts.length === 0) {
+                    const normalizeTyreRow = (row) => {
+                        if (!row) return null;
+                        const plate = String(row.plate || '').trim();
+                        const tyres = Number.parseInt(row.tyres, 10);
+                        if (!plate || Number.isNaN(tyres)) return null;
+                        return { plate, tyres };
+                    };
+                    cfg.lorryTyreCounts = (local.lorryTyreCounts || []).map(normalizeTyreRow).filter(Boolean);
                 }
                 // Merge in local hidden state so it persists client-side
                 const mergeSet = (a = [], b = []) => Array.from(new Set([...(a || []), ...(b || [])]));
                 cfg.hiddenLorryPlates = mergeSet(cfg.hiddenLorryPlates, local.hiddenLorryPlates);
                 cfg.archivedLorryPlates = [];
                 CONFIG = cfg;
+                window.CONFIG = CONFIG;
                 pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
                 productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
                 destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
@@ -902,11 +1061,17 @@
             } catch (e) {
                 console.warn('Failed to load options from Supabase, using local config', e);
                 CONFIG = loadConfig();
+                window.CONFIG = CONFIG;
                 pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
                 productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
                 destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
                 applyTripColors(CONFIG);
             }
+            // Always rebuild in-memory tyre maps after any CONFIG load/update
+                try {
+                    buildLorryTyreCountMap();
+                    buildTyreTonRulesMap();
+                } catch (_) { /* non-critical */ }
         }
 
         async function supabaseSaveOptions() {
@@ -957,23 +1122,54 @@
                 if (rows.length) {
                     await sb.from('config_options').upsert(rows, { onConflict: 'category,name' });
                 }
+                // Persist only defaultCompletion to app_settings (tripColors/tyre data are no longer stored there)
                 await sb.from('app_settings').upsert(
                     { key: 'defaultCompletion', value: { value: CONFIG.defaultCompletion } },
                     { onConflict: 'key' }
                 );
-                // Persist trip colors
-                await sb.from('app_settings').upsert(
-                    {
-                        key: 'tripColors', value: {
-                            trip1: CONFIG.tripColors?.trip1 || defaultConfig.tripColors.trip1,
-                            trip2: CONFIG.tripColors?.trip2 || defaultConfig.tripColors.trip2,
-                            trip3: CONFIG.tripColors?.trip3 || defaultConfig.tripColors.trip3,
-                            trip4: CONFIG.tripColors?.trip4 || defaultConfig.tripColors.trip4,
-                            trip5: CONFIG.tripColors?.trip5 || defaultConfig.tripColors.trip5
+
+                // Persist lorry tyre counts to lorry_plates
+                try {
+                    const tyreList = (CONFIG.lorryTyreCounts || [])
+                        .map(r => ({ plate_no: String(r.plate || '').trim(), tyre_count: Number.parseInt(r.tyres, 10) }))
+                        .filter(r => r.plate_no && Number.isFinite(r.tyre_count));
+                    for (const chunk of chunkArray(tyreList, 50)) {
+                        await sb.from('lorry_plates').upsert(chunk, { onConflict: 'plate_no' });
+                    }
+                } catch (e) {
+                    console.warn('Failed to persist tyre counts to lorry_plates', e);
+                }
+
+                // Persist tyre-based ton rules to ton_rules with (tyre_count, product, destination)
+                try {
+                    const ruleList = (CONFIG.tyreTonRules || [])
+                        .map(r => ({
+                            tyre_count: Number.parseInt(r.tyres ?? r.tyreCount, 10),
+                            product: String(r.product || '').trim(),
+                            destination: String(r.destination || '').trim(),
+                            estimated_ton: r.ton != null ? Number.parseFloat(r.ton) : NaN
+                        }))
+                        .filter(r => Number.isFinite(r.tyre_count) && r.product && r.destination && Number.isFinite(r.estimated_ton));
+
+                    // Compute deletions: any existing tyre_count/product/destination not present in the current CONFIG should be removed
+                    const existing = await sb.from('ton_rules').select('id,tyre_count,product,destination');
+                    if (!existing.error && Array.isArray(existing.data)) {
+                        const newKey = new Set(ruleList.map(r => `${r.tyre_count}|${r.product}|${r.destination}`));
+                        const toDeleteIds = existing.data
+                            .filter(r => r.tyre_count != null)
+                            .filter(r => !newKey.has(`${Number.parseInt(r.tyre_count, 10)}|${String(r.product || '').trim()}|${String(r.destination || '').trim()}`))
+                            .map(r => r.id)
+                            .filter(id => id != null);
+                        for (const chunk of chunkArray(toDeleteIds, 50)) {
+                            await sb.from('ton_rules').delete().in('id', chunk);
                         }
-                    },
-                    { onConflict: 'key' }
-                );
+                    }
+                    for (const chunk of chunkArray(ruleList, 50)) {
+                        await sb.from('ton_rules').upsert(chunk, { onConflict: 'tyre_count,product,destination' });
+                    }
+                } catch (e) {
+                    console.warn('Failed to persist tyre-based ton rules to ton_rules', e);
+                }
                 return true;
             } catch (e) {
                 console.error('Failed saving options to Supabase', e);
@@ -1124,6 +1320,7 @@
         }
 
         let CONFIG = loadConfig();
+        window.CONFIG = CONFIG;
         // Apply customizable trip colors immediately
         applyTripColors(CONFIG);
         let pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
@@ -1499,6 +1696,33 @@
             actions.__tripBoardAdded = true;
         }
 
+        // Add a single Group-by-Tyres toggle that shows colored group headers like "6 Tyres"
+        function ensureTyreGroupToggle() {
+            const actions = document.querySelector('.date-navigator');
+            if (!actions || actions.__tyreGroupAdded) return;
+            const lbl = document.createElement('label');
+            lbl.style.display = 'inline-flex';
+            lbl.style.alignItems = 'center';
+            lbl.style.gap = '6px';
+            lbl.style.marginLeft = '8px';
+            const cbox = document.createElement('input');
+            cbox.type = 'checkbox';
+            cbox.id = 'toggleGroupByTyres';
+            cbox.checked = localStorage.getItem('group_by_tyres') === '1';
+            const sp = document.createElement('span');
+            sp.textContent = '按胎数组';
+            sp.style.fontSize = '12px';
+            lbl.appendChild(cbox);
+            lbl.appendChild(sp);
+            cbox.addEventListener('change', () => {
+                localStorage.setItem('group_by_tyres', cbox.checked ? '1' : '0');
+                // Always show labels when grouping is enabled; no second toggle
+                populateTable();
+            });
+            actions.appendChild(lbl);
+            actions.__tyreGroupAdded = true;
+        }
+
         function applyTripBoardMode(enabled) {
             const tableContainer = document.querySelector('.table-container');
             const tripContainer = document.getElementById('tripOverviewContainer');
@@ -1598,10 +1822,27 @@
         function createTableRow(data, index) {
             const row = document.createElement('tr');
 
-            // Lorry Plate (Frozen Column)
+            // Lorry Plate (Frozen Column) with tyre badge
             const lorryCell = document.createElement('td');
             lorryCell.className = 'frozen-column';
-            lorryCell.textContent = data.lorryPlate;
+            const lorryWrap = document.createElement('div');
+            lorryWrap.className = 'lorry-plate-cell';
+            const plateSpan = document.createElement('span');
+            plateSpan.className = 'lorry-plate-text';
+            plateSpan.textContent = data.lorryPlate;
+            lorryWrap.appendChild(plateSpan);
+            try {
+                const groupEnabled = localStorage.getItem('group_by_tyres') === '1';
+                const tyreCount = getTyreCountForPlate(String(data.lorryPlate || '').trim());
+                // Hide individual tyre badges when grouping is enabled
+                if (!groupEnabled && tyreCount != null && String(tyreCount).trim() !== '' && Number(tyreCount) > 0) {
+                    const tyreBadge = document.createElement('span');
+                    tyreBadge.className = 'tyre-badge';
+                    tyreBadge.textContent = `${tyreCount} Tyres`;
+                    lorryWrap.appendChild(tyreBadge);
+                }
+            } catch (_) { /* non-critical */ }
+            lorryCell.appendChild(lorryWrap);
             row.appendChild(lorryCell);
 
             // Create cells for all 5 trips
@@ -1612,6 +1853,8 @@
                 let commissionInput;
                 // Reference to completion checkbox so we can reset it when fields change
                 let checkbox;
+                // Read-only Estimated Ton display element reference
+                let tonSpan = null;
                 const updateCommission = () => {
                     const puBlank = !(trip.pickUp || '').toString().trim();
                     const prBlank = !(trip.product || '').toString().trim();
@@ -1632,6 +1875,39 @@
                     }
                     updateRowStatistics(row, data);
                 };
+                // Auto-compute estimated ton from rules (strict 3-field match)
+                const updateEstimatedTon = () => {
+                    const puBlank = !(trip.pickUp || '').toString().trim();
+                    const prBlank = !(trip.product || '').toString().trim();
+                    const deBlank = !(trip.destination || '').toString().trim();
+                    if (!tonSpan) return; // not mounted yet
+                    if (puBlank || prBlank || deBlank) {
+                        trip.estimatedTon = '';
+                        tonSpan.textContent = '';
+                        tonSpan.classList.remove('autofilled');
+                        return;
+                    }
+                    // Prefer tyre-based rules if we have a tyre count recorded for this lorry
+                    const tyres = getTyreCountForPlate(data.lorryPlate);
+                    let tn = null;
+                    if (tyres != null && String(tyres).trim() !== '') {
+                        // getEstimatedTonFromTyreRules expects (product, destination, tyres[, date])
+                        tn = getEstimatedTonFromTyreRules(trip.product, trip.destination, tyres);
+                    }
+                    // Fallback to generic ton rules (excel/supabase) if no tyre rule matched
+                    if (tn == null || tn === '') {
+                        tn = getEstimatedTonFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+                    }
+                    if (tn != null && tn !== '') {
+                        trip.estimatedTon = tn;
+                        tonSpan.textContent = tn;
+                        tonSpan.classList.add('autofilled');
+                    } else {
+                        trip.estimatedTon = '';
+                        tonSpan.textContent = '';
+                        tonSpan.classList.remove('autofilled');
+                    }
+                };
                 // Pick Up column
                 const pickUpCell = document.createElement('td');
                 pickUpCell.className = tripIndex === 0 ? `dropdown-cell trip${tripIndex + 1}-bg` : `dropdown-cell trip-separator trip${tripIndex + 1}-bg`;
@@ -1648,7 +1924,7 @@
                     const filteredProducts = getProductsForPickUp(trip.pickUp);
                     if (filteredProducts.length > 0) {
                         // Update the product dropdown with filtered options
-                        const productInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 3) + ') .combo-input');
+                        const productInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 7 + 3) + ') .combo-input');
                         if (productInput) {
                             // Clear current product selection if it's not in filtered list
                             if (trip.product && !filteredProducts.includes(trip.product)) {
@@ -1664,7 +1940,7 @@
                     const filteredDestinations = getDestinationsForPickUp(trip.pickUp);
                     if (filteredDestinations.length > 0) {
                         // Update the destination dropdown with filtered options
-                        const destinationInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 4) + ') .combo-input');
+                        const destinationInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 7 + 4) + ') .combo-input');
                         if (destinationInput) {
                             // Clear current destination selection if it's not in filtered list
                             if (trip.destination && !filteredDestinations.includes(trip.destination)) {
@@ -1678,6 +1954,7 @@
 
                     queueAutosave();
                     updateCommission();
+                    updateEstimatedTon();
                 }, '工厂');
                 pickUpCell.appendChild(puInput);
                 // Make entire cell clickable to open overlay
@@ -1709,6 +1986,7 @@
                     if (checkbox) checkbox.checked = false;
                     queueAutosave();
                     updateCommission();
+                    updateEstimatedTon();
                 }, '产品');
                 productCell.appendChild(prInput);
                 productCell.addEventListener('click', (ev) => {
@@ -1738,6 +2016,7 @@
                     if (checkbox) checkbox.checked = false;
                     queueAutosave();
                     updateCommission();
+                    updateEstimatedTon();
                 }, '地方');
                 destinationCell.appendChild(deInput);
                 destinationCell.addEventListener('click', (ev) => {
@@ -1746,6 +2025,15 @@
                     }
                 });
                 row.appendChild(destinationCell);
+
+                // Estimated Ton column (read-only, auto from rules)
+                const tonCell = document.createElement('td');
+                tonCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
+                tonSpan = document.createElement('span');
+                tonSpan.className = 'estimated-ton-display';
+                tonSpan.textContent = (trip.estimatedTon != null ? trip.estimatedTon : '');
+                tonCell.appendChild(tonSpan);
+                row.appendChild(tonCell);
 
                 // Completion column
                 const completionCell = document.createElement('td');
@@ -1780,28 +2068,29 @@
                 commissionCell.appendChild(commissionInput);
                 row.appendChild(commissionCell);
 
-                // Remarks column (reason if not delivered)
-                const remarksCell = document.createElement('td');
-                remarksCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
-                const remarksInput = document.createElement('input');
-                remarksInput.type = 'text';
-                remarksInput.placeholder = '';
-                remarksInput.className = 'remarks-input';
-                remarksInput.readOnly = true;
-                remarksInput.style.cursor = 'pointer';
-                remarksInput.value = trip.reason || '';
-                remarksInput.addEventListener('input', () => {
-                    trip.reason = remarksInput.value;
+                // 原因列（未送达时填写原因）
+                const reasonCell = document.createElement('td');
+                reasonCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
+                const reasonInput = document.createElement('input');
+                reasonInput.type = 'text';
+                reasonInput.placeholder = '';
+                reasonInput.className = 'reason-input';
+                reasonInput.readOnly = true;
+                reasonInput.style.cursor = 'pointer';
+                reasonInput.value = trip.reason || '';
+                reasonInput.addEventListener('input', () => {
+                    trip.reason = reasonInput.value;
                     queueAutosave();
                 });
-                remarksInput.addEventListener('click', async () => {
-                    await openReasonSelectionPanel(remarksInput);
+                reasonInput.addEventListener('click', async () => {
+                    await openReasonSelectionPanel(reasonInput);
                 });
-                remarksCell.appendChild(remarksInput);
-                row.appendChild(remarksCell);
+                reasonCell.appendChild(reasonInput);
+                row.appendChild(reasonCell);
 
                 // Initial highlight if rule matches current values
                 updateCommission();
+                updateEstimatedTon();
 
 
             });
@@ -1875,14 +2164,67 @@
                 });
             }
 
-            visibleRows.forEach((data, index) => {
-                const row = createTableRow(data, index);
-                if (Array.isArray(window.RECENT_ADDED_PLATES) && window.RECENT_ADDED_PLATES.includes(data.lorryPlate)) {
-                    row.classList.add('row-added');
-                    setTimeout(() => { row.classList.remove('row-added'); }, 2200);
+            // Optional grouping by tyre count
+            const groupEnabled = localStorage.getItem('group_by_tyres') === '1';
+            // When grouping is enabled, do NOT sort by tyre count; preserve original row order.
+            // Instead, render groups in the order they first appear.
+
+            const headerRow = document.querySelector('#logisticsTable thead tr.columns-header');
+            const colCount = headerRow ? headerRow.children.length : 39;
+            if (!groupEnabled) {
+                // Normal (no grouping) rendering
+                visibleRows.forEach((data, index) => {
+                    const row = createTableRow(data, index);
+                    if (Array.isArray(window.RECENT_ADDED_PLATES) && window.RECENT_ADDED_PLATES.includes(data.lorryPlate)) {
+                        row.classList.add('row-added');
+                        setTimeout(() => { row.classList.remove('row-added'); }, 2200);
+                    }
+                    tableBody.appendChild(row);
+                });
+            } else {
+                // Grouping by tyre count without sorting
+                const groups = new Map();
+                const order = [];
+                visibleRows.forEach((data) => {
+                    const tyres = getTyreCountForPlate(data.lorryPlate);
+                    const key = tyres == null ? 'Without Tyres' : `${tyres} Tyres`;
+                    if (!groups.has(key)) {
+                        groups.set(key, { rows: [], tyres });
+                        order.push(key);
+                    }
+                    groups.get(key).rows.push(data);
+                });
+                for (const key of order) {
+                    const grp = groups.get(key);
+                    const tyres = grp.tyres;
+                    const grpTr = document.createElement('tr');
+                    let tyreClass = 'tyre-group-unknown';
+                    if (typeof tyres === 'number') {
+                        if (tyres <= 6) tyreClass = 'tyre-group-6';
+                        else if (tyres <= 8) tyreClass = 'tyre-group-8';
+                        else if (tyres <= 10) tyreClass = 'tyre-group-10';
+                        else if (tyres <= 12) tyreClass = 'tyre-group-12';
+                        else tyreClass = 'tyre-group-16';
+                    }
+                    grpTr.className = `tyre-group-row ${tyreClass}`;
+                    const grpTd = document.createElement('td');
+                    grpTd.colSpan = colCount;
+                    const chip = document.createElement('span');
+                    chip.className = 'tyre-group-chip';
+                    chip.textContent = key;
+                    grpTd.appendChild(chip);
+                    grpTr.appendChild(grpTd);
+                    tableBody.appendChild(grpTr);
+                    grp.rows.forEach((data, index) => {
+                        const row = createTableRow(data, index);
+                        if (Array.isArray(window.RECENT_ADDED_PLATES) && window.RECENT_ADDED_PLATES.includes(data.lorryPlate)) {
+                            row.classList.add('row-added');
+                            setTimeout(() => { row.classList.remove('row-added'); }, 2200);
+                        }
+                        tableBody.appendChild(row);
+                    });
                 }
-                tableBody.appendChild(row);
-            });
+            }
         }
 
         function addRow(selectedLorryPlate = null) {
@@ -1892,42 +2234,49 @@
                     pickUp: "",
                     product: "",
                     destination: "",
+                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
-                    remarks: ""
+                    reason: ""
                 },
                 trip2: {
                     pickUp: "",
                     product: "",
                     destination: "",
+                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
-                    remarks: ""
+                    reason: ""
                 },
                 trip3: {
                     pickUp: "",
                     product: "",
                     destination: "",
+                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
-                    remarks: ""
+                    reason: ""
                 },
                 trip4: {
                     pickUp: "",
                     product: "",
                     destination: "",
+                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
-                    remarks: ""
+                    reason: ""
                 },
                 trip5: {
                     pickUp: "",
                     product: "",
                     destination: "",
+                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
-                    remarks: ""
-                }
+                    reason: ""
+                },
+                tol_amount: "",
+                petrol_amount: ""
             };
 
             sampleData.push(newData);
@@ -1979,6 +2328,11 @@
             } catch (_) { return null; }
         }
 
+        // 公开本地存取接口，供仪表盘统计在 Supabase 不可用时回退使用
+        window.localSaveSchedule = window.localSaveSchedule || localSaveSchedule;
+        window.localLoadSchedule = window.localLoadSchedule || localLoadSchedule;
+        window.formatDateKey = window.formatDateKey || formatDateKey;
+
         // Visual feedback helpers
         function showToast(message, type = 'info') {
             const ctr = document.getElementById('toastContainer');
@@ -2020,40 +2374,9 @@
             } catch (_) { /* non-critical */ }
         }
 
-        // Date navigation functionality
-        let currentDate = new Date();
+        // Date navigation functionality moved to js/date-utils.js
         let SEARCH_KEYWORD = '';
-
-        function formatDate(date) {
-            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            const dayName = days[date.getDay()];
-
-            return `${day}-${month}-${year} (${dayName})`;
-        }
-
-        function formatDateISO(date) {
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${year}-${month}-${day}`;
-        }
-
-        function updateDateDisplay() {
-            const dateElement = document.getElementById('currentDate');
-            if (dateElement) dateElement.textContent = formatDate(currentDate);
-            const picker = document.getElementById('datePicker');
-            if (picker) picker.value = formatDateISO(currentDate);
-        }
-
-        async function navigateDate(direction) {
-            currentDate.setDate(currentDate.getDate() + direction);
-            updateDateDisplay();
-            await supabaseLoadSchedule(currentDate);
-            populateTable();
-        }
+        // Use global date utils provided by js/date-utils.js
 
         // Robust boolean parser for values returned from Supabase
         function parseBoolean(v) {
@@ -2091,8 +2414,38 @@
         // Load schedule rows for a given date from Supabase
         async function supabaseLoadSchedule(date) {
             if (!sb) {
+                // Local-only mode: load from localStorage; if empty, seed from CONFIG.lorryPlates
                 const local = localLoadSchedule(date);
-                sampleData = Array.isArray(local) ? local : [];
+                if (Array.isArray(local) && local.length) {
+                    // Normalize older saved data that may still use `remarks` into `reason`
+                    sampleData = local.map(r => {
+                        const nr = { ...r };
+                        for (let i = 1; i <= 5; i++) {
+                            const k = 'trip' + i;
+                            if (nr[k]) {
+                                nr[k].reason = (typeof nr[k].reason === 'string' && nr[k].reason)
+                                    ? nr[k].reason
+                                    : (typeof nr[k].remarks === 'string' ? nr[k].remarks : '');
+                            }
+                        }
+                        return nr;
+                    });
+                } else {
+                    const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+                    const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+                    const plates = (CONFIG.lorryPlates || []).filter(p => !hiddenSet.has(p) && !archivedSet.has(p));
+                    sampleData = plates.map(plate => ({
+                        lorryPlate: plate,
+                        trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        tol_amount: '', petrol_amount: ''
+                    }));
+                    // Persist seeded rows so subsequent loads show data
+                    try { localSaveSchedule(date, sampleData); } catch (_) { /* non-critical */ }
+                }
                 return;
             }
             try {
@@ -2118,14 +2471,16 @@
                 if (data && data.length) {
                     // Detect remarks columns presence on the schedules table
                     HAS_REASON_COLUMNS = ['t1_reason', 't2_reason', 't3_reason', 't4_reason', 't5_reason'].some(k => k in (data[0] || {}));
+                    // Detect estimated ton columns presence on the schedules table
+                    HAS_TON_COLUMNS = ['t1_estimated_ton', 't2_estimated_ton', 't3_estimated_ton', 't4_estimated_ton', 't5_estimated_ton'].some(k => k in (data[0] || {}));
                     const filtered = allowSet.size === 0 ? [] : data.filter(s => allowSet.has(String(s.lorry_plate)));
                     sampleData = filtered.map(s => ({
                         lorryPlate: s.lorry_plate,
-                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', reason: s.t1_reason || '' },
-                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', reason: s.t2_reason || '' },
-                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', reason: s.t3_reason || '' },
-                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', reason: s.t4_reason || '' },
-                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', reason: s.t5_reason || '' },
+                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t1_estimated_ton != null && Number(s.t1_estimated_ton) > 0 ? String(Number(s.t1_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', reason: s.t1_reason || '' },
+                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t2_estimated_ton != null && Number(s.t2_estimated_ton) > 0 ? String(Number(s.t2_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', reason: s.t2_reason || '' },
+                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t3_estimated_ton != null && Number(s.t3_estimated_ton) > 0 ? String(Number(s.t3_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', reason: s.t3_reason || '' },
+                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t4_estimated_ton != null && Number(s.t4_estimated_ton) > 0 ? String(Number(s.t4_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', reason: s.t4_reason || '' },
+                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t5_estimated_ton != null && Number(s.t5_estimated_ton) > 0 ? String(Number(s.t5_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', reason: s.t5_reason || '' },
                         tol_amount: s.tol_amount != null && Number(s.tol_amount) > 0 ? String(Number(s.tol_amount).toFixed(2)) : '',
                         petrol_amount: s.petrol_amount != null && Number(s.petrol_amount) > 0 ? String(Number(s.petrol_amount).toFixed(2)) : ''
                     }));
@@ -2145,18 +2500,18 @@
                                 if (!existing.has(String(p))) {
                                     sampleData.push({
                                         lorryPlate: p,
-                                        trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                                        trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                                        trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                                        trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                                        trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
+                                        trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
                                         tol_amount: '',
                                         petrol_amount: ''
                                     });
                                 }
                             });
                     } catch (_) { /* non-critical */ }
-                    // Merge local cached edits (e.g., remarks) on top of DB data
+                    // Merge local cached edits (e.g., reason) on top of DB data
                     const local = localLoadSchedule(date);
                     if (Array.isArray(local) && local.length) {
                         const map = new Map(local.map(r => [String(r.lorryPlate), r]));
@@ -2165,8 +2520,11 @@
                             if (!lr) return r;
                             for (let i = 1; i <= 5; i++) {
                                 const k = 'trip' + i;
-                                if (lr[k] && typeof lr[k].remarks === 'string') {
-                                    r[k].remarks = lr[k].remarks || r[k].remarks || '';
+                                if (lr[k]) {
+                                    const localReason = typeof lr[k].reason === 'string' ? lr[k].reason : (typeof lr[k].remarks === 'string' ? lr[k].remarks : '');
+                                    if (typeof localReason === 'string') {
+                                        r[k].reason = localReason || r[k].reason || '';
+                                    }
                                 }
                             }
                             return r;
@@ -2180,11 +2538,11 @@
                         const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
                         sampleData = activePlates.filter(p => !hiddenSet.has(p)).map(plate => ({
                             lorryPlate: plate,
-                            trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
+                            trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
                         }));
                         // Apply local cache if available
                         const local = localLoadSchedule(date);
@@ -2195,8 +2553,11 @@
                                 if (!lr) return r;
                                 for (let i = 1; i <= 5; i++) {
                                     const k = 'trip' + i;
-                                    if (lr[k] && typeof lr[k].remarks === 'string') {
-                                        r[k].remarks = lr[k].remarks || r[k].remarks || '';
+                                    if (lr[k]) {
+                                        const localReason = typeof lr[k].reason === 'string' ? lr[k].reason : (typeof lr[k].remarks === 'string' ? lr[k].remarks : '');
+                                        if (typeof localReason === 'string') {
+                                            r[k].reason = localReason || r[k].reason || '';
+                                        }
                                     }
                                 }
                                 return r;
@@ -2206,11 +2567,11 @@
                         // Fallback to local CONFIG list if DB load fails
                         sampleData = (CONFIG.lorryPlates || []).filter(p => !((CONFIG.hiddenLorryPlates || []).includes(p))).map(plate => ({
                             lorryPlate: plate,
-                            trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
-                            trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', remarks: '' },
+                            trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
                         }));
                     }
                 }
@@ -2379,6 +2740,42 @@
                 .forEach(e => {
                     const tr = document.createElement('tr');
                     const tdPlate = document.createElement('td'); tdPlate.textContent = e.plate; tr.appendChild(tdPlate);
+                    // Tyre Count editable input
+                    const tdTyres = document.createElement('td');
+                    const tyresInput = document.createElement('input');
+                    tyresInput.type = 'number'; tyresInput.min = '0'; tyresInput.step = '1';
+                    const existingTyres = getTyreCountForPlate(e.plate);
+                    tyresInput.value = existingTyres != null ? String(existingTyres) : '';
+                    tyresInput.placeholder = '—';
+                    tyresInput.className = 'mini-input';
+                    tyresInput.addEventListener('input', () => {
+                        setTyreCountForPlate(e.plate, tyresInput.value);
+                        markUnsaved();
+                        // Refresh main table estimated tons immediately to reflect tyre changes
+                        try {
+                            applyEstimatedTonToSampleData();
+                            populateTable();
+                        } catch (_) { }
+                    });
+                    // Persist tyre count edits when the input is committed (on change/blur)
+                    // Saves locally for resilience and to Supabase if connected
+                    tyresInput.addEventListener('change', async () => {
+                        try {
+                            saveConfig(CONFIG);
+                            if (sb) {
+                                const v = Number.parseInt(tyresInput.value, 10);
+                                if (Number.isFinite(v)) {
+                                    await sb.from('lorry_plates').upsert({ plate_no: e.plate, tyre_count: v }, { onConflict: 'plate_no' });
+                                    // Also reflect in-memory map immediately
+                                    setTyreCountForPlate(e.plate, v);
+                                    try { buildLorryTyreCountMap(); applyEstimatedTonToSampleData(); populateTable(); } catch (_) {}
+                                    showToast('已保存轮胎数到 Supabase', 'success');
+                                }
+                            }
+                        } catch (_) { /* non-critical */ }
+                    });
+                    tdTyres.appendChild(tyresInput);
+                    tr.appendChild(tdTyres);
                     const tdStatus = document.createElement('td'); tdStatus.textContent = e.status; tr.appendChild(tdStatus);
                     const tdAct = document.createElement('td'); tdAct.className = 'config-actions';
 
@@ -2435,6 +2832,55 @@
                     tr.appendChild(tdAct);
                     tbody.appendChild(tr);
                 });
+        }
+
+        // Tyre-based ton rules table in Config modal
+        function renderTyreTonRulesTable(filter = '') {
+            const table = document.getElementById('tableTyreTonRules');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            const rules = Array.isArray(CONFIG.tyreTonRules) ? CONFIG.tyreTonRules : [];
+            const q = String(filter || '').trim().toLowerCase();
+
+            rules.forEach((rule, idx) => {
+                const tyreStr = String(rule.tyreCount ?? rule.tyres ?? '').trim();
+                const prodStr = String(rule.product || '').trim();
+                const destStr = String(rule.destination || '').trim();
+                const tonVal = rule.ton;
+                const match = !q
+                    || tyreStr.toLowerCase().includes(q)
+                    || prodStr.toLowerCase().includes(q)
+                    || destStr.toLowerCase().includes(q);
+                if (!match) return;
+
+                const tr = document.createElement('tr');
+                tr.dataset.index = String(idx);
+                const tdTyre = document.createElement('td'); tdTyre.textContent = tyreStr; tr.appendChild(tdTyre);
+                const tdProd = document.createElement('td'); tdProd.textContent = prodStr; tr.appendChild(tdProd);
+                const tdDest = document.createElement('td'); tdDest.textContent = destStr; tr.appendChild(tdDest);
+                const tdTon = document.createElement('td');
+                const tonInput = document.createElement('input');
+                tonInput.type = 'number';
+                tonInput.value = tonVal != null ? String(tonVal) : '';
+                tonInput.placeholder = '—';
+                tonInput.className = 'mini-input';
+                tonInput.addEventListener('input', () => {
+                    const v = parseFloat(tonInput.value);
+                    if (!isNaN(v)) {
+                        CONFIG.tyreTonRules[idx].ton = v;
+                        markUnsaved();
+                        try { buildTyreTonRulesMap(); } catch (_) { }
+                    }
+                });
+                tdTon.appendChild(tonInput);
+                tr.appendChild(tdTon);
+                const tdAct = document.createElement('td'); tdAct.className = 'config-actions';
+                const btnDel = document.createElement('button'); btnDel.className = 'mini-btn btn-delete-tyre-rule'; btnDel.textContent = '删除'; btnDel.dataset.index = String(idx);
+                tdAct.appendChild(btnDel);
+                tr.appendChild(tdAct);
+                tbody.appendChild(tr);
+            });
         }
 
         async function toggleHidePlate(plate, hide) {
@@ -2533,9 +2979,34 @@
             console.log('About to render tables');
             const f = document.getElementById('searchLorry')?.value || '';
             renderLorryTable(f);
+            // Also render deleted plates list if table exists
+            renderDeletedLorryTable(f);
             renderItemsTable('tablePickUp', CONFIG.pickUps, document.getElementById('searchPickUp')?.value || '');
             renderItemsTable('tableProduct', CONFIG.products, document.getElementById('searchProduct')?.value || '');
             renderItemsTable('tableDestination', CONFIG.destinations, document.getElementById('searchDestination')?.value || '');
+            // Render tyre-ton rules table
+            renderTyreTonRulesTable(document.getElementById('searchTyreTonRules')?.value || '');
+            // Populate datalists for 产品/地方 选择（与主表选项一致）
+            try {
+                const dlPr = document.getElementById('dlTyreProducts');
+                const dlDe = document.getElementById('dlTyreDestinations');
+                if (dlPr) {
+                    dlPr.innerHTML = '';
+                    (productOptions || []).forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = String(v || '').trim();
+                        if (opt.value) dlPr.appendChild(opt);
+                    });
+                }
+                if (dlDe) {
+                    dlDe.innerHTML = '';
+                    (destinationOptions || []).forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = String(v || '').trim();
+                        if (opt.value) dlDe.appendChild(opt);
+                    });
+                }
+            } catch (_) { /* non-critical */ }
 
             // 车税与默认设置已移除
             // Prefill color inputs
@@ -2553,6 +3024,16 @@
 
             console.log('About to call showTab');
             showTab('tab-lorry');
+            // Prefill Supabase settings panel
+            try {
+                const { url, key } = loadSupabaseLocalConfig();
+                const urlInput = document.getElementById('inputSupabaseUrl');
+                const keyInput = document.getElementById('inputSupabaseAnonKey');
+                const statusEl = document.getElementById('supabaseStatus');
+                if (urlInput) urlInput.value = url;
+                if (keyInput) keyInput.value = key;
+                if (statusEl) statusEl.textContent = sb ? '连接状态：已连接' : (url && key ? '连接状态：待测试' : '连接状态：未配置');
+            } catch (_) { }
             console.log('openConfig completed');
         }
 
@@ -2561,6 +3042,7 @@
             if (!window.CONFIG_MODAL_SAVED && window.CONFIG_SNAPSHOT) {
                 try {
                     CONFIG = JSON.parse(JSON.stringify(window.CONFIG_SNAPSHOT));
+                    window.CONFIG = CONFIG;
                     saveConfig(CONFIG);
                     populateTable();
                 } catch (_) { }
@@ -2581,10 +3063,57 @@
                     window.location.assign(target);
                 });
             }
+            // Supabase settings actions inside config modal
+            const btnSaveSb = document.getElementById('btnSaveSupabaseSettings');
+            if (btnSaveSb) btnSaveSb.addEventListener('click', async () => {
+                const url = (document.getElementById('inputSupabaseUrl')?.value || '').trim();
+                const key = (document.getElementById('inputSupabaseAnonKey')?.value || '').trim();
+                const statusEl = document.getElementById('supabaseStatus');
+                if (!url || !key) {
+                    if (statusEl) statusEl.textContent = '连接状态：未配置（请填写 URL 和 匿名 Key）';
+                    showToast('请填写 Supabase URL 和 匿名 Key', 'danger');
+                    return;
+                }
+                const saved = saveSupabaseLocalConfig(url, key);
+                if (statusEl) statusEl.textContent = saved ? '连接状态：已保存，测试中…' : '连接状态：保存失败';
+                if (!saved) return;
+                try {
+                    const { ok, error } = await testSupabaseConnection(url, key);
+                    if (ok) {
+                        if (statusEl) statusEl.textContent = '连接状态：已连接（测试通过）';
+                        showToast('Supabase 连接测试成功', 'success');
+                    } else {
+                        if (statusEl) statusEl.textContent = '连接状态：测试失败';
+                        showToast(`连接测试失败：${error?.message || error || '未知错误'}`, 'danger');
+                    }
+                } catch (e) {
+                    if (statusEl) statusEl.textContent = '连接状态：测试失败';
+                    showToast(`连接测试失败：${e?.message || '未知错误'}`, 'danger');
+                }
+            });
+            const btnClearSb = document.getElementById('btnClearSupabaseSettings');
+            if (btnClearSb) btnClearSb.addEventListener('click', () => {
+                const statusEl = document.getElementById('supabaseStatus');
+                const ok = clearSupabaseLocalConfig();
+                if (statusEl) statusEl.textContent = ok ? '连接状态：未配置（已清除）' : '连接状态：清除失败';
+                if (ok) showToast('已清除本地 Supabase 设置', 'success');
+            });
             const btnCloseCfg = document.getElementById('btnCloseConfig');
             if (btnCloseCfg) btnCloseCfg.addEventListener('click', closeConfig);
             const btnSaveCfg = document.getElementById('btnSaveConfig');
             if (btnSaveCfg) btnSaveCfg.addEventListener('click', async () => {
+                // 保存 Supabase 设置（本地）
+                const urlInput = document.getElementById('inputSupabaseUrl');
+                const keyInput = document.getElementById('inputSupabaseAnonKey');
+                if (urlInput && keyInput) {
+                    const url = (urlInput.value || '').trim();
+                    const key = (keyInput.value || '').trim();
+                    if (url && key) {
+                        const ok = saveSupabaseLocalConfig(url, key);
+                        const statusEl = document.getElementById('supabaseStatus');
+                        if (statusEl) statusEl.textContent = ok ? '连接状态：已保存，待测试' : '连接状态：保存失败';
+                    }
+                }
                 // 默认完成设置已移除
                 // Save color selections
                 const tcs = CONFIG.tripColors || { ...defaultConfig.tripColors };
@@ -2668,12 +3197,91 @@
             const btnResetCfg = document.getElementById('btnResetConfig');
             if (btnResetCfg) btnResetCfg.addEventListener('click', () => {
                 CONFIG = { ...defaultConfig };
+                window.CONFIG = CONFIG;
                 saveConfig(CONFIG);
                 openConfig();
             });
 
             // Clear all lorry plates (and today's schedules) with one click
             // Removed bulk delete and clear-all controls
+
+            // Tyre ton rules management
+            // Quick-pick buttons: open the same overlay option chooser as main table
+            const btnPickTyreProduct = document.getElementById('btnPickTyreProduct');
+            const btnPickTyreDestination = document.getElementById('btnPickTyreDestination');
+            const inputTyreRuleProduct = document.getElementById('inputTyreRuleProduct');
+            const inputTyreRuleDestination = document.getElementById('inputTyreRuleDestination');
+            if (btnPickTyreProduct) btnPickTyreProduct.addEventListener('click', () => {
+                if (inputTyreRuleProduct) openOptionsPanel('产品', productOptions, inputTyreRuleProduct);
+            });
+            if (btnPickTyreDestination) btnPickTyreDestination.addEventListener('click', () => {
+                if (inputTyreRuleDestination) openOptionsPanel('地方', destinationOptions, inputTyreRuleDestination);
+            });
+            // Press Enter in any input to quickly add the rule
+            ['inputTyres', 'inputTyreRuleProduct', 'inputTyreRuleDestination', 'inputTyreRuleTon'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const btn = document.getElementById('btnAddTyreTonRule');
+                        if (btn) btn.click();
+                    }
+                });
+            });
+            const btnAddTyreTonRule = document.getElementById('btnAddTyreTonRule');
+            if (btnAddTyreTonRule) {
+                btnAddTyreTonRule.addEventListener('click', () => {
+                    const countRaw = document.getElementById('inputTyres')?.value || '';
+                    const product = (document.getElementById('inputTyreRuleProduct')?.value || '').trim();
+                    const destination = (document.getElementById('inputTyreRuleDestination')?.value || '').trim();
+                    const tonRaw = document.getElementById('inputTyreRuleTon')?.value || '';
+                    const count = countRaw.trim();
+                    const ton = parseFloat(tonRaw);
+                    if (!count || !product || !destination || isNaN(ton)) {
+                        showToast('请填写完整的轮胎规则（轮胎/产品/地方/吨数）', 'danger');
+                        return;
+                    }
+                    if (!Array.isArray(CONFIG.tyreTonRules)) CONFIG.tyreTonRules = [];
+                    // 如果已存在相同(轮胎/产品/地方)规则，则更新吨位而不是重复添加
+                    const low = (s) => String(s || '').trim().toLowerCase();
+                    const existingIdx = CONFIG.tyreTonRules.findIndex(r =>
+                        low(r.product) === low(product) &&
+                        low(r.destination) === low(destination) &&
+                        String(r.tyres ?? r.tyreCount ?? '').trim() === String(count)
+                    );
+                    if (existingIdx >= 0) {
+                        CONFIG.tyreTonRules[existingIdx].ton = ton;
+                        CONFIG.tyreTonRules[existingIdx].tyres = count; // 规范化属性名
+                        showToast('已更新现有轮胎规则的吨位', 'success');
+                    } else {
+                        // Store using canonical property 'tyres' so map builder picks it up
+                        CONFIG.tyreTonRules.push({ tyres: count, product, destination, ton });
+                        showToast('已添加轮胎吨位规则', 'success');
+                    }
+                    // Rebuild in-memory map immediately so main table can reflect new rule
+                    try { buildTyreTonRulesMap(); } catch (_) { }
+                    // Clear inputs
+                    const ids = ['inputTyres', 'inputTyreRuleProduct', 'inputTyreRuleDestination', 'inputTyreRuleTon'];
+                    ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                    renderTyreTonRulesTable(document.getElementById('searchTyreTonRules')?.value || '');
+                    markUnsaved();
+                });
+            }
+            const searchTyre = document.getElementById('searchTyreTonRules');
+            if (searchTyre) searchTyre.addEventListener('input', () => renderTyreTonRulesTable(searchTyre.value));
+            const tableTyre = document.getElementById('tableTyreTonRules');
+            if (tableTyre) tableTyre.addEventListener('click', (e) => {
+                const tgt = e.target;
+                if (tgt && tgt.classList && tgt.classList.contains('btn-delete-tyre-rule')) {
+                    const idxStr = tgt.dataset.index;
+                    const idx = parseInt(idxStr, 10);
+                    if (!isNaN(idx) && CONFIG.tyreTonRules && CONFIG.tyreTonRules[idx]) {
+                        CONFIG.tyreTonRules.splice(idx, 1);
+                        renderTyreTonRulesTable(document.getElementById('searchTyreTonRules')?.value || '');
+                        markUnsaved();
+                        try { buildTyreTonRulesMap(); } catch (_) { }
+                    }
+                }
+            });
 
             // Tabs
             document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
@@ -2816,6 +3424,14 @@
                         payload.t4_reason = row.trip4.reason || null;
                         payload.t5_reason = row.trip5.reason || null;
                     }
+                    // Conditionally include estimated ton fields if the table supports them
+                    if (HAS_TON_COLUMNS) {
+                        payload.t1_estimated_ton = row.trip1.estimatedTon ? Number(row.trip1.estimatedTon) : null;
+                        payload.t2_estimated_ton = row.trip2.estimatedTon ? Number(row.trip2.estimatedTon) : null;
+                        payload.t3_estimated_ton = row.trip3.estimatedTon ? Number(row.trip3.estimatedTon) : null;
+                        payload.t4_estimated_ton = row.trip4.estimatedTon ? Number(row.trip4.estimatedTon) : null;
+                        payload.t5_estimated_ton = row.trip5.estimatedTon ? Number(row.trip5.estimatedTon) : null;
+                    }
                     await sb.from('schedules').upsert(payload, { onConflict: 'work_date,lorry_plate' });
                 }
                 // Autosave succeeded
@@ -2878,28 +3494,42 @@
 
             // Ensure Supabase client is ready (with graceful local fallback)
             await initSupabase();
+            // IMPORTANT: keep local `sb` in sync with the global window.sb that initSupabase() sets
+            // Without this, all subsequent `if (sb)` checks and sb.from(...) calls would see a stale null
+            // and skip loading/saving (including lorry tyre counts), causing edits not to persist.
+            try { sb = window.sb || sb; } catch (_) { /* noop */ }
 
             if (sb) {
                 await supabaseLoadOptions();
-                // Load any existing rules from Supabase first
+                // Load any existing rules from Supabase first (commission + ton)
                 await loadCommissionRulesFromSupabase();
+                await loadTonRulesFromSupabase();
+                // Merge Excel overrides if present
                 mergeCommissionRulesPreferExcel();
+                mergeTonRulesPreferExcel();
+                // Apply to in-memory data in case there are preloaded rows
                 applyCommissionToSampleData();
+                applyEstimatedTonToSampleData();
                 // Load reason data for reason selection popup
                 await loadReasonGroups();
                 await loadReasons();
                 await supabaseLoadSchedule(currentDate);
             } else {
-                // Local-only: use defaults and any excel commission; no DB schedule
+                // Local-only: merge Excel overrides if present; no DB schedule
                 mergeCommissionRulesPreferExcel();
+                mergeTonRulesPreferExcel();
+                await supabaseLoadSchedule(currentDate);
                 applyCommissionToSampleData();
+                applyEstimatedTonToSampleData();
             }
-            // After loading schedule rows from DB, apply commission based on active rules again
+            // After loading schedule rows from DB, apply commission/ton based on active rules again
             applyCommissionToSampleData();
+            applyEstimatedTonToSampleData();
             populateTable();
             updateDateDisplay();
             wireConfigEvents();
             ensureTripBoardToggle();
+            ensureTyreGroupToggle();
             // Restore last mode
             const startInBoard = localStorage.getItem('trip_board_mode') === '1';
             applyTripBoardMode(startInBoard);
@@ -3610,10 +4240,11 @@
         }
 
         // 仪表盘功能
-        let dashboardChart = null;
-        let currentPeriod = 'month';
-        let dashboardCurrentDate = new Date();
-        let vehicleSort = { key: null, direction: 'none' };
+        // 将关键状态挂到 window，确保在独立的 JS 文件（dashboard-utils.js / dashboard-stats.js）中可访问
+        window.dashboardChart = window.dashboardChart || null;
+        window.currentPeriod = window.currentPeriod || (localStorage.getItem('dashboard_period') || 'month');
+        window.dashboardCurrentDate = window.dashboardCurrentDate || new Date();
+        window.vehicleSort = window.vehicleSort || { key: null, direction: 'none' };
         let lastVehicleData = [];
         let destSort = { key: 'daysSince', direction: 'desc' };
         let lastDestinationData = [];
@@ -3652,18 +4283,19 @@
             // 设置默认日期
             const dateInput = document.getElementById('periodDate');
             if (dateInput) {
-                dateInput.value = dashboardCurrentDate.toISOString().split('T')[0];
+                dateInput.value = window.dashboardCurrentDate.toISOString().split('T')[0];
             }
 
             // 设置周期选择器事件
             const periodSelect = document.getElementById('periodSelect');
             if (periodSelect) {
                 // 读取初始选中的值
-                currentPeriod = periodSelect.value;
+                window.currentPeriod = periodSelect.value;
 
                 // 添加变化事件监听器
                 periodSelect.addEventListener('change', async (e) => {
-                    currentPeriod = e.target.value;
+                    window.currentPeriod = e.target.value;
+                    try { localStorage.setItem('dashboard_period', window.currentPeriod); } catch (_) {}
                     await refreshDashboard();
                 });
             }
@@ -3671,7 +4303,14 @@
             // 设置日期变化事件
             if (dateInput) {
                 dateInput.addEventListener('change', async (e) => {
-                    dashboardCurrentDate = new Date(e.target.value);
+                    // 兼容 Safari/本地化显示，强制解析为 YYYY-MM-DD
+                    // 如果用户输入为 dd/mm/yyyy，转换为 yyyy-mm-dd
+                    let val = String(e.target.value || '').trim();
+                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+                        const [dd, mm, yyyy] = val.split('/');
+                        val = `${yyyy}-${mm}-${dd}`;
+                    }
+                    window.dashboardCurrentDate = new Date(val);
                     await refreshDashboard();
                 });
             }
@@ -3702,20 +4341,20 @@
 
         // 控制统计周期的上一期/下一期导航
         async function navigateDashboardPeriod(direction) {
-            const d = new Date(dashboardCurrentDate);
-            if (currentPeriod === 'week') {
+            const d = new Date(window.dashboardCurrentDate);
+            if (window.currentPeriod === 'week') {
                 d.setDate(d.getDate() + (7 * direction));
-            } else if (currentPeriod === 'month') {
+            } else if (window.currentPeriod === 'month') {
                 d.setMonth(d.getMonth() + direction);
-            } else if (currentPeriod === 'year') {
+            } else if (window.currentPeriod === 'year') {
                 d.setFullYear(d.getFullYear() + direction);
             } else {
                 d.setDate(d.getDate() + direction);
             }
-            dashboardCurrentDate = d;
+            window.dashboardCurrentDate = d;
             const di = document.getElementById('periodDate');
             if (di) {
-                di.value = dashboardCurrentDate.toISOString().split('T')[0];
+                di.value = window.dashboardCurrentDate.toISOString().split('T')[0];
             }
             await refreshDashboard();
         }
@@ -3734,299 +4373,7 @@
             updateDateRange();
         }
 
-        async function calculateDashboardStats() {
-            const startDate = getPeriodStartDate(dashboardCurrentDate, currentPeriod);
-            const endDate = getPeriodEndDate(dashboardCurrentDate, currentPeriod);
-
-            try {
-                // 直接从数据库查询指定时间范围的数据
-                const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-                const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-
-                const { data, error } = await sb
-                    .from('schedules')
-                    .select('*')
-                    .gte('work_date', startDateStr)
-                    .lte('work_date', endDateStr);
-
-                if (error) {
-                    console.error('Database query error:', error);
-                    throw error;
-                }
-
-                const vehicleStats = new Map();
-                let totalTrips = 0;
-                let totalCommission = 0;
-                let totalExpenses = 0;
-
-                if (data && data.length > 0) {
-                    data.forEach((row, index) => {
-
-                        const plate = String(row.lorry_plate || '').trim();
-
-                        if (!vehicleStats.has(plate)) {
-                            vehicleStats.set(plate, {
-                                plate: plate,
-                                trips: 0,
-                                commission: 0,
-                                tollFees: 0,
-                                fuelCosts: 0
-                            });
-                        }
-
-                        const stats = vehicleStats.get(plate);
-                        const initialTrips = stats.trips;
-                        const initialCommission = stats.commission;
-
-                        // 直接从数据库的t1_completed到t5_completed列计算完成的trip数量
-                        for (let i = 1; i <= 5; i++) {
-                            const completed = row[`t${i}_completed`];
-                            const commission = row[`t${i}_commission`];
-
-                            if (completed === true) {
-                                stats.trips++;
-                                totalTrips++;
-
-                                // 从数据库的t1_commission到t5_commission计算佣金
-                                const commissionValue = parseFloat(commission) || 0;
-                                stats.commission += commissionValue;
-                                totalCommission += commissionValue;
-
-                            }
-                        }
-
-                        // 从数据库的tol_amount和petrol_amount计算总开销
-                        const tollAmount = parseFloat(row.tol_amount) || 0;
-                        const petrolAmount = parseFloat(row.petrol_amount) || 0;
-                        const rowExpenses = tollAmount + petrolAmount;
-
-                        stats.tollFees += tollAmount;
-                        stats.fuelCosts += petrolAmount;
-                        totalExpenses += rowExpenses;
-
-                    });
-                }
-
-                const result = {
-                    totalVehicles: vehicleStats.size,
-                    totalTrips: totalTrips,
-                    totalCommission: totalCommission,
-                    totalExpenses: totalExpenses,
-                    vehicleData: Array.from(vehicleStats.values())
-                };
-
-                return result;
-
-            } catch (error) {
-                console.error('Error calculating dashboard stats:', error);
-                // 返回默认值
-                return {
-                    totalVehicles: 0,
-                    totalTrips: 0,
-                    totalCommission: 0,
-                    totalExpenses: 0,
-                    vehicleData: []
-                };
-            }
-        }
-
-        function getPeriodStartDate(date, period) {
-            const d = new Date(date);
-            switch (period) {
-                case 'week':
-                    const dayOfWeek = d.getDay();
-                    const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // 周一开始
-                    return new Date(d.setDate(diff));
-                case 'month':
-                    return new Date(d.getFullYear(), d.getMonth(), 1);
-                case 'year':
-                    return new Date(d.getFullYear(), 0, 1);
-                default:
-                    return d;
-            }
-        }
-
-        function getPeriodEndDate(date, period) {
-            const d = new Date(date);
-            switch (period) {
-                case 'week':
-                    const startOfWeek = getPeriodStartDate(date, period);
-                    return new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
-                case 'month':
-                    return new Date(d.getFullYear(), d.getMonth() + 1, 0);
-                case 'year':
-                    return new Date(d.getFullYear(), 11, 31);
-                default:
-                    return d;
-            }
-        }
-
-        function updateDateRange() {
-            const startDate = getPeriodStartDate(dashboardCurrentDate, currentPeriod);
-            const endDate = getPeriodEndDate(dashboardCurrentDate, currentPeriod);
-
-            // 格式化日期为 DD/MM/YYYY 格式
-            const formatDate = (date) => {
-                const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const year = date.getFullYear();
-                return `${day}/${month}/${year}`;
-            };
-
-            const dateRangeText = `${formatDate(startDate)} - ${formatDate(endDate)}`;
-            const dateRangeElement = document.getElementById('dashboardDateRange');
-            if (dateRangeElement) {
-                dateRangeElement.textContent = dateRangeText;
-            }
-        }
-
-        function updateDashboardStats(stats) {
-            document.getElementById('totalVehicles').textContent = stats.totalVehicles;
-            document.getElementById('totalTrips').textContent = stats.totalTrips;
-            document.getElementById('totalCommission').textContent = `RM ${stats.totalCommission.toFixed(2)}`;
-            document.getElementById('totalExpenses').textContent = `RM ${stats.totalExpenses.toFixed(2)}`;
-        }
-
-        function updateDashboardChart(vehicleData) {
-            const canvas = document.getElementById('vehicleStatsChart');
-            if (!canvas) {
-                return; // 图表已删除或不存在，直接不绘制
-            }
-            const ctx = canvas.getContext('2d');
-
-            if (dashboardChart) {
-                dashboardChart.destroy();
-            }
-
-            const labels = vehicleData.map(v => v.plate);
-            const tripsData = vehicleData.map(v => v.trips);
-            const commissionData = vehicleData.map(v => v.commission);
-            const expensesData = vehicleData.map(v => v.tollFees + v.fuelCosts);
-
-            dashboardChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Trip数量',
-                            data: tripsData,
-                            backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: '车税 (RM)',
-                            data: commissionData,
-                            backgroundColor: 'rgba(75, 192, 192, 0.8)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1,
-                            yAxisID: 'y1'
-                        },
-                        {
-                            label: '总开销 (RM)',
-                            data: expensesData,
-                            backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: '车牌号'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Trip数量'
-                            },
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: '金额 (RM)'
-                            },
-                            grid: {
-                                drawOnChartArea: false,
-                            },
-                        }
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `车辆统计 - ${getPeriodDisplayName(currentPeriod)}`
-                        },
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
-                    }
-                }
-            });
-        }
-
-        function updateVehicleTable(vehicleData) {
-            const tbody = document.querySelector('#vehicleStatsTable tbody');
-            tbody.innerHTML = '';
-
-            const data = (vehicleData || []).slice();
-            const key = vehicleSort?.key || null;
-            const dir = vehicleSort?.direction || 'none';
-
-            if (key && dir !== 'none') {
-                data.sort((a, b) => {
-                    const getVal = (obj) => {
-                        if (key === 'totalExpenses') return (parseFloat(obj.tollFees) || 0) + (parseFloat(obj.fuelCosts) || 0);
-                        return obj[key];
-                    };
-                    const va = getVal(a);
-                    const vb = getVal(b);
-                    if (key === 'plate') {
-                        const pa = String(va || '').trim();
-                        const pb = String(vb || '').trim();
-                        const cmp = pa.localeCompare(pb, undefined, { numeric: true, sensitivity: 'base' });
-                        return dir === 'asc' ? cmp : -cmp;
-                    } else {
-                        const na = parseFloat(va) || 0;
-                        const nb = parseFloat(vb) || 0;
-                        const cmp = na - nb;
-                        return dir === 'asc' ? cmp : -cmp;
-                    }
-                });
-            }
-
-            data.forEach(vehicle => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${String(vehicle.plate || '').trim()}</td>
-                    <td>${vehicle.trips}</td>
-                    <td>${vehicle.commission.toFixed(2)}</td>
-                    <td>${vehicle.tollFees.toFixed(2)}</td>
-                    <td>${vehicle.fuelCosts.toFixed(2)}</td>
-                    <td>${(vehicle.tollFees + vehicle.fuelCosts).toFixed(2)}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
+        
 
         // 地方订单统计：计算各目的地最后一次运送日期与距今天数
         function toMidnight(d) {

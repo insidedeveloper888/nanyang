@@ -186,16 +186,30 @@ body {
     border-color: #adb5bd;
 }
 
-.current-date {
-    font-size: 14px;
-    font-weight: 500;
-    color: #495057;
-    min-width: 140px;
-    text-align: center;
+.date-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.weekday-display {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+}
 /* ===================== Table Container Styles ===================== */
 .table-container {
     position: relative;
     overflow: auto;
+    /* 恢复滚动（缩放到整页后一般不会出现滚动条） */
+    max-height: 85vh;
+    /* 原始高度，避免工具栏被压缩过度 */
+    border: 1px solid var(--border);
 }
 
 /* Dashboard table sortable headers */
@@ -209,15 +223,27 @@ body {
     margin-left: 6px;
     color: #6c757d;
     font-weight: 600;
-}   /* 恢复滚动（缩放到整页后一般不会出现滚动条） */
-    max-height: 85vh;
-    /* 原始高度，避免工具栏被压缩过度 */
-    border: 1px solid var(--border);
 }
 
 .table-wrapper {
     position: relative;
     /* Removed min-width constraint for better zoom-out */
+}
+
+/* Group header rows when grouping lorries by tyre count */
+.tyre-group-row td {
+    background: var(--surface-2);
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 13px;
+    text-align: center; /* Center label to avoid being hidden under sticky first column */
+    text-transform: none;
+    padding: 8px 10px;
+    border-top: 2px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Keep label at the left for easy visibility */
 }
 
 /* Tablet-specific styles for fit-to-page layout */
@@ -238,6 +264,39 @@ screen {
         overflow-x: hidden;
     }
 }
+
+/* ===================== Additions: Unified Date Display & Tyre Group Colors ===================== */
+/* Make the date input blend when inside the unified date display box */
+.date-display .date-input {
+    background: transparent;
+    border: none;
+    min-width: 170px;
+    padding: 6px 8px;
+}
+
+/* Color cues for common tyre groups */
+.tyre-group-row.tyre-group-unknown td { background: #f1f3f5; color: #6c757d; }
+.tyre-group-row.tyre-group-6 td { background: #e6f4ff; color: #0b74de; }
+.tyre-group-row.tyre-group-8 td { background: #fff4e6; color: #d9480f; }
+.tyre-group-row.tyre-group-10 td { background: #fce8f2; color: #b72b6c; }
+.tyre-group-row.tyre-group-12 td { background: #e8fff3; color: #16a34a; }
+.tyre-group-row.tyre-group-16 td { background: #efe6ff; color: #6b21a8; }
+
+/* Prominent group label pill */
+.tyre-group-chip {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+}
+.tyre-group-row.tyre-group-unknown .tyre-group-chip { background: #6c757d; color: #fff; }
+.tyre-group-row.tyre-group-6 .tyre-group-chip { background: #0b74de; color: #fff; }
+.tyre-group-row.tyre-group-8 .tyre-group-chip { background: #d9480f; color: #fff; }
+.tyre-group-row.tyre-group-10 .tyre-group-chip { background: #b72b6c; color: #fff; }
+.tyre-group-row.tyre-group-12 .tyre-group-chip { background: #16a34a; color: #fff; }
+.tyre-group-row.tyre-group-16 .tyre-group-chip { background: #6b21a8; color: #fff; }
 
 /* ===================== Table Styles ===================== */
 table {
@@ -530,8 +589,8 @@ select {
     color: var(--text-muted);
 }
 
-/* Remarks input styling (compact) */
-.remarks-input {
+/* 原因输入框样式（紧凑） */
+.reason-input {
     width: 100%;
     padding: 4px 6px;
     border: 1px solid #ced4da;
@@ -541,7 +600,7 @@ select {
     color: var(--text);
 }
 
-.remarks-input::placeholder {
+.reason-input::placeholder {
     color: var(--text-muted);
 }
 
@@ -738,6 +797,42 @@ select:focus,
 .commission-input:focus {
     border-color: var(--primary-2);
     box-shadow: 0 0 0 2px rgba(50, 130, 184, 0.15);
+}
+
+/* ===================== Lorry Plate + Tyre Badge ===================== */
+.lorry-plate-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.lorry-plate-text {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.tyre-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0ea5e9; /* info */
+    background: rgba(14, 165, 233, 0.10);
+    border: 1px solid rgba(14, 165, 233, 0.25);
+    padding: 2px 6px;
+    border-radius: 999px;
+}
+
+/* Read-only Estimated Ton display */
+.estimated-ton-display {
+    display: inline-block;
+    min-width: 36px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #0f766e; /* teal */
+    background: rgba(13, 148, 136, 0.08);
+    border: 1px solid rgba(13, 148, 136, 0.25);
+    padding: 2px 6px;
+    border-radius: 6px;
 }
 
 .commission-input.autofilled {
