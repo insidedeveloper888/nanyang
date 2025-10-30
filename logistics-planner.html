@@ -1358,10 +1358,10 @@
             clearBtn.title = '清除所选值 / Clear selection';
 
             const list = document.createElement('div'); list.className = 'options-list';
-            // Right-side A–Z index for quick jumping
+            // A–Z index removed per request
             const alphaIndex = document.createElement('div');
             alphaIndex.className = 'alpha-index';
-            alphaIndex.style.display = 'flex';
+            // do not force display; leave hidden and do not append
 
             // Compose header and body
             header.appendChild(title);
@@ -1370,7 +1370,8 @@
 
             const body = document.createElement('div');
             body.className = 'options-body';
-            body.appendChild(alphaIndex);
+            // A–Z index not used anymore
+            // body.appendChild(alphaIndex);
             body.appendChild(list);
 
             panel.appendChild(header);
@@ -1397,27 +1398,7 @@
             };
 
             const updateAlpha = (present) => {
-                alphaIndex.innerHTML = '';
-                letters.forEach(L => {
-                    const btn = document.createElement('button');
-                    btn.className = 'alpha-btn';
-                    btn.textContent = L;
-                    if (!present.has(L)) {
-                        btn.setAttribute('disabled', 'true');
-                    } else {
-                        const go = (ev) => {
-                            if (ev && ev.preventDefault) ev.preventDefault();
-                            const anchor = list.querySelector(`#anchor-overlay-${L}`);
-                            if (anchor) {
-                                const top = anchor.offsetTop;
-                                scrollToOffset(list, top);
-                            }
-                        };
-                        btn.addEventListener('click', go);
-                        btn.addEventListener('touchstart', go, { passive: false });
-                    }
-                    alphaIndex.appendChild(btn);
-                });
+                // no-op; index removed
             };
 
             const render = () => {

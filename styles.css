@@ -309,6 +309,16 @@ screen {
 .tyre-group-row.tyre-group-12 .tyre-group-chip { background: #16a34a; color: #fff; }
 .tyre-group-row.tyre-group-16 .tyre-group-chip { background: #6b21a8; color: #fff; }
 
+/* Keep the tyre group chip visible when horizontally scrolling on tablet */
+@media (max-width: 1024px) {
+    .tyre-group-row .tyre-group-chip {
+        position: sticky;
+        left: 8px; /* pin near the frozen first column */
+        z-index: 31;
+        pointer-events: none; /* avoid blocking clicks on first row */
+    }
+}
+
 /* ===================== Table Styles ===================== */
 table {
     width: 100%;
@@ -983,8 +993,8 @@ select:focus,
 .options-list {
     flex: 1;
     overflow-y: auto;
-    /* add right padding so the fixed A–Z index never overlaps items */
-    padding: 8px 44px 8px 12px;
+    /* A–Z index removed; restore normal padding */
+    padding: 8px 12px;
 }
 
 .options-list::-webkit-scrollbar {
@@ -1470,7 +1480,8 @@ select:focus,
 }
 
 .options-body .alpha-index {
-    display: flex;
+    /* Hide the A–Z index in overlays per request */
+    display: none;
     flex-direction: column;
     position: fixed;
     top: 8px;
