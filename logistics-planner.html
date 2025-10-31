@@ -2236,21 +2236,26 @@
                     tableBody.appendChild(row);
                 });
             } else {
-                // Grouping by tyre count without sorting
+                // Grouping by tyre count with automatic sorting (least → most, then '没轮')
                 const groups = new Map();
-                const order = [];
                 visibleRows.forEach((data) => {
                     const tyres = getTyreCountForPlate(data.lorryPlate);
-                    // Short group labels: numeric only, or "Without" if missing
-                    const key = tyres == null ? 'Without' : String(tyres);
-                    if (!groups.has(key)) {
-                        groups.set(key, { rows: [], tyres });
-                        order.push(key);
+                    const label = tyres == null ? '没轮' : `${tyres}轮`;
+                    if (!groups.has(label)) {
+                        groups.set(label, { rows: [], tyres });
                     }
-                    groups.get(key).rows.push(data);
+                    groups.get(label).rows.push(data);
                 });
-                for (const key of order) {
-                    const grp = groups.get(key);
+                const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+                    const ta = a[1].tyres;
+                    const tb = b[1].tyres;
+                    if (ta == null && tb == null) return 0;
+                    if (ta == null) return 1; // '没轮' goes last
+                    if (tb == null) return -1;
+                    return ta - tb;
+                });
+
+                for (const [label, grp] of sortedGroups) {
                     const tyres = grp.tyres;
                     const grpTr = document.createElement('tr');
                     let tyreClass = 'tyre-group-unknown';
@@ -2267,12 +2272,14 @@
                     leftTd.className = 'tyre-group-left';
                     const chip = document.createElement('span');
                     chip.className = 'tyre-group-chip';
-                    chip.textContent = key;
+                    chip.textContent = label; // e.g. "6轮", "8轮", or "没轮"
                     leftTd.appendChild(chip);
                     grpTr.appendChild(leftTd);
 
                     // Create a spacer cell that spans the remaining columns
                     const spanTd = document.createElement('td');
+                    // Collapse the spacer cell so the group label appears without a wide background band
+                    spanTd.className = 'tyre-group-spacer';
                     spanTd.colSpan = Math.max(0, colCount - 1);
                     grpTr.appendChild(spanTd);
                     tableBody.appendChild(grpTr);

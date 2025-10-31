@@ -234,16 +234,17 @@ body {
 .tyre-group-row td {
     background: var(--surface-2);
     color: var(--primary);
-    font-weight: 800;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 12px; /* smaller label */
     text-align: center; /* Center label to avoid being hidden under sticky first column */
     text-transform: none;
-    padding: 8px 10px;
-    border-top: 2px solid var(--border);
-    border-bottom: 2px solid var(--border);
+    padding: 4px 6px; /* tighter spacing to reduce gap */
+    border-top: 1px solid var(--border); /* slimmer divider */
+    border-bottom: 0; /* avoid creating a big gap */
     display: flex;
     align-items: center;
     justify-content: flex-start; /* Keep label at the left for easy visibility */
+    line-height: 1.2;
 }
 
 /* Remove sticky-full-width group row; we'll pin only the left label chip */
@@ -295,10 +296,12 @@ screen {
 /* Prominent group label pill */
 .tyre-group-chip {
     display: inline-block;
-    padding: 4px 12px;
+    padding: 2px 8px; /* smaller pill */
     border-radius: 999px;
     font-weight: 800;
     letter-spacing: 0.2px;
+    font-size: 11px; /* smaller text */
+    line-height: 1.2; /* avoid double-height */
     box-shadow: 0 1px 2px rgba(0,0,0,0.10);
 }
 .tyre-group-row.tyre-group-unknown .tyre-group-chip { background: #6c757d; color: #fff; }
@@ -326,11 +329,24 @@ screen {
     top: 0;
     z-index: 31;
     background: var(--surface);
-    border-right: 2px solid var(--primary);
+    border-right: 1px solid var(--primary); /* slimmer divider to reduce visual bulk */
     pointer-events: none;
+    /* Center the chip inside the sticky cell – flex overrides the td group's default */
+    display: flex;
+    justify-content: center !important;
+    align-items: center !important;
 }
 .tyre-group-left .tyre-group-chip {
     position: static; /* inside sticky cell, no extra stickiness needed */
+}
+
+/* Spacer cell on group rows: collapse height and remove background so no "colored band" remains */
+.tyre-group-spacer {
+    background: transparent !important;
+    padding: 0 !important;
+    height: 0 !important;
+    line-height: 0 !important;
+    border: 0 !important;
 }
 
 /* ===================== Table Styles ===================== */

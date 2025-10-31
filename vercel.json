@@ -1,6 +1,7 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/", "dest": "/logistics-planner.html" }
+    { "src": "/", "dest": "/logistics-planner.html" },
+    { "src": "/logistics-planner", "dest": "/logistics-planner.html" }
   ]
 }
