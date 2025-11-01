@@ -43,18 +43,16 @@
                     <button id="zoomOut" class="zoom-btn" title="缩小">—</button>
                     <span id="zoomValue" style="min-width:48px;text-align:center">100%</span>
                     <button id="zoomIn" class="zoom-btn" title="放大">＋</button>
+                    <!-- Reload real-time table -->
+                    <button id="reloadTable" class="zoom-btn" title="刷新表格">⟳</button>
+                    <!-- Inline search (main table) -->
+                    <div class="search-box" style="margin-left:8px;">
+                        <input id="searchInput" class="search-input" type="text" placeholder="搜索：啰里/工厂/产品/地方/车税/吨位/原因">
+                    </div>
                 </div>
             </div>
             <!-- toolbar-actions container kept minimal; group toggles will be injected next to date via ensureTyreGroupToggle() -->
             <div class="toolbar-actions" style="display:none"></div>
-            <!-- <div class="toolbar-actions">
-                <div class="search-box">
-                    <input id="searchInput" class="search-input" type="text" placeholder="搜索啰里/工厂/产品/地方">
-                </div>
-                <button class="btn btn-secondary" id="btnFit" title="Fit more trips on screen">Fit to Screen</button>
-                <button class="btn btn-secondary" id="btnConfig">配置</button>
-                <button class="btn btn-secondary" id="btnCommissionManager" title="管理工厂/产品/地方与车税组合">车税规则</button>
-        </div> -->
         </div>
 
         <div class="table-container">
@@ -2221,7 +2219,14 @@
                     if (contains(r.lorryPlate)) return true;
                     // Then any trip's pickUp/product/destination
                     const trips = [r.trip1, r.trip2, r.trip3, r.trip4, r.trip5];
-                    return trips.some(t => contains(t.pickUp) || contains(t.product) || contains(t.destination));
+                    return trips.some(t =>
+                        contains(t.pickUp) ||
+                        contains(t.product) ||
+                        contains(t.destination) ||
+                        contains(t.commission) ||
+                        contains(t.estimatedTon) ||
+                        contains(t.reason)
+                    );
                 });
             }
 
@@ -2681,6 +2686,27 @@
                 populateTable();
             } catch (e) {
                 console.error('Failed to clear today schedules', e);
+            }
+        }
+
+        // 刷新主表（实时）
+        async function reloadPlannerTable() {
+            try { showToast('正在刷新…'); } catch (_) { /* noop */ }
+            try {
+                await supabaseLoadSchedule(currentDate);
+            } catch (e) {
+                console.error('Reload failed during Supabase load', e);
+            }
+            try {
+                applyCommissionToSampleData();
+                applyEstimatedTonToSampleData();
+                populateTable();
+                if (localStorage.getItem('trip_board_mode') === '1') {
+                    try { renderTripBoard(); } catch (_) { /* noop */ }
+                }
+                try { showToast('已刷新', 'success'); } catch (_) { /* noop */ }
+            } catch (e) {
+                console.error('Reload table failed', e);
             }
         }
 
@@ -3549,6 +3575,13 @@
             const savedTheme = localStorage.getItem('nanyang_theme') || 'readable';
             applyTheme(savedTheme);
 
+            // 默认启用“按胎数组”分组（仅首次加载时设置）
+            try {
+                if (localStorage.getItem('group_by_tyres') == null) {
+                    localStorage.setItem('group_by_tyres', '1');
+                }
+            } catch (_) { /* noop */ }
+
             // Ensure Supabase client is ready (with graceful local fallback)
             await initSupabase();
             // IMPORTANT: keep local `sb` in sync with the global window.sb that initSupabase() sets
@@ -3596,6 +3629,14 @@
                 btnTheme.addEventListener('click', () => {
                     const current = document.documentElement.getAttribute('data-theme') || 'light';
                     applyTheme(current === 'light' ? 'readable' : 'light');
+                });
+            }
+
+            // Reload main table from Supabase on demand
+            const reloadBtn = document.getElementById('reloadTable');
+            if (reloadBtn) {
+                reloadBtn.addEventListener('click', async () => {
+                    await reloadPlannerTable();
                 });
             }
 
