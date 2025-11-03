@@ -30,7 +30,6 @@ async function calculateDashboardStats() {
     let totalTrips = 0;
     let totalCommission = 0;
     let totalExpenses = 0;
-    let totalEstimatedTon = 0;
 
     if (data && data.length > 0) {
       data.forEach((row) => {
@@ -41,8 +40,7 @@ async function calculateDashboardStats() {
             trips: 0,
             commission: 0,
             tollFees: 0,
-            fuelCosts: 0,
-            estimatedTon: 0
+            fuelCosts: 0
           });
         }
 
@@ -51,7 +49,7 @@ async function calculateDashboardStats() {
         for (let i = 1; i <= 5; i++) {
           const completed = row[`t${i}_completed`];
           const commission = row[`t${i}_commission`];
-          const estTonVal = row[`t${i}_estimated_ton`];
+          // estimated ton removed
           if (typeof window.parseBoolean === 'function' ? window.parseBoolean(completed) : completed === true) {
             stats.trips++;
             totalTrips++;
@@ -59,11 +57,7 @@ async function calculateDashboardStats() {
             stats.commission += commissionValue;
             totalCommission += commissionValue;
           }
-          const ton = parseFloat(estTonVal) || 0;
-          if (ton > 0) {
-            stats.estimatedTon += ton;
-            totalEstimatedTon += ton;
-          }
+          // estimated ton removed
         }
 
         const tollAmount = parseFloat(row.tol_amount) || 0;
@@ -80,7 +74,6 @@ async function calculateDashboardStats() {
       totalTrips,
       totalCommission,
       totalExpenses,
-      totalEstimatedTon,
       vehicleData: Array.from(vehicleStats.values())
     };
   } catch (error) {
@@ -94,11 +87,10 @@ async function calculateDashboardStats() {
         totalTrips: 0,
         totalCommission: 0,
         totalExpenses: 0,
-        totalEstimatedTon: 0,
         vehicleData: []
       };
-    }
   }
+}
 }
 
 // 基于本地排程数据的统计（支持时间范围，优先当天；如果提供了 window.localLoadSchedule 则遍历范围内的所有天）
@@ -107,7 +99,6 @@ function calculateStatsFromLocalRange(startDate, endDate) {
   let totalTrips = 0;
   let totalCommission = 0;
   let totalExpenses = 0;
-  let totalEstimatedTon = 0;
 
   // 遍历日期范围，优先使用 localStorage 中保存的每天排程，其次回退到当前页面内的 sampleData
   const dates = [];
@@ -133,21 +124,20 @@ function calculateStatsFromLocalRange(startDate, endDate) {
     (dayRows || []).filter(r => !(hiddenSet.has(r.lorryPlate) || archivedSet.has(r.lorryPlate))).forEach(row => {
       const plate = String(row.lorryPlate || '').trim();
       if (!vehicleStats.has(plate)) {
-        vehicleStats.set(plate, { plate, trips: 0, commission: 0, tollFees: 0, fuelCosts: 0, estimatedTon: 0 });
+        vehicleStats.set(plate, { plate, trips: 0, commission: 0, tollFees: 0, fuelCosts: 0 });
       }
       const stats = vehicleStats.get(plate);
       for (let i = 1; i <= 5; i++) {
         const t = row[`trip${i}`] || {};
         const completed = t.completed;
         const commission = t.commission;
-        const estTonVal = t.estimatedTon;
+        // estimated ton removed
         if (typeof window.parseBoolean === 'function' ? window.parseBoolean(completed) : completed === true) {
           stats.trips++; totalTrips++;
           const commissionValue = parseFloat(commission) || 0;
           stats.commission += commissionValue; totalCommission += commissionValue;
         }
-        const ton = parseFloat(estTonVal) || 0;
-        if (ton > 0) { stats.estimatedTon += ton; totalEstimatedTon += ton; }
+        // estimated ton removed
       }
       const tollAmount = parseFloat(row.tol_amount) || 0;
       const petrolAmount = parseFloat(row.petrol_amount) || 0;
@@ -161,7 +151,6 @@ function calculateStatsFromLocalRange(startDate, endDate) {
     totalTrips,
     totalCommission,
     totalExpenses,
-    totalEstimatedTon,
     vehicleData: Array.from(vehicleStats.values())
   };
 }
@@ -169,7 +158,7 @@ function calculateStatsFromLocalRange(startDate, endDate) {
 function updateDashboardStats(stats) {
   document.getElementById('totalVehicles').textContent = stats.totalVehicles;
   document.getElementById('totalTrips').textContent = stats.totalTrips;
-  document.getElementById('totalEstimatedTon').textContent = (parseFloat(stats.totalEstimatedTon) || 0).toFixed(2);
+  // estimated ton display removed
   document.getElementById('totalCommission').textContent = `RM ${stats.totalCommission.toFixed(2)}`;
   document.getElementById('totalExpenses').textContent = `RM ${stats.totalExpenses.toFixed(2)}`;
 }
@@ -248,7 +237,6 @@ function updateVehicleTable(vehicleData) {
     row.innerHTML = `
       <td>${String(vehicle.plate || '').trim()}</td>
       <td>${vehicle.trips}</td>
-      <td>${(parseFloat(vehicle.estimatedTon) || 0).toFixed(2)}</td>
       <td>${vehicle.commission.toFixed(2)}</td>
       <td>${vehicle.tollFees.toFixed(2)}</td>
       <td>${vehicle.fuelCosts.toFixed(2)}</td>

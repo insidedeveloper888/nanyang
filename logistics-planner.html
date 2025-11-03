@@ -62,11 +62,11 @@
                         <thead>
                             <tr class="trip-group-header">
                                 <th class="frozen-column"></th>
-                                <th class="trip-header" colspan="7">行程 1</th>
-                                <th class="trip-header" colspan="7">行程 2</th>
-                                <th class="trip-header" colspan="7">行程 3</th>
-                                <th class="trip-header" colspan="7">行程 4</th>
-                                <th class="trip-header" colspan="7">行程 5</th>
+                                <th class="trip-header" colspan="6">行程 1</th>
+                                <th class="trip-header" colspan="6">行程 2</th>
+                                <th class="trip-header" colspan="6">行程 3</th>
+                                <th class="trip-header" colspan="6">行程 4</th>
+                                <th class="trip-header" colspan="6">行程 5</th>
                                 <th class="trip-header additional-header" colspan="2">额外费用</th>
                                 <th class="trip-header stats-header" rowspan="2">车税统计</th>
                             </tr>
@@ -79,7 +79,7 @@
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip1-bg" data-column="destination1"><span
                                         class="column-label">地方</span></th>
-                                <th class="trip1-bg" data-column="estimatedTon1"><span class="column-label">预计吨位(吨)</span></th>
+                                
                                 <th class="completion-header trip1-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip1-bg" data-column="commission1"><span
                                         class="column-label">车税（RM）</span></th>
@@ -90,7 +90,7 @@
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip2-bg" data-column="destination2"><span
                                         class="column-label">地方</span></th>
-                                <th class="trip2-bg" data-column="estimatedTon2"><span class="column-label">预计吨位(吨)</span></th>
+                                
                                 <th class="completion-header trip2-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip2-bg" data-column="commission2"><span
                                         class="column-label">车税（RM）</span></th>
@@ -101,7 +101,7 @@
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip3-bg" data-column="destination3"><span
                                         class="column-label">地方</span></th>
-                                <th class="trip3-bg" data-column="estimatedTon3"><span class="column-label">预计吨位(吨)</span></th>
+                                
                                 <th class="completion-header trip3-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip3-bg" data-column="commission3"><span
                                         class="column-label">车税（RM）</span></th>
@@ -112,7 +112,7 @@
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip4-bg" data-column="destination4"><span
                                         class="column-label">地方</span></th>
-                                <th class="trip4-bg" data-column="estimatedTon4"><span class="column-label">预计吨位(吨)</span></th>
+                                
                                 <th class="completion-header trip4-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip4-bg" data-column="commission4"><span
                                         class="column-label">车税（RM）</span></th>
@@ -123,7 +123,7 @@
                                         class="column-label">产品</span></th>
                                 <th class="sortable trip5-bg" data-column="destination5"><span
                                         class="column-label">地方</span></th>
-                                <th class="trip5-bg" data-column="estimatedTon5"><span class="column-label">预计吨位(吨)</span></th>
+                                
                                 <th class="completion-header trip5-bg"><span class="column-label">完成</span></th>
                                 <th class="sortable trip5-bg" data-column="commission5"><span
                                         class="column-label">车税（RM）</span></th>
@@ -196,10 +196,7 @@
                             <h3>总行程数</h3>
                             <div class="stat-value" id="totalTrips">-</div>
                         </div>
-                        <div class="stat-card">
-                            <h3>总预计吨位（吨）</h3>
-                            <div class="stat-value" id="totalEstimatedTon">-</div>
-                        </div>
+                        <!-- 已移除“总预计吨位（吨）”统计卡 -->
                         <div class="stat-card">
                             <h3>总车税</h3>
                             <div class="stat-value" id="totalCommission">RM -</div>
@@ -222,7 +219,7 @@
                                     <tr>
                                         <th class="sortable" data-key="plate">啰里 <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="trips">行程数 <span class="sort-indicator"></span></th>
-                                        <th class="sortable" data-key="estimatedTon">预计吨位(吨) <span class="sort-indicator"></span></th>
+                                        <!-- 已移除“预计吨位(吨)”列 -->
                                         <th class="sortable" data-key="commission">车税 (RM) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="tollFees">过路费 (RM) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="fuelCosts">油费 (RM) <span class="sort-indicator"></span></th>
@@ -500,13 +497,11 @@
         var sb = window.sb || null;
         const { initSupabase, loadSupabaseLocalConfig, saveSupabaseLocalConfig, clearSupabaseLocalConfig, testSupabaseConnection } = window;
         const { defaultConfig, loadConfig, saveConfig, applyTripColors } = window;
-        const { buildLorryTyreCountMap, buildTyreTonRulesMap, getTyreCountForPlate, setTyreCountForPlate, getEstimatedTonFromTyreRules } = window;
+        const { buildLorryTyreCountMap, getTyreCountForPlate, setTyreCountForPlate } = window;
         // Runtime dataset. Start empty to avoid resurrecting seeded demo rows on refresh.
         let sampleData = [];
         // Detect if Supabase 'schedules' table has per-trip reason columns (t1_reason ... t5_reason)
         let HAS_REASON_COLUMNS = false;
-        // Detect if Supabase 'schedules' table has per-trip estimated ton columns (t1_estimated_ton ... t5_estimated_ton)
-        let HAS_TON_COLUMNS = false;
         // Page-fit / custom zoom removed — rely on browser default zoom
         const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
         function applyPageFit() { }
@@ -635,60 +630,13 @@
             return String(Number(m[0]).toFixed(2));
         }
 
-        function getEstimatedTonFromRules(pu, pr, de, dateContext = currentDate) {
-            // Strict matching only: if any field is blank, do NOT apply ton
-            if (!TON_RULES || TON_RULES.size === 0) return null;
-            const puN = (pu || '').toString().trim();
-            const prN = (pr || '').toString().trim();
-            const deN = (de || '').toString().trim();
-            if (!puN || !prN || !deN) return null;
-            const key = normalizeKey(pu, pr, de);
-            let val = TON_RULES.get(key);
-            if (val == null) return null; // no match strictly
-            // If val is an array, pick by date range
-            if (Array.isArray(val)) {
-                const d = new Date(dateContext);
-                const iso = (dt) => {
-                    if (!dt) return null;
-                    const t = new Date(dt);
-                    if (Number.isNaN(t.getTime())) return null;
-                    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-                };
-                const curISO = iso(d);
-                // Prefer most recent start date that includes current date
-                const candidates = val.filter(r => {
-                    const sISO = iso(r.start);
-                    const eISO = iso(r.end);
-                    if (!sISO && !eISO) return true; // open-ended
-                    if (sISO && curISO < sISO) return false;
-                    if (eISO && curISO > eISO) return false;
-                    return true;
-                }).sort((a, b) => {
-                    const aS = iso(a.start) || '0000-00-00';
-                    const bS = iso(b.start) || '0000-00-00';
-                    // later start first
-                    return bS.localeCompare(aS);
-                });
-                const chosen = candidates[0];
-                if (!chosen) return null;
-                val = chosen.ton;
-            }
-            // number or string: normalize and return to 2 decimals
-            if (typeof val === 'number' && !isNaN(val)) {
-                return String(Number(val).toFixed(2));
-            }
-            const m = String(val).match(/[0-9]+(?:\.[0-9]+)?/);
-            if (!m) return null;
-            return String(Number(m[0]).toFixed(2));
-        }
+        // Estimated Ton feature removed
 
         // Tyre-based helpers and maps have been modularized into js/tyre-rules.js
         // The following global functions are available and used throughout this file:
         // - buildLorryTyreCountMap()
-        // - buildTyreTonRulesMap()
         // - getTyreCountForPlate(plate)
         // - setTyreCountForPlate(plate, tyres)
-        // - getEstimatedTonFromTyreRules(product, tyres, dateContext)
         // - normalizeTyreKey(tyres, product)
 
         async function loadCommissionRulesFromExcel(url) {
@@ -833,36 +781,7 @@
             });
         }
 
-        function applyEstimatedTonToSampleData() {
-            if (!Array.isArray(sampleData)) return;
-            sampleData.forEach(row => {
-                [row.trip1, row.trip2, row.trip3, row.trip4, row.trip5].forEach(trip => {
-                    if (!trip) return;
-                    const puBlank = !(trip.pickUp || '').toString().trim();
-                    const prBlank = !(trip.product || '').toString().trim();
-                    const deBlank = !(trip.destination || '').toString().trim();
-                    // Prefer tyre-based rules when a tyre count exists for the lorry. Tyre rules need only product + tyres.
-                    const tyres = getTyreCountForPlate(row.lorryPlate);
-                    let ton = null;
-                    if (tyres != null) {
-                        if (!prBlank) {
-                            ton = getEstimatedTonFromTyreRules(trip.product, tyres, currentDate);
-                        }
-                    }
-                    // Fallback to non-tyre rules which require all three fields
-                    if (ton == null || ton === '') {
-                        if (!puBlank && !prBlank && !deBlank) {
-                            ton = getEstimatedTonFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
-                        }
-                    }
-                    if (ton != null && ton !== '') {
-                        trip.estimatedTon = ton;
-                    } else {
-                        trip.estimatedTon = '';
-                    }
-                });
-            });
-        }
+        // 已移除：预计吨位自动计算逻辑
 
         async function loadCommissionRulesFromSupabase() {
             try {
@@ -960,12 +879,15 @@
                 return;
             }
             try {
-                const [opts, settings, plates, tyreRules] = await Promise.all([
+                const [opts, settings, platesList, tyreRules] = await Promise.all([
                     sb.from('config_options').select('category,name,active').eq('active', true),
                     // Only keep defaultCompletion from app_settings; do not use tripColors/lorryTyreCounts/tyreTonRules
                     sb.from('app_settings').select('key,value').in('key', ['defaultCompletion']),
-                    // Read tyre counts directly from lorry_plates
-                    sb.from('lorry_plates').select('plate_no,tyre_count'),
+                    // Read lorry plates (and tyre counts) directly from lorry_plates, ordered by sort_order ASC then plate_no ASC
+                    sb.from('lorry_plates')
+                      .select('plate_no,tyre_count,sort_order')
+                      .order('sort_order', { ascending: true })
+                      .order('plate_no', { ascending: true }),
                     // Read tyre-based ton rules directly from ton_rules
                     sb.from('ton_rules').select('tyre_count,product,estimated_ton,active')
                 ]);
@@ -973,17 +895,18 @@
                 const cfg = { ...defaultConfig };
                 if (!opts.error && opts.data) {
                     const byCat = (cat) => opts.data.filter(r => r.category === cat).map(r => r.name);
-                    // Use DB lorry plates unless local override is set
+                    // Prefer lorry_plates (ordered by sort_order) for the list, unless local override is set
                     if (local && local.overrideLorryPlates === true) {
                         cfg.lorryPlates = (local.lorryPlates || []).map(v => String(v).trim()).filter(Boolean);
                         cfg.overrideLorryPlates = true;
                     } else {
-                        cfg.lorryPlates = byCat('lorry_plate').map(v => String(v).trim()).filter(Boolean);
+                        const platesOrdered = (!platesList.error && Array.isArray(platesList.data))
+                            ? platesList.data.map(r => String(r.plate_no || '').trim()).filter(Boolean)
+                            : [];
+                        cfg.lorryPlates = platesOrdered.length
+                            ? platesOrdered
+                            : (local.lorryPlates || defaultConfig.lorryPlates).map(v => String(v).trim()).filter(Boolean);
                         cfg.overrideLorryPlates = false;
-                        // Fallback to local/default when DB is empty
-                        if (!cfg.lorryPlates || cfg.lorryPlates.length === 0) {
-                            cfg.lorryPlates = (local.lorryPlates || defaultConfig.lorryPlates).map(v => String(v).trim()).filter(Boolean);
-                        }
                     }
                     // Merge Supabase options with local defaults when DB is empty
                     const normList = (arr = []) => arr.map(v => String(v).trim()).filter(Boolean);
@@ -1005,9 +928,9 @@
                         cfg.defaultCompletion = !!dc.value;
                     }
                 }
-                // Load lorry tyre counts from lorry_plates
-                if (!plates.error && Array.isArray(plates.data)) {
-                    const list = plates.data
+                // Load lorry tyre counts from lorry_plates (same ordered query)
+                if (!platesList.error && Array.isArray(platesList.data)) {
+                    const list = platesList.data
                         .map(row => {
                             const plate = String(row.plate_no || '').trim();
                             const tyres = Number.parseInt(row.tyre_count, 10);
@@ -1016,6 +939,16 @@
                         })
                         .filter(Boolean);
                     cfg.lorryTyreCounts = list;
+                    // Build Supabase ordering map for stable table sorting
+                    try {
+                        const orderMap = new Map();
+                        platesList.data.forEach((row, idx) => {
+                            const p = String(row.plate_no || '').trim();
+                            const order = Number.isFinite(row.sort_order) ? Number(row.sort_order) : (idx + 10000);
+                            if (p) orderMap.set(p, order);
+                        });
+                        window.SUPABASE_LORRY_ORDER_MAP = orderMap;
+                    } catch (_) { /* non-critical */ }
                 }
                 // Load tyre-based ton rules from ton_rules (where tyre_count is set and rule is active)
                 if (!tyreRules.error && Array.isArray(tyreRules.data)) {
@@ -1934,39 +1867,6 @@
                     }
                     updateRowStatistics(row, data);
                 };
-                // Auto-compute estimated ton from rules (prefer tyre-based when available)
-                const updateEstimatedTon = () => {
-                    const puBlank = !(trip.pickUp || '').toString().trim();
-                    const prBlank = !(trip.product || '').toString().trim();
-                    const deBlank = !(trip.destination || '').toString().trim();
-                    if (!tonSpan) return; // not mounted yet
-                    // Prefer tyre-based rules if we have a tyre count recorded for this lorry
-                    const tyres = getTyreCountForPlate(data.lorryPlate);
-                    let tn = null;
-                    if (tyres != null && String(tyres).trim() !== '') {
-                        if (!prBlank) {
-                            // getEstimatedTonFromTyreRules expects (product, tyres[, date])
-                            tn = getEstimatedTonFromTyreRules(trip.product, tyres);
-                        }
-                    }
-                    // Fallback to generic ton rules (excel/supabase) if no tyre rule matched; requires all three fields
-                    if (tn == null || tn === '') {
-                        if (!puBlank && !prBlank && !deBlank) {
-                            tn = getEstimatedTonFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
-                        } else {
-                            tn = '';
-                        }
-                    }
-                    if (tn != null && tn !== '') {
-                        trip.estimatedTon = tn;
-                        tonSpan.textContent = tn;
-                        tonSpan.classList.add('autofilled');
-                    } else {
-                        trip.estimatedTon = '';
-                        tonSpan.textContent = '';
-                        tonSpan.classList.remove('autofilled');
-                    }
-                };
                 // Pick Up column
                 const pickUpCell = document.createElement('td');
                 pickUpCell.className = tripIndex === 0 ? `dropdown-cell trip${tripIndex + 1}-bg` : `dropdown-cell trip-separator trip${tripIndex + 1}-bg`;
@@ -2013,7 +1913,6 @@
 
                     queueAutosave();
                     updateCommission();
-                    updateEstimatedTon();
                 }, '工厂');
                 pickUpCell.appendChild(puInput);
                 // Make entire cell clickable to open overlay
@@ -2045,7 +1944,6 @@
                     if (checkbox) checkbox.checked = false;
                     queueAutosave();
                     updateCommission();
-                    updateEstimatedTon();
                 }, '产品');
                 productCell.appendChild(prInput);
                 productCell.addEventListener('click', (ev) => {
@@ -2075,7 +1973,6 @@
                     if (checkbox) checkbox.checked = false;
                     queueAutosave();
                     updateCommission();
-                    updateEstimatedTon();
                 }, '地方');
                 destinationCell.appendChild(deInput);
                 destinationCell.addEventListener('click', (ev) => {
@@ -2085,14 +1982,7 @@
                 });
                 row.appendChild(destinationCell);
 
-                // Estimated Ton column (read-only, auto from rules)
-                const tonCell = document.createElement('td');
-                tonCell.className = `dropdown-cell trip${tripIndex + 1}-bg`;
-                tonSpan = document.createElement('span');
-                tonSpan.className = 'estimated-ton-display';
-                tonSpan.textContent = (trip.estimatedTon != null ? trip.estimatedTon : '');
-                tonCell.appendChild(tonSpan);
-                row.appendChild(tonCell);
+                // Estimated Ton removed
 
                 // Completion column
                 const completionCell = document.createElement('td');
@@ -2149,7 +2039,6 @@
 
                 // Initial highlight if rule matches current values
                 updateCommission();
-                updateEstimatedTon();
 
 
             });
@@ -2224,7 +2113,6 @@
                         contains(t.product) ||
                         contains(t.destination) ||
                         contains(t.commission) ||
-                        contains(t.estimatedTon) ||
                         contains(t.reason)
                     );
                 });
@@ -2314,7 +2202,6 @@
                     pickUp: "",
                     product: "",
                     destination: "",
-                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
                     reason: ""
@@ -2323,7 +2210,6 @@
                     pickUp: "",
                     product: "",
                     destination: "",
-                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
                     reason: ""
@@ -2332,7 +2218,6 @@
                     pickUp: "",
                     product: "",
                     destination: "",
-                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
                     reason: ""
@@ -2341,7 +2226,6 @@
                     pickUp: "",
                     product: "",
                     destination: "",
-                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
                     reason: ""
@@ -2350,7 +2234,6 @@
                     pickUp: "",
                     product: "",
                     destination: "",
-                    estimatedTon: "",
                     completed: CONFIG && CONFIG.defaultCompletion ? true : false,
                     commission: "",
                     reason: ""
@@ -2439,19 +2322,48 @@
         // Keep table row order stable across refreshes
         function sortSampleRows() {
             try {
+                // Prefer Supabase-defined order, then CSV-defined order, else fall back to CONFIG.lorryPlates
+                const supabaseMap = window.SUPABASE_LORRY_ORDER_MAP instanceof Map ? window.SUPABASE_LORRY_ORDER_MAP : null;
+                const csvMap = window.CSV_LORRY_ORDER_MAP instanceof Map ? window.CSV_LORRY_ORDER_MAP : null;
                 const orderMap = new Map();
-                (CONFIG.lorryPlates || []).forEach((p, i) => orderMap.set(String(p), i));
+                if (!supabaseMap && !csvMap) {
+                    (CONFIG.lorryPlates || []).forEach((p, i) => orderMap.set(String(p), i));
+                }
                 sampleData.sort((a, b) => {
                     const sa = String(a.lorryPlate);
                     const sb = String(b.lorryPlate);
-                    const ia = orderMap.has(sa) ? orderMap.get(sa) : Number.MAX_SAFE_INTEGER;
-                    const ib = orderMap.has(sb) ? orderMap.get(sb) : Number.MAX_SAFE_INTEGER;
+                    const ia = supabaseMap
+                        ? (supabaseMap.has(sa) ? supabaseMap.get(sa) : Number.MAX_SAFE_INTEGER)
+                        : csvMap
+                            ? (csvMap.has(sa) ? csvMap.get(sa) : Number.MAX_SAFE_INTEGER)
+                            : (orderMap.has(sa) ? orderMap.get(sa) : Number.MAX_SAFE_INTEGER);
+                    const ib = supabaseMap
+                        ? (supabaseMap.has(sb) ? supabaseMap.get(sb) : Number.MAX_SAFE_INTEGER)
+                        : csvMap
+                            ? (csvMap.has(sb) ? csvMap.get(sb) : Number.MAX_SAFE_INTEGER)
+                            : (orderMap.has(sb) ? orderMap.get(sb) : Number.MAX_SAFE_INTEGER);
                     if (ia !== ib) return ia - ib;
                     const na = Number(sa), nb = Number(sb);
                     if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
                     return sa.localeCompare(sb);
                 });
             } catch (_) { /* non-critical */ }
+        }
+
+        // Load lorry plate order from CSV and construct a priority map
+        async function loadLorryOrderFromCSV() {
+            try {
+                const res = await fetch('Lorry Plate Order.csv');
+                if (!res.ok) return; // CSV optional
+                const text = await res.text();
+                const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                // Skip header lines that contain non-plate text
+                const plateRegex = /^[A-Za-z0-9-]+$/;
+                const plates = lines.filter(l => plateRegex.test(l));
+                const map = new Map();
+                plates.forEach((p, i) => map.set(String(p), i));
+                window.CSV_LORRY_ORDER_MAP = map;
+            } catch (_) { /* optional */ }
         }
 
         // Date navigation functionality moved to js/date-utils.js
@@ -2516,11 +2428,11 @@
                     const plates = (CONFIG.lorryPlates || []).filter(p => !hiddenSet.has(p) && !archivedSet.has(p));
                     sampleData = plates.map(plate => ({
                         lorryPlate: plate,
-                        trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                        trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
                         tol_amount: '', petrol_amount: ''
                     }));
                     // Persist seeded rows so subsequent loads show data
@@ -2551,16 +2463,14 @@
                 if (data && data.length) {
                     // Detect remarks columns presence on the schedules table
                     HAS_REASON_COLUMNS = ['t1_reason', 't2_reason', 't3_reason', 't4_reason', 't5_reason'].some(k => k in (data[0] || {}));
-                    // Detect estimated ton columns presence on the schedules table
-                    HAS_TON_COLUMNS = ['t1_estimated_ton', 't2_estimated_ton', 't3_estimated_ton', 't4_estimated_ton', 't5_estimated_ton'].some(k => k in (data[0] || {}));
                     const filtered = allowSet.size === 0 ? [] : data.filter(s => allowSet.has(String(s.lorry_plate)));
                     sampleData = filtered.map(s => ({
                         lorryPlate: s.lorry_plate,
-                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t1_estimated_ton != null && Number(s.t1_estimated_ton) > 0 ? String(Number(s.t1_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', reason: s.t1_reason || '' },
-                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t2_estimated_ton != null && Number(s.t2_estimated_ton) > 0 ? String(Number(s.t2_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', reason: s.t2_reason || '' },
-                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t3_estimated_ton != null && Number(s.t3_estimated_ton) > 0 ? String(Number(s.t3_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', reason: s.t3_reason || '' },
-                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t4_estimated_ton != null && Number(s.t4_estimated_ton) > 0 ? String(Number(s.t4_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', reason: s.t4_reason || '' },
-                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', estimatedTon: HAS_TON_COLUMNS ? (s.t5_estimated_ton != null && Number(s.t5_estimated_ton) > 0 ? String(Number(s.t5_estimated_ton).toFixed(2)) : '') : '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', reason: s.t5_reason || '' },
+                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', reason: s.t1_reason || '' },
+                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', reason: s.t2_reason || '' },
+                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', reason: s.t3_reason || '' },
+                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', reason: s.t4_reason || '' },
+                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', reason: s.t5_reason || '' },
                         tol_amount: s.tol_amount != null && Number(s.tol_amount) > 0 ? String(Number(s.tol_amount).toFixed(2)) : '',
                         petrol_amount: s.petrol_amount != null && Number(s.petrol_amount) > 0 ? String(Number(s.petrol_amount).toFixed(2)) : ''
                     }));
@@ -2580,11 +2490,11 @@
                                 if (!existing.has(String(p))) {
                                     sampleData.push({
                                         lorryPlate: p,
-                                        trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                        trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
                                         tol_amount: '',
                                         petrol_amount: ''
                                     });
@@ -2618,11 +2528,11 @@
                         const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
                         sampleData = activePlates.filter(p => !hiddenSet.has(p)).map(plate => ({
                             lorryPlate: plate,
-                            trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
                         }));
                         // Apply local cache if available
                         const local = localLoadSchedule(date);
@@ -2647,11 +2557,11 @@
                         // Fallback to local CONFIG list if DB load fails
                         sampleData = (CONFIG.lorryPlates || []).filter(p => !((CONFIG.hiddenLorryPlates || []).includes(p))).map(plate => ({
                             lorryPlate: plate,
-                            trip1: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip2: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip3: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip4: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip5: { pickUp: '', product: '', destination: '', estimatedTon: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                            trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
                         }));
                     }
                 }
@@ -2699,7 +2609,7 @@
             }
             try {
                 applyCommissionToSampleData();
-                applyEstimatedTonToSampleData();
+            // estimated ton feature removed
                 populateTable();
                 if (localStorage.getItem('trip_board_mode') === '1') {
                     try { renderTripBoard(); } catch (_) { /* noop */ }
@@ -2854,7 +2764,7 @@
                         markUnsaved();
                         // Refresh main table estimated tons immediately to reflect tyre changes
                         try {
-                            applyEstimatedTonToSampleData();
+            // estimated ton feature removed
                             populateTable();
                         } catch (_) { }
                     });
@@ -2869,7 +2779,7 @@
                                     await sb.from('lorry_plates').upsert({ plate_no: e.plate, tyre_count: v }, { onConflict: 'plate_no' });
                                     // Also reflect in-memory map immediately
                                     setTyreCountForPlate(e.plate, v);
-                                    try { buildLorryTyreCountMap(); applyEstimatedTonToSampleData(); populateTable(); } catch (_) {}
+            try { buildLorryTyreCountMap(); populateTable(); } catch (_) {}
                                     showToast('已保存轮胎数到 Supabase', 'success');
                                 }
                             }
@@ -3507,14 +3417,7 @@
                         payload.t4_reason = row.trip4.reason || null;
                         payload.t5_reason = row.trip5.reason || null;
                     }
-                    // Conditionally include estimated ton fields if the table supports them
-                    if (HAS_TON_COLUMNS) {
-                        payload.t1_estimated_ton = row.trip1.estimatedTon ? Number(row.trip1.estimatedTon) : null;
-                        payload.t2_estimated_ton = row.trip2.estimatedTon ? Number(row.trip2.estimatedTon) : null;
-                        payload.t3_estimated_ton = row.trip3.estimatedTon ? Number(row.trip3.estimatedTon) : null;
-                        payload.t4_estimated_ton = row.trip4.estimatedTon ? Number(row.trip4.estimatedTon) : null;
-                        payload.t5_estimated_ton = row.trip5.estimatedTon ? Number(row.trip5.estimatedTon) : null;
-                    }
+                    // Estimated ton fields removed from payload
                     await sb.from('schedules').upsert(payload, { onConflict: 'work_date,lorry_plate' });
                 }
                 // Autosave succeeded
@@ -3575,10 +3478,10 @@
             const savedTheme = localStorage.getItem('nanyang_theme') || 'readable';
             applyTheme(savedTheme);
 
-            // 默认启用“按胎数组”分组（仅首次加载时设置）
+            // 默认不启用“按胎数组”分组（仅首次加载时设置）
             try {
                 if (localStorage.getItem('group_by_tyres') == null) {
-                    localStorage.setItem('group_by_tyres', '1');
+                    localStorage.setItem('group_by_tyres', '0');
                 }
             } catch (_) { /* noop */ }
 
@@ -3590,31 +3493,31 @@
             try { sb = window.sb || sb; } catch (_) { /* noop */ }
 
             if (sb) {
+                // Load CSV order first so subsequent table sorts respect it
+                await loadLorryOrderFromCSV();
                 await supabaseLoadOptions();
-                // Load any existing rules from Supabase first (commission + ton)
+                // Load any existing rules from Supabase first（仅车税规则；吨位已移除）
                 await loadCommissionRulesFromSupabase();
-                await loadTonRulesFromSupabase();
+                // await loadTonRulesFromSupabase(); // 已停用
                 // Merge Excel overrides if present
                 mergeCommissionRulesPreferExcel();
-                mergeTonRulesPreferExcel();
+                // mergeTonRulesPreferExcel(); // 已停用
                 // Apply to in-memory data in case there are preloaded rows
                 applyCommissionToSampleData();
-                applyEstimatedTonToSampleData();
                 // Load reason data for reason selection popup
                 await loadReasonGroups();
                 await loadReasons();
                 await supabaseLoadSchedule(currentDate);
             } else {
                 // Local-only: merge Excel overrides if present; no DB schedule
+                await loadLorryOrderFromCSV();
                 mergeCommissionRulesPreferExcel();
-                mergeTonRulesPreferExcel();
+                // mergeTonRulesPreferExcel(); // 已停用
                 await supabaseLoadSchedule(currentDate);
                 applyCommissionToSampleData();
-                applyEstimatedTonToSampleData();
             }
             // After loading schedule rows from DB, apply commission/ton based on active rules again
             applyCommissionToSampleData();
-            applyEstimatedTonToSampleData();
             populateTable();
             updateDateDisplay();
             wireConfigEvents();
