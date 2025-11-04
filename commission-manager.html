@@ -550,13 +550,16 @@
             启用
           </label>
           <div style="flex:1"></div>
-          <!-- 已隐藏：顶部新增/删除按钮。请在表格底部空行直接输入后自动保存 -->
-          <button id="scrollBottom" class="btn" title="滚动到表格底部以使用行内添加">滚到底部</button>
         </div>
       </div>
       <datalist id="dlPickups" class="datalist"></datalist>
       <datalist id="dlProducts" class="datalist"></datalist>
       <datalist id="dlDestinations" class="datalist"></datalist>
+
+      <!-- 工具栏：滚到底部（置于搜索框之上） -->
+      <div class="toolbar" id="scrollToolbar" style="display:flex;gap:12px;align-items:center;margin:10px 0;">
+        <button id="scrollBottom" class="btn btn-primary" title="滚动到表格底部以添加新规则">滚到底部</button>
+      </div>
 
       <!-- Moved search bar here to sit between add-new card and the table -->
       <div class="toolbar" id="rulesSearchBar">
@@ -571,7 +574,7 @@
             <th style="width:18%">地方</th>
             <th style="width:12%">车税（RM）</th>
             <th style="width:30%">日期范围</th>
-            <th style="width:6%">删除</th>
+            <th style="width:12%">操作</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -713,7 +716,7 @@
         return;
       }
       const search = document.getElementById('search').value.toLowerCase();
-      const { data, error } = await sb.from('commission_rules').select('pick_up,product,destination,commission,active,valid_from,valid_to');
+      const { data, error } = await sb.from('commission_rules').select('id,pick_up,product,destination,commission,active,valid_from,valid_to');
       if (error) { console.error(error); return; }
       const tbody = document.querySelector('#rulesTable tbody');
       tbody.innerHTML = '';
@@ -726,6 +729,8 @@
           const s = row.valid_from ? String(row.valid_from) : '';
           const e = row.valid_to ? String(row.valid_to) : '';
           const tr = document.createElement('tr');
+          // Keep the row's primary key so edits can UPDATE instead of creating new rows
+          if (row.id != null) tr.dataset.id = String(row.id);
           tr.innerHTML = `
             <td><div class="combo"><input type="text" class="inpPU" value="${pu}" placeholder="工厂" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
             <td><div class="combo"><input type="text" class="inpPR" value="${pr}" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
@@ -738,7 +743,10 @@
                 <input type="date" class="inpEnd" value="${e}">
               </div>
             </td>
-            <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+            <td style="display:flex;gap:8px;align-items:center;">
+              <button class="btn btn-primary btnSave">保存</button>
+              <button class="btn btn-danger btnDelete">删除</button>
+            </td>`;
           tbody.appendChild(tr);
         });
       // Always show one empty row at bottom for adding new rule
@@ -756,8 +764,45 @@
             <input type="date" class="inpEnd">
           </div>
         </td>
-        <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+        <td style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-primary btnSave">保存</button>
+          <button class="btn btn-danger btnDelete">删除</button>
+        </td>`;
       tbody.appendChild(empty);
+    }
+
+    // 是否在前端强制“日期范围不可重叠”校验（开发环境可关闭）
+    const ENFORCE_NO_OVERLAP = (typeof window.__CM_ENFORCE_NO_OVERLAP === 'boolean') ? window.__CM_ENFORCE_NO_OVERLAP : true;
+    // 是否启用行内自动保存（开发环境可关闭以避免频繁写入或误追加）
+    const AUTOSAVE = (typeof window.__CM_AUTOSAVE === 'boolean') ? window.__CM_AUTOSAVE : true;
+
+    // 检查指定三元组与给定日期范围是否与现有规则重叠（用于避免数据库排斥约束 23P01）
+    function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+      const toDate = (d, negInf = false) => {
+        if (d == null || d === '') return negInf ? new Date(-8640000000000000) : new Date(8640000000000000);
+        // Treat as local date to avoid timezone off-by-one
+        const parts = String(d).split('-');
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2] || 1));
+      };
+      // aStart null -> -Infinity, aEnd null -> +Infinity
+      const aS = toDate(aStart, true);
+      const aE = toDate(aEnd, false);
+      const bS = toDate(bStart, true);
+      const bE = toDate(bEnd, false);
+      // Inclusive ranges: overlap if aS <= bE && bS <= aE
+      return aS.getTime() <= bE.getTime() && bS.getTime() <= aE.getTime();
+    }
+
+    async function findOverlappingRules(pu, pr, de, start, end) {
+      if (!sb) return [];
+      const { data, error } = await sb
+        .from('commission_rules')
+        .select('pick_up,product,destination,commission,valid_from,valid_to,active')
+        .eq('pick_up', pu)
+        .eq('product', pr)
+        .eq('destination', de);
+      if (error) { console.warn('查询重叠规则失败', error); return []; }
+      return (data || []).filter(r => rangesOverlap(r.valid_from, r.valid_to, start, end));
     }
 
     async function addNew() {
@@ -772,6 +817,19 @@
       const ac = document.getElementById('newActive').checked;
       if (!pu || !pr || !de) { alert('请填写完整的工厂、产品、地方'); return; }
       if (!cm) { alert('请输入有效的车税，例如 14.00'); return; }
+      // Check for overlapping period before attempting insert to avoid 23P01
+      if (ENFORCE_NO_OVERLAP) {
+        try {
+          const conflicts = await findOverlappingRules(pu, pr, de, start, end);
+          if (conflicts.length) {
+            const lines = conflicts.map(r => `已存在规则：${formatCase(r.pick_up)} / ${formatCase(r.product)} / ${formatCase(r.destination)}，期间：${r.valid_from || '未设置'} 至 ${r.valid_to || '未设置'}，佣金：${toRM(r.commission)}`);
+            alert(['添加失败：新期间与现有规则重叠。', ...lines, '请修改日期范围，或编辑现有规则。'].join('\n'));
+            return;
+          }
+        } catch (e) {
+          console.warn('重叠检查失败', e);
+        }
+      }
       const { error } = await sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: cm, active: ac, valid_from: start, valid_to: end }], { onConflict: 'pick_up,product,destination,valid_from' });
       if (error) { alert('添加失败：' + error.message); return; }
       document.getElementById('newPU').value = '';
@@ -810,7 +868,7 @@
       for (const r of toDelete) {
         const delRes = await sb.from('commission_rules').delete().match({ pick_up: r.pick_up, product: r.product, destination: r.destination });
         if (delRes.error) {
-          const upd = await sb.from('commission_rules').upsert([{ pick_up: r.pick_up, product: r.product, destination: r.destination, commission: null, active: false }], { onConflict: 'pick_up,product,destination' });
+  const upd = await sb.from('commission_rules').upsert([{ pick_up: r.pick_up, product: r.product, destination: r.destination, commission: null, active: false, valid_from: r.valid_from ?? null }], { onConflict: 'pick_up,product,destination,valid_from' });
           if (!upd.error) disabled++;
         } else {
           deleted++;
@@ -831,7 +889,7 @@
         for (const r of rows) {
           const delRes = await sb.from('commission_rules').delete().match({ pick_up: r.pick_up, product: r.product, destination: r.destination });
           if (delRes.error) {
-            const upd = await sb.from('commission_rules').upsert([{ pick_up: r.pick_up, product: r.product, destination: r.destination, commission: null, active: false }], { onConflict: 'pick_up,product,destination' });
+  const upd = await sb.from('commission_rules').upsert([{ pick_up: r.pick_up, product: r.product, destination: r.destination, commission: null, active: false, valid_from: r.valid_from ?? null }], { onConflict: 'pick_up,product,destination,valid_from' });
             if (!upd.error) disabled++;
           } else {
             deleted++;
@@ -965,7 +1023,7 @@
         const chunk = async (arr, size = 200) => {
           for (let i = 0; i < arr.length; i += size) {
             const slice = arr.slice(i, i + size);
-            const { error } = await sb.from('commission_rules').upsert(slice, { onConflict: 'pick_up,product,destination' });
+const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...r, valid_from: r.valid_from ?? null })), { onConflict: 'pick_up,product,destination,valid_from' });
             if (error) throw error;
           }
         };
@@ -1103,7 +1161,7 @@
         const chunk = async (arr, size = 200) => {
           for (let i = 0; i < arr.length; i += size) {
             const slice = arr.slice(i, i + size);
-            const { error } = await sb.from('commission_rules').upsert(slice, { onConflict: 'pick_up,product,destination' });
+const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...r, valid_from: r.valid_from ?? null })), { onConflict: 'pick_up,product,destination,valid_from' });
             if (error) throw error;
           }
         };
@@ -1144,11 +1202,12 @@
       if (last) last.scrollIntoView({ behavior: 'smooth', block: 'end' });
     });
 
-    // 顶部新增/删除已禁用，改为行内自动保存
+    // 顶部新增/删除已禁用；行内保存可以通过“保存”按钮触发。
 
-    // Auto-save on edit
+    // Auto-save on edit（可通过 AUTOSAVE 关闭）
     const tbodyEl = document.querySelector('#rulesTable tbody');
     tbodyEl.addEventListener('input', (ev) => {
+      if (!AUTOSAVE) return; // dev: disable auto-save; prefer explicit Save
       const tr = ev.target.closest('tr');
       if (!tr) return;
       if (!sb) { console.warn('Supabase not initialized, skipping auto-save'); return; }
@@ -1174,7 +1233,22 @@
           const s = get('.inpStart').value || null;
           const e = get('.inpEnd').value || null;
           if (!pu || !pr || !de) return;
-          sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: cm, valid_from: s, valid_to: e, active: true }], { onConflict: 'pick_up,product,destination,valid_from' })
+          // Pre-check overlap to prevent exclusion constraint violations
+          ((ENFORCE_NO_OVERLAP ? findOverlappingRules(pu, pr, de, s, e) : Promise.resolve([]))
+            .then(async (conflicts) => {
+              if (ENFORCE_NO_OVERLAP && conflicts.length) {
+                const lines = conflicts.map(r => `与现有规则重叠：期间 ${r.valid_from || '未设置'} 至 ${r.valid_to || '未设置'}（佣金：${toRM(r.commission)}）`);
+                alert(['保存失败：日期范围与现有规则重叠。', ...lines, '请调整日期或编辑现有行。'].join('\n'));
+                return;
+              }
+              // Prefer UPDATE by primary key to avoid accidental appends when editing
+              const id = tr.dataset.id ? Number(tr.dataset.id) : null;
+              if (id) {
+                return sb.from('commission_rules').update({ pick_up: pu, product: pr, destination: de, commission: cm, valid_from: s, valid_to: e, active: true }).eq('id', id);
+              }
+              // If no id (new blank row), fall back to insert/upsert
+              return sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: cm, valid_from: s, valid_to: e, active: true }], { onConflict: 'pick_up,product,destination,valid_from' });
+            }))
             .then(async ({ error }) => {
               if (error) console.warn('保存失败', error);
               else if (tr.dataset.new === '1') {
@@ -1250,7 +1324,11 @@
       if (!sb) { alert('Supabase 未初始化，无法删除'); return; }
       if (!confirm(`确定删除规则：\n工厂：${pu}\n产品：${pr}\n地方：${de}`)) return;
       try {
-        const { error } = await sb.from('commission_rules').delete().match({ pick_up: pu, product: pr, destination: de });
+        // Prefer delete by id when available to avoid deleting multiple rows of the same三元组
+        const id = tr.dataset.id ? Number(tr.dataset.id) : null;
+        const { error } = id
+          ? await sb.from('commission_rules').delete().eq('id', id)
+          : await sb.from('commission_rules').delete().match({ pick_up: pu, product: pr, destination: de });
         if (error) throw error;
         const parent = tr.parentElement;
         tr.remove();
@@ -1414,25 +1492,89 @@
         const newCM = toRM(get('.inpCM').value);
         const newST = get('.inpStart').value || null;
         const newEN = get('.inpEnd').value || null;
-        const newAC = get('.inpAC').checked;
+        const newAC = get('.inpAC') ? get('.inpAC').checked : true;
         if (!newPU || !newPR || !newDE) { alert('工厂/产品/地方均为必填'); return; }
-        const { error } = await sb.from('commission_rules').upsert([{ pick_up: newPU, product: newPR, destination: newDE, commission: newCM, active: newAC, valid_from: newST, valid_to: newEN }], { onConflict: 'pick_up,product,destination,valid_from' });
-        if (error) { alert('保存失败：' + error.message); return; }
+        const id = tr.dataset.id ? Number(tr.dataset.id) : null;
+
+        // Prevent overlapping date ranges for the same (PU, PR, DE)
+        // Treat null start/end as open-ended (-infinity / +infinity)
+        const toISO = (dt) => {
+          if (!dt) return null;
+          const t = new Date(dt);
+          if (Number.isNaN(t.getTime())) return null;
+          const y = t.getFullYear();
+          const m = String(t.getMonth() + 1).padStart(2, '0');
+          const d = String(t.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        };
+        const aStart = toISO(newST);
+        const aEnd = toISO(newEN);
+        const rangesOverlap = (s1, e1, s2, e2) => {
+          // null start => -infinity, null end => +infinity
+          const s1Eff = s1 ?? '0000-00-00';
+          const e1Eff = e1 ?? '9999-99-99';
+          const s2Eff = s2 ?? '0000-00-00';
+          const e2Eff = e2 ?? '9999-99-99';
+          return (s1Eff <= e2Eff) && (e1Eff >= s2Eff);
+        };
+        try {
+          const { data: existing, error: qErr } = await sb.from('commission_rules')
+            .select('id, valid_from, valid_to, active')
+            .eq('pick_up', newPU)
+            .eq('product', newPR)
+            .eq('destination', newDE)
+            .eq('active', true);
+          if (qErr) throw qErr;
+          const conflict = (existing || []).some(row => {
+            if (id && Number(row.id) === Number(id)) return false; // ignore self
+            const bStart = toISO(row.valid_from);
+            const bEnd = toISO(row.valid_to);
+            // If existing is completely open-ended, any new range overlaps
+            // If new is open-ended, overlaps any existing range
+            return rangesOverlap(aStart, aEnd, bStart, bEnd);
+          });
+          if (conflict) {
+            alert('保存失败：已存在相同工厂/产品/地方且日期范围重叠的规则。\n请调整有效期后再保存，或先禁用/结束旧规则。\n\nSave blocked: overlapping date range for same factory/product/destination.');
+            return;
+          }
+        } catch (e) {
+          console.warn('Overlap check failed', e);
+          // Proceed, but inform user that validation could not be completed
+        }
+        let res;
+        if (id) {
+          // Update existing row by primary key to avoid creating duplicates
+          res = await sb.from('commission_rules').update({ pick_up: newPU, product: newPR, destination: newDE, commission: newCM, active: newAC, valid_from: newST, valid_to: newEN }).eq('id', id);
+        } else {
+          // New bottom row without id -> insert/upsert
+          res = await sb.from('commission_rules').upsert([{ pick_up: newPU, product: newPR, destination: newDE, commission: newCM, active: newAC, valid_from: newST, valid_to: newEN }], { onConflict: 'pick_up,product,destination,valid_from' });
+        }
+        if (res.error) { alert('保存失败：' + res.error.message); return; }
         alert('已保存');
         await loadRules();
       } else if (btn.classList.contains('btnDelete')) {
-        const pu = norm(get('.inpPU').value);
-        const pr = norm(get('.inpPR').value);
-        const de = norm(get('.inpDE').value);
-        if (!confirm('确定删除该规则？')) return;
-        const delRes = await sb.from('commission_rules').delete().match({ pick_up: pu, product: pr, destination: de });
-        if (delRes.error) {
-          const upd = await sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: null, active: false }], { onConflict: 'pick_up,product,destination' });
-          if (upd.error) { alert('删除/禁用失败：' + upd.error.message); return; }
-          alert('删除被阻止，已改为禁用该规则');
-        } else {
-          alert('已删除');
+        const pu = formatCase(get('.inpPU').value);
+        const pr = formatCase(get('.inpPR').value);
+        const de = formatCase(get('.inpDE').value);
+        const st = get('.inpStart')?.value || null;
+        const en = get('.inpEnd')?.value || null;
+        const id = tr.dataset.id ? Number(tr.dataset.id) : null;
+        // If it's the bottom new row (no id), just clear the inputs — nothing to delete from DB
+        if (!id) {
+          if (!confirm('这是新增行，未保存到数据库。要清空该行内容吗？')) return;
+          get('.inpPU').value = '';
+          get('.inpPR').value = '';
+          get('.inpDE').value = '';
+          get('.inpCM').value = '';
+          if (get('.inpStart')) get('.inpStart').value = '';
+          if (get('.inpEnd')) get('.inpEnd').value = '';
+          if (get('.inpAC')) get('.inpAC').checked = true;
+          return;
         }
+        if (!confirm(`确定删除该规则？\n工厂：${pu}\n产品：${pr}\n地方：${de}\n期间：${st || '未设置'} 至 ${en || '未设置'}`)) return;
+        const delRes = await sb.from('commission_rules').delete().eq('id', id);
+        if (delRes.error) { alert('删除失败：' + delRes.error.message); return; }
+        alert('已删除（仅该行）');
         await loadRules();
       }
     });

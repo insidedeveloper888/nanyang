@@ -14,5 +14,17 @@ window.__SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
     var key = window.__SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY') || '';
     window.__SUPABASE_URL = url;
     window.__SUPABASE_ANON_KEY = key;
+    // Dev-only: allow disabling front-end overlap enforcement
+    if (typeof window.__CM_ENFORCE_NO_OVERLAP !== 'boolean') {
+      // Default to false in local dev; can be overridden in localStorage
+      var en = localStorage.getItem('CM_ENFORCE_NO_OVERLAP');
+      window.__CM_ENFORCE_NO_OVERLAP = (en == null) ? false : (en === 'true');
+    }
+    // Dev-only: allow disabling auto-save for commission manager
+    if (typeof window.__CM_AUTOSAVE !== 'boolean') {
+      // Default OFF in local dev; can be overridden via localStorage
+      var as = localStorage.getItem('CM_AUTOSAVE');
+      window.__CM_AUTOSAVE = (as == null) ? false : (as === 'true');
+    }
   } catch (_) { /* noop */ }
 })();
