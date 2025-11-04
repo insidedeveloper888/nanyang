@@ -196,7 +196,10 @@
                             <h3>总行程数</h3>
                             <div class="stat-value" id="totalTrips">-</div>
                         </div>
-                        <!-- 已移除“总预计吨位（吨）”统计卡 -->
+                        <div class="stat-card">
+                            <h3>总预计吨位（吨）</h3>
+                            <div class="stat-value" id="totalEstimatedTon">-</div>
+                        </div>
                         <div class="stat-card">
                             <h3>总车税</h3>
                             <div class="stat-value" id="totalCommission">RM -</div>
@@ -219,7 +222,7 @@
                                     <tr>
                                         <th class="sortable" data-key="plate">啰里 <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="trips">行程数 <span class="sort-indicator"></span></th>
-                                        <!-- 已移除“预计吨位(吨)”列 -->
+                                        <th class="sortable" data-key="estimatedTon">预计吨位(吨) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="commission">车税 (RM) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="tollFees">过路费 (RM) <span class="sort-indicator"></span></th>
                                         <th class="sortable" data-key="fuelCosts">油费 (RM) <span class="sort-indicator"></span></th>
@@ -374,31 +377,24 @@
                             <label>轮胎数
                                 <input type="number" id="inputTyres" placeholder="例如: 10" min="0" step="1">
                             </label>
-                            <label>产品
-                                <input type="text" id="inputTyreRuleProduct" list="dlTyreProducts" placeholder="选择或输入产品">
-                                <button type="button" class="mini-btn" id="btnPickTyreProduct" title="从列表选择">选项</button>
-                            </label>
                             <label>预计吨位(吨)
                                 <input type="number" id="inputTyreRuleTon" placeholder="例如: 28" min="0" step="0.01">
                             </label>
                         </div>
-                        <!-- 为产品输入提供下拉选项（与主表一致） -->
-                        <datalist id="dlTyreProducts"></datalist>
                         <div class="config-input-row">
                             <button class="btn btn-primary" id="btnAddTyreTonRule">添加规则</button>
-                            <input type="text" id="searchTyreTonRules" placeholder="搜索规则 (轮胎/产品)">
+                            <input type="text" id="searchTyreTonRules" placeholder="搜索规则 (仅轮胎)">
                         </div>
-                        <table class="config-table" id="tableTyreTonRules">
-                            <thead>
-                                <tr>
-                                    <th>轮胎数</th>
-                                    <th>产品</th>
-                                    <th>预计吨位(吨)</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                            <table class="config-table" id="tableTyreTonRules">
+                                <thead>
+                                    <tr>
+                                        <th>轮胎数</th>
+                                        <th>预计吨位(吨)</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
                     </div>
                 </div>
 
@@ -487,12 +483,12 @@
     <script src="js/dashboard-utils.js"></script>
     <script src="js/dashboard-stats.js"></script>
     <!-- Modularized core helpers -->
-        <!-- Optional: local env injection for Supabase URL/anon key. If present, this runs before client init. -->
-        <script src="../env.local.js"></script>
+        <!-- Optional: local env injection for Supabase URL/anon key. Loaded from current web root. -->
+        <script src="env.local.js"></script>
         <script src="js/supabase-client.js"></script>
     <script src="js/config-store.js"></script>
     <script src="js/tyre-rules.js"></script>
-    <script>
+    <script type="module">
         // Bridge to modularized helpers
         var sb = window.sb || null;
         const { initSupabase, loadSupabaseLocalConfig, saveSupabaseLocalConfig, clearSupabaseLocalConfig, testSupabaseConnection } = window;
@@ -888,8 +884,8 @@
                       .select('plate_no,tyre_count,sort_order')
                       .order('sort_order', { ascending: true })
                       .order('plate_no', { ascending: true }),
-                    // Read tyre-based ton rules directly from ton_rules
-                    sb.from('ton_rules').select('tyre_count,product,estimated_ton,active')
+                    // Read tyre-based ton rules directly from ton_rules (product removed)
+                    sb.from('ton_rules').select('tyre_count,estimated_ton,active')
                 ]);
                 const local = loadConfig();
                 const cfg = { ...defaultConfig };
@@ -909,16 +905,16 @@
                         cfg.overrideLorryPlates = false;
                     }
                     // Merge Supabase options with local defaults when DB is empty
-                    const normList = (arr = []) => arr.map(v => String(v).trim()).filter(Boolean);
-                    const ensureList = (list, fallback) => (Array.isArray(list) && list.length ? list : fallback);
+                    // DB-only mode: when Supabase is configured, use only the DB values.
+                    // If tables are empty, lists will be empty. Local defaults are used only when Supabase is not configured.
                     const puDB = byCat('pickup').map(v => String(v).trim()).filter(Boolean);
                     const prDB = byCat('product').map(v => String(v).trim()).filter(Boolean);
                     const deDB = byCat('destination').map(v => String(v).trim()).filter(Boolean);
                     const coDB = byCat('commission').map(v => String(v).trim()).filter(Boolean);
-                    cfg.pickUps = ensureList(puDB, normList(local.pickUps || defaultConfig.pickUps));
-                    cfg.products = ensureList(prDB, normList(local.products || defaultConfig.products));
-                    cfg.destinations = ensureList(deDB, normList(local.destinations || defaultConfig.destinations));
-                    cfg.commissions = ensureList(coDB, normList(local.commissions || defaultConfig.commissions));
+                    cfg.pickUps = Array.isArray(puDB) ? puDB : [];
+                    cfg.products = Array.isArray(prDB) ? prDB : [];
+                    cfg.destinations = Array.isArray(deDB) ? deDB : [];
+                    cfg.commissions = Array.isArray(coDB) ? coDB : [];
                 }
                 // Load app settings
                 if (!settings.error && Array.isArray(settings.data)) {
@@ -950,29 +946,19 @@
                         window.SUPABASE_LORRY_ORDER_MAP = orderMap;
                     } catch (_) { /* non-critical */ }
                 }
-                // Load tyre-based ton rules from ton_rules (where tyre_count is set and rule is active)
+                // Load tyre-based ton rules from ton_rules (product removed; tyre_count-only)
                 if (!tyreRules.error && Array.isArray(tyreRules.data)) {
                     const list = tyreRules.data
                         .filter(r => r.active !== false && r.tyre_count != null)
                         .map(r => ({
                             tyres: Number.parseInt(r.tyre_count, 10),
-                            product: String(r.product || '').trim(),
                             ton: r.estimated_ton != null ? Number.parseFloat(r.estimated_ton) : NaN
                         }))
-                        .filter(r => Number.isFinite(r.tyres) && r.product && Number.isFinite(r.ton));
+                        .filter(r => Number.isFinite(r.tyres) && Number.isFinite(r.ton));
                     cfg.tyreTonRules = list;
                 }
-                // Fallback: if DB has no tyre counts, merge from local config
-                if (!Array.isArray(cfg.lorryTyreCounts) || cfg.lorryTyreCounts.length === 0) {
-                    const normalizeTyreRow = (row) => {
-                        if (!row) return null;
-                        const plate = String(row.plate || '').trim();
-                        const tyres = Number.parseInt(row.tyres, 10);
-                        if (!plate || Number.isNaN(tyres)) return null;
-                        return { plate, tyres };
-                    };
-                    cfg.lorryTyreCounts = (local.lorryTyreCounts || []).map(normalizeTyreRow).filter(Boolean);
-                }
+                // No local fallbacks: if Supabase has no tyre counts, leave empty
+                if (!Array.isArray(cfg.lorryTyreCounts)) cfg.lorryTyreCounts = [];
                 // Merge in local hidden state so it persists client-side
                 const mergeSet = (a = [], b = []) => Array.from(new Set([...(a || []), ...(b || [])]));
                 cfg.hiddenLorryPlates = mergeSet(cfg.hiddenLorryPlates, local.hiddenLorryPlates);
@@ -1065,35 +1051,34 @@
                     console.warn('Failed to persist tyre counts to lorry_plates', e);
                 }
 
-                // Persist tyre-based ton rules to ton_rules with unique key (tyre_count, product) — destination removed
+                // Persist tyre-based ton rules to ton_rules keyed only by tyre_count (product removed)
                 try {
                     const ruleList = (CONFIG.tyreTonRules || [])
                         .map(r => ({
                             tyre_count: Number.parseInt(r.tyres ?? r.tyreCount, 10),
-                            product: String(r.product || '').trim(),
                             estimated_ton: r.ton != null ? Number.parseFloat(r.ton) : NaN
                         }))
-                        .filter(r => Number.isFinite(r.tyre_count) && r.product && Number.isFinite(r.estimated_ton));
+                        .filter(r => Number.isFinite(r.tyre_count) && Number.isFinite(r.estimated_ton));
 
-                    // Compute deletions and deduplicate existing rows: any existing tyre_count/product not present in the current CONFIG should be removed
-                    const existing = await sb.from('ton_rules').select('id,tyre_count,product');
+                    // Compute deletions and deduplicate existing rows by tyre_count only
+                    const existing = await sb.from('ton_rules').select('id,tyre_count');
                     if (!existing.error && Array.isArray(existing.data)) {
-                        const newKey = new Set(ruleList.map(r => `${r.tyre_count}|${r.product}`));
-                        // Delete any tyre-based rows whose (tyre_count, product) pair is no longer present
+                        const newKey = new Set(ruleList.map(r => `${r.tyre_count}`));
+                        // Delete any rows whose tyre_count is no longer present
                         const toDeleteIds = existing.data
                             .filter(r => r.tyre_count != null)
-                            .filter(r => !newKey.has(`${Number.parseInt(r.tyre_count, 10)}|${String(r.product || '').trim()}`))
+                            .filter(r => !newKey.has(`${Number.parseInt(r.tyre_count, 10)}`))
                             .map(r => r.id)
                             .filter(id => id != null);
                         for (const chunk of chunkArray(toDeleteIds, 50)) {
                             await sb.from('ton_rules').delete().in('id', chunk);
                         }
-                        // Deduplicate: if multiple existing rows share the same (tyre_count, product), keep the first and remove the rest
+                        // Deduplicate: if multiple existing rows share the same tyre_count, keep the first and remove the rest
                         const groups = {};
                         existing.data
                             .filter(r => r.tyre_count != null)
                             .forEach(r => {
-                                const key = `${Number.parseInt(r.tyre_count, 10)}|${String(r.product || '').trim()}`;
+                                const key = `${Number.parseInt(r.tyre_count, 10)}`;
                                 (groups[key] ||= []).push(r.id);
                             });
                         const dupIds = [];
@@ -1103,7 +1088,7 @@
                         }
                     }
                     for (const chunk of chunkArray(ruleList, 50)) {
-                        await sb.from('ton_rules').upsert(chunk, { onConflict: 'tyre_count,product' });
+                        await sb.from('ton_rules').upsert(chunk, { onConflict: 'tyre_count' });
                     }
                 } catch (e) {
                     console.warn('Failed to persist tyre-based ton rules to ton_rules', e);
@@ -2139,7 +2124,8 @@
                 // Grouping by tyre count with automatic sorting (least → most, then '没轮')
                 const groups = new Map();
                 visibleRows.forEach((data) => {
-                    const tyres = getTyreCountForPlate(data.lorryPlate);
+                    const rawTyres = getTyreCountForPlate(data.lorryPlate);
+                    const tyres = (typeof rawTyres === 'number' && rawTyres > 0) ? rawTyres : null;
                     const label = tyres == null ? '没轮' : `${tyres}轮`;
                     if (!groups.has(label)) {
                         groups.set(label, { rows: [], tyres });
@@ -2147,8 +2133,8 @@
                     groups.get(label).rows.push(data);
                 });
                 const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
-                    const ta = a[1].tyres;
-                    const tb = b[1].tyres;
+                    const ta = (typeof a[1].tyres === 'number' && a[1].tyres > 0) ? a[1].tyres : null;
+                    const tb = (typeof b[1].tyres === 'number' && b[1].tyres > 0) ? b[1].tyres : null;
                     if (ta == null && tb == null) return 0;
                     if (ta == null) return 1; // '没轮' goes last
                     if (tb == null) return -1;
@@ -2381,6 +2367,8 @@
             }
             return false;
         }
+        // Expose globally for dashboard-stats.js
+        window.parseBoolean = window.parseBoolean || parseBoolean;
 
         // Calculate total commission for all trips in a row
         function calculateTotalCommission(data) {
@@ -2774,13 +2762,31 @@
                         try {
                             saveConfig(CONFIG);
                             if (sb) {
-                                const v = Number.parseInt(tyresInput.value, 10);
-                                if (Number.isFinite(v)) {
-                                    await sb.from('lorry_plates').upsert({ plate_no: e.plate, tyre_count: v }, { onConflict: 'plate_no' });
-                                    // Also reflect in-memory map immediately
-                                    setTyreCountForPlate(e.plate, v);
-            try { buildLorryTyreCountMap(); populateTable(); } catch (_) {}
-                                    showToast('已保存轮胎数到 Supabase', 'success');
+                                const raw = String(tyresInput.value || '').trim();
+                                // Treat empty or '-' as clearing the tyre count
+                                if (raw === '' || raw === '-') {
+                                    setTyreCountForPlate(e.plate, NaN);
+                                    try { buildLorryTyreCountMap(); populateTable(); } catch (_) { }
+                                    // Persist null to Supabase
+                                    try {
+                                        await sb.from('lorry_plates').update({ tyre_count: null }).eq('plate_no', e.plate);
+                                    } catch (_) {
+                                        try { await sb.from('lorry_plates').upsert({ plate_no: e.plate, tyre_count: null }, { onConflict: 'plate_no' }); } catch (_) { }
+                                    }
+                                    showToast('已清除轮胎数（设为 —）', 'success');
+                                } else {
+                                    const v = Number.parseInt(raw, 10);
+                                    if (Number.isFinite(v)) {
+                                        await sb.from('lorry_plates').upsert({ plate_no: e.plate, tyre_count: v }, { onConflict: 'plate_no' });
+                                        // Also reflect in-memory map immediately
+                                        setTyreCountForPlate(e.plate, v);
+                                        try { buildLorryTyreCountMap(); populateTable(); } catch (_) { }
+                                        showToast('已保存轮胎数到 Supabase', 'success');
+                                    } else {
+                                        // Fallback: clear if value isn't a valid number
+                                        setTyreCountForPlate(e.plate, NaN);
+                                        try { buildLorryTyreCountMap(); populateTable(); } catch (_) { }
+                                    }
                                 }
                             }
                         } catch (_) { /* non-critical */ }
@@ -2856,18 +2862,15 @@
 
             rules.forEach((rule, idx) => {
                 const tyreStr = String(rule.tyreCount ?? rule.tyres ?? '').trim();
-                const prodStr = String(rule.product || '').trim();
                 const tonVal = rule.ton;
                 const match = !q
                     || tyreStr.toLowerCase().includes(q)
-                    || prodStr.toLowerCase().includes(q)
                     ;
                 if (!match) return;
 
                 const tr = document.createElement('tr');
                 tr.dataset.index = String(idx);
                 const tdTyre = document.createElement('td'); tdTyre.textContent = tyreStr; tr.appendChild(tdTyre);
-                const tdProd = document.createElement('td'); tdProd.textContent = prodStr; tr.appendChild(tdProd);
                 const tdTon = document.createElement('td');
                 const tonInput = document.createElement('input');
                 tonInput.type = 'number';
@@ -2880,6 +2883,17 @@
                         CONFIG.tyreTonRules[idx].ton = v;
                         markUnsaved();
                         try { buildTyreTonRulesMap(); } catch (_) { }
+                    }
+                });
+                tonInput.addEventListener('change', async () => {
+                    const v = parseFloat(tonInput.value);
+                    const countInt = parseInt(String(rule.tyreCount ?? rule.tyres ?? '').trim(), 10);
+                    if (sb && Number.isFinite(v) && Number.isFinite(countInt)) {
+                        try {
+                            await sb.from('ton_rules').update({ estimated_ton: v }).eq('tyre_count', countInt);
+                        } catch (_) {
+                            try { await sb.from('ton_rules').upsert({ tyre_count: countInt, estimated_ton: v, active: true }, { onConflict: 'tyre_count' }); } catch (_) { }
+                        }
                     }
                 });
                 tdTon.appendChild(tonInput);
@@ -2995,18 +3009,7 @@
             renderItemsTable('tableDestination', CONFIG.destinations, document.getElementById('searchDestination')?.value || '');
             // Render tyre-ton rules table
             renderTyreTonRulesTable(document.getElementById('searchTyreTonRules')?.value || '');
-            // Populate datalists for 产品选择（与主表选项一致）
-            try {
-                const dlPr = document.getElementById('dlTyreProducts');
-                if (dlPr) {
-                    dlPr.innerHTML = '';
-                    (productOptions || []).forEach(v => {
-                        const opt = document.createElement('option');
-                        opt.value = String(v || '').trim();
-                        if (opt.value) dlPr.appendChild(opt);
-                    });
-                }
-            } catch (_) { /* non-critical */ }
+            // 产品下拉（用于轮胎规则）已移除
 
             // 车税与默认设置已移除
             // Prefill color inputs
@@ -3205,15 +3208,9 @@
             // Clear all lorry plates (and today's schedules) with one click
             // Removed bulk delete and clear-all controls
 
-            // Tyre ton rules management
-            // Quick-pick buttons: open the same overlay option chooser as main table
-            const btnPickTyreProduct = document.getElementById('btnPickTyreProduct');
-            const inputTyreRuleProduct = document.getElementById('inputTyreRuleProduct');
-            if (btnPickTyreProduct) btnPickTyreProduct.addEventListener('click', () => {
-                if (inputTyreRuleProduct) openOptionsPanel('产品', productOptions, inputTyreRuleProduct);
-            });
+            // Tyre ton rules management (product removed; tyre-only)
             // Press Enter in any input to quickly add the rule
-            ['inputTyres', 'inputTyreRuleProduct', 'inputTyreRuleTon'].forEach(id => {
+            ['inputTyres', 'inputTyreRuleTon'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
@@ -3224,21 +3221,18 @@
             });
             const btnAddTyreTonRule = document.getElementById('btnAddTyreTonRule');
             if (btnAddTyreTonRule) {
-                btnAddTyreTonRule.addEventListener('click', () => {
+                btnAddTyreTonRule.addEventListener('click', async () => {
                     const countRaw = document.getElementById('inputTyres')?.value || '';
-                    const product = (document.getElementById('inputTyreRuleProduct')?.value || '').trim();
                     const tonRaw = document.getElementById('inputTyreRuleTon')?.value || '';
                     const count = countRaw.trim();
                     const ton = parseFloat(tonRaw);
-                    if (!count || !product || isNaN(ton)) {
-                        showToast('请填写完整的轮胎规则（轮胎/产品/吨数）', 'danger');
+                    if (!count || isNaN(ton)) {
+                        showToast('请填写完整的轮胎规则（轮胎/吨数）', 'danger');
                         return;
                     }
                     if (!Array.isArray(CONFIG.tyreTonRules)) CONFIG.tyreTonRules = [];
-                    // 如果已存在相同(轮胎/产品/地方)规则，则更新吨位而不是重复添加
-                    const low = (s) => String(s || '').trim().toLowerCase();
+                    // 如果已存在相同轮胎规则，则更新吨位而不是重复添加
                     const existingIdx = CONFIG.tyreTonRules.findIndex(r =>
-                        low(r.product) === low(product) &&
                         String(r.tyres ?? r.tyreCount ?? '').trim() === String(count)
                     );
                     if (existingIdx >= 0) {
@@ -3247,13 +3241,20 @@
                         showToast('已更新现有轮胎规则的吨位', 'success');
                     } else {
                         // Store using canonical property 'tyres' so map builder picks it up
-                        CONFIG.tyreTonRules.push({ tyres: count, product, ton });
+                        CONFIG.tyreTonRules.push({ tyres: count, ton });
                         showToast('已添加轮胎吨位规则', 'success');
                     }
                     // Rebuild in-memory map immediately so main table can reflect new rule
                     try { buildTyreTonRulesMap(); } catch (_) { }
+                    // Persist to Supabase immediately
+                    try {
+                        const countInt = parseInt(count, 10);
+                        if (sb && Number.isFinite(countInt) && Number.isFinite(ton)) {
+                            await sb.from('ton_rules').upsert({ tyre_count: countInt, estimated_ton: ton, active: true }, { onConflict: 'tyre_count' });
+                        }
+                    } catch (_) { /* non-critical */ }
                     // Clear inputs
-                    const ids = ['inputTyres', 'inputTyreRuleProduct', 'inputTyreRuleTon'];
+                    const ids = ['inputTyres', 'inputTyreRuleTon'];
                     ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
                     renderTyreTonRulesTable(document.getElementById('searchTyreTonRules')?.value || '');
                     markUnsaved();
@@ -3262,16 +3263,24 @@
             const searchTyre = document.getElementById('searchTyreTonRules');
             if (searchTyre) searchTyre.addEventListener('input', () => renderTyreTonRulesTable(searchTyre.value));
             const tableTyre = document.getElementById('tableTyreTonRules');
-            if (tableTyre) tableTyre.addEventListener('click', (e) => {
+            if (tableTyre) tableTyre.addEventListener('click', async (e) => {
                 const tgt = e.target;
                 if (tgt && tgt.classList && tgt.classList.contains('btn-delete-tyre-rule')) {
                     const idxStr = tgt.dataset.index;
                     const idx = parseInt(idxStr, 10);
                     if (!isNaN(idx) && CONFIG.tyreTonRules && CONFIG.tyreTonRules[idx]) {
+                        const rule = CONFIG.tyreTonRules[idx];
+                        const countInt = parseInt(String(rule.tyres ?? rule.tyreCount ?? '').trim(), 10);
                         CONFIG.tyreTonRules.splice(idx, 1);
                         renderTyreTonRulesTable(document.getElementById('searchTyreTonRules')?.value || '');
                         markUnsaved();
                         try { buildTyreTonRulesMap(); } catch (_) { }
+                        // Persist deletion to Supabase
+                        try {
+                            if (sb && Number.isFinite(countInt)) {
+                                await sb.from('ton_rules').delete().eq('tyre_count', countInt);
+                            }
+                        } catch (_) { /* non-critical */ }
                     }
                 }
             });
@@ -4041,18 +4050,22 @@
             updateReasonInputs();
             loadReasons(id);
         }
+        // Expose functions for inline onclick handlers (module scope -> window)
+        window.selectReasonGroup = window.selectReasonGroup || selectReasonGroup;
 
         function confirmDeleteReasonGroup(id, name) {
             if (confirm(`确定要删除原因组合 "${name}" 吗？这将同时删除该组合下的所有原因。`)) {
                 deleteReasonGroup(id);
             }
         }
+        window.confirmDeleteReasonGroup = window.confirmDeleteReasonGroup || confirmDeleteReasonGroup;
 
         function confirmDeleteReason(id, name) {
             if (confirm(`确定要删除原因 "${name}" 吗？`)) {
                 deleteReason(id);
             }
         }
+        window.confirmDeleteReason = window.confirmDeleteReason || confirmDeleteReason;
 
         // Open reason selection overlay for remarks input
         async function openReasonSelectionPanel(targetInput) {

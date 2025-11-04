@@ -509,9 +509,50 @@
         <h1>车税规则管理</h1>
         <button class="embedded-panel-close" onclick="closeCommissionPanel()" aria-label="关闭车税管理">×</button>
       </div>
-      <!-- 精简顶部区域：移除旧的“添加”表单与说明，仅保留必要的操作按钮 -->
-      <div class="toolbar">
-        <button id="scrollBottom" class="btn">滚到底部</button>
+      <!-- 顶部快捷添加卡片（已按反馈隐藏，改为表格行内编辑+自动保存） -->
+      <div class="toolbar stacked" id="addNewCard" style="display:none">
+        <div class="field">
+          <span class="label">工厂</span>
+          <div class="combo">
+            <input type="text" id="newPU" placeholder="工厂" list="dlPickups" autocomplete="off">
+            <button class="combo-btn" data-cat="pickup">▼</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">产品</span>
+          <div class="combo">
+            <input type="text" id="newPR" placeholder="产品" list="dlProducts" autocomplete="off">
+            <button class="combo-btn" data-cat="product">▼</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">地方</span>
+          <div class="combo">
+            <input type="text" id="newDE" placeholder="地方" list="dlDestinations" autocomplete="off">
+            <button class="combo-btn" data-cat="destination">▼</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">车税（RM）</span>
+          <input type="text" id="newCM" placeholder="例如 14.00" class="inpCM">
+        </div>
+        <div class="field">
+          <span class="label">日期范围</span>
+          <div class="date-range">
+            <input type="date" id="newStart">
+            <span class="range-sep">至</span>
+            <input type="date" id="newEnd">
+          </div>
+        </div>
+        <div class="field" style="align-items:center">
+          <label style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="newActive" checked>
+            启用
+          </label>
+          <div style="flex:1"></div>
+          <!-- 已隐藏：顶部新增/删除按钮。请在表格底部空行直接输入后自动保存 -->
+          <button id="scrollBottom" class="btn" title="滚动到表格底部以使用行内添加">滚到底部</button>
+        </div>
       </div>
       <datalist id="dlPickups" class="datalist"></datalist>
       <datalist id="dlProducts" class="datalist"></datalist>
@@ -539,6 +580,7 @@
   </div>
 
 
+  <script src="env.local.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
@@ -648,6 +690,28 @@
     }
 
     async function loadRules() {
+      // If Supabase is not available in local mode, still render one blank row for adding
+      if (!sb) {
+        const tbody = document.querySelector('#rulesTable tbody');
+        tbody.innerHTML = '';
+        const empty = document.createElement('tr');
+        empty.dataset.new = '1';
+        empty.innerHTML = `
+          <td><div class="combo"><input type="text" class="inpPU" placeholder="工厂" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+          <td><div class="combo"><input type="text" class="inpPR" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
+          <td><div class="combo"><input type="text" class="inpDE" placeholder="地方" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+          <td><input type="text" class="inpCM" placeholder="RM"></td>
+          <td>
+            <div class="date-range">
+              <input type="date" class="inpStart">
+              <span class="range-sep">至</span>
+              <input type="date" class="inpEnd">
+            </div>
+          </td>
+          <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+        tbody.appendChild(empty);
+        return;
+      }
       const search = document.getElementById('search').value.toLowerCase();
       const { data, error } = await sb.from('commission_rules').select('pick_up,product,destination,commission,active,valid_from,valid_to');
       if (error) { console.error(error); return; }
@@ -1080,6 +1144,8 @@
       if (last) last.scrollIntoView({ behavior: 'smooth', block: 'end' });
     });
 
+    // 顶部新增/删除已禁用，改为行内自动保存
+
     // Auto-save on edit
     const tbodyEl = document.querySelector('#rulesTable tbody');
     tbodyEl.addEventListener('input', (ev) => {
@@ -1165,6 +1231,52 @@
       if (!ev.target.classList.contains('inpPU') && !ev.target.classList.contains('inpPR') && !ev.target.classList.contains('inpDE') && !ev.target.classList.contains('inpCM') && !ev.target.classList.contains('inpStart') && !ev.target.classList.contains('inpEnd')) return;
       ev.target.dispatchEvent(new Event('input', { bubbles: true }));
     }, true);
+
+    // 行内删除：点击“删除”按钮后，按当前行填写的工厂/产品/地方删除规则；空白新行仅清空
+    tbodyEl.addEventListener('click', async (ev) => {
+      const btn = ev.target;
+      if (!btn || !btn.classList || !btn.classList.contains('btnDelete')) return;
+      const tr = btn.closest('tr');
+      if (!tr) return;
+      const get = (sel) => tr.querySelector(sel);
+      const pu = formatCase(get('.inpPU')?.value || '');
+      const pr = formatCase(get('.inpPR')?.value || '');
+      const de = formatCase(get('.inpDE')?.value || '');
+      if (tr.dataset.new === '1' && !pu && !pr && !de) {
+        ['.inpPU','.inpPR','.inpDE','.inpCM','.inpStart','.inpEnd'].forEach(sel => { const el = get(sel); if (el) el.value = ''; });
+        return;
+      }
+      if (!pu || !pr || !de) { alert('请先填写完整“工厂 / 产品 / 地方”再删除'); return; }
+      if (!sb) { alert('Supabase 未初始化，无法删除'); return; }
+      if (!confirm(`确定删除规则：\n工厂：${pu}\n产品：${pr}\n地方：${de}`)) return;
+      try {
+        const { error } = await sb.from('commission_rules').delete().match({ pick_up: pu, product: pr, destination: de });
+        if (error) throw error;
+        const parent = tr.parentElement;
+        tr.remove();
+        const last = parent.lastElementChild;
+        if (!last || last.dataset?.new !== '1') {
+          const blank = document.createElement('tr');
+          blank.dataset.new = '1';
+          blank.innerHTML = `
+            <td><div class="combo"><input type="text" class="inpPU" placeholder="工厂" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+            <td><div class="combo"><input type="text" class="inpPR" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
+            <td><div class="combo"><input type="text" class="inpDE" placeholder="地方" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+            <td><input type="text" class="inpCM" placeholder="RM"></td>
+            <td>
+              <div class="date-range">
+                <input type="date" class="inpStart">
+                <span class="range-sep">至</span>
+                <input type="date" class="inpEnd">
+              </div>
+            </td>
+            <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+          parent.appendChild(blank);
+        }
+      } catch (e) {
+        alert('删除失败：' + e.message);
+      }
+    });
     // 已移除“导入Excel”按钮，以简化顶部区域，仅保留“滚到底部”
 
     // Mobile-friendly full list overlay for datalist alternatives

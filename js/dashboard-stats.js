@@ -30,6 +30,7 @@ async function calculateDashboardStats() {
     let totalTrips = 0;
     let totalCommission = 0;
     let totalExpenses = 0;
+    let totalEstimatedTon = 0;
 
     if (data && data.length > 0) {
       data.forEach((row) => {
@@ -40,7 +41,8 @@ async function calculateDashboardStats() {
             trips: 0,
             commission: 0,
             tollFees: 0,
-            fuelCosts: 0
+            fuelCosts: 0,
+            estimatedTon: 0
           });
         }
 
@@ -49,15 +51,21 @@ async function calculateDashboardStats() {
         for (let i = 1; i <= 5; i++) {
           const completed = row[`t${i}_completed`];
           const commission = row[`t${i}_commission`];
-          // estimated ton removed
           if (typeof window.parseBoolean === 'function' ? window.parseBoolean(completed) : completed === true) {
             stats.trips++;
             totalTrips++;
             const commissionValue = parseFloat(commission) || 0;
             stats.commission += commissionValue;
             totalCommission += commissionValue;
+            // 计算预计吨位：按该车的轮胎数对应的吨位规则
+            try {
+              const tyres = (typeof window.getTyreCountForPlate === 'function') ? window.getTyreCountForPlate(plate) : null;
+              const tonStr = (typeof window.getEstimatedTonFromTyreRules === 'function') ? window.getEstimatedTonFromTyreRules(tyres) : null;
+              const tonVal = parseFloat(tonStr) || 0;
+              stats.estimatedTon += tonVal;
+              totalEstimatedTon += tonVal;
+            } catch (_) { /* ignore */ }
           }
-          // estimated ton removed
         }
 
         const tollAmount = parseFloat(row.tol_amount) || 0;
@@ -74,6 +82,7 @@ async function calculateDashboardStats() {
       totalTrips,
       totalCommission,
       totalExpenses,
+      totalEstimatedTon,
       vehicleData: Array.from(vehicleStats.values())
     };
   } catch (error) {
@@ -87,10 +96,12 @@ async function calculateDashboardStats() {
         totalTrips: 0,
         totalCommission: 0,
         totalExpenses: 0,
+        // 确保仪表盘不会显示 '-'，在严重错误时也返回 0
+        totalEstimatedTon: 0,
         vehicleData: []
       };
+    }
   }
-}
 }
 
 // 基于本地排程数据的统计（支持时间范围，优先当天；如果提供了 window.localLoadSchedule 则遍历范围内的所有天）
@@ -99,6 +110,7 @@ function calculateStatsFromLocalRange(startDate, endDate) {
   let totalTrips = 0;
   let totalCommission = 0;
   let totalExpenses = 0;
+  let totalEstimatedTon = 0;
 
   // 遍历日期范围，优先使用 localStorage 中保存的每天排程，其次回退到当前页面内的 sampleData
   const dates = [];
@@ -124,20 +136,25 @@ function calculateStatsFromLocalRange(startDate, endDate) {
     (dayRows || []).filter(r => !(hiddenSet.has(r.lorryPlate) || archivedSet.has(r.lorryPlate))).forEach(row => {
       const plate = String(row.lorryPlate || '').trim();
       if (!vehicleStats.has(plate)) {
-        vehicleStats.set(plate, { plate, trips: 0, commission: 0, tollFees: 0, fuelCosts: 0 });
+        vehicleStats.set(plate, { plate, trips: 0, commission: 0, tollFees: 0, fuelCosts: 0, estimatedTon: 0 });
       }
       const stats = vehicleStats.get(plate);
       for (let i = 1; i <= 5; i++) {
         const t = row[`trip${i}`] || {};
         const completed = t.completed;
         const commission = t.commission;
-        // estimated ton removed
         if (typeof window.parseBoolean === 'function' ? window.parseBoolean(completed) : completed === true) {
           stats.trips++; totalTrips++;
           const commissionValue = parseFloat(commission) || 0;
           stats.commission += commissionValue; totalCommission += commissionValue;
+          // 预计吨位（根据轮胎规则）
+          try {
+            const tyres = (typeof window.getTyreCountForPlate === 'function') ? window.getTyreCountForPlate(plate) : null;
+            const tonStr = (typeof window.getEstimatedTonFromTyreRules === 'function') ? window.getEstimatedTonFromTyreRules(tyres) : null;
+            const tonVal = parseFloat(tonStr) || 0;
+            stats.estimatedTon += tonVal; totalEstimatedTon += tonVal;
+          } catch (_) { /* ignore */ }
         }
-        // estimated ton removed
       }
       const tollAmount = parseFloat(row.tol_amount) || 0;
       const petrolAmount = parseFloat(row.petrol_amount) || 0;
@@ -151,6 +168,7 @@ function calculateStatsFromLocalRange(startDate, endDate) {
     totalTrips,
     totalCommission,
     totalExpenses,
+    totalEstimatedTon,
     vehicleData: Array.from(vehicleStats.values())
   };
 }
@@ -158,7 +176,17 @@ function calculateStatsFromLocalRange(startDate, endDate) {
 function updateDashboardStats(stats) {
   document.getElementById('totalVehicles').textContent = stats.totalVehicles;
   document.getElementById('totalTrips').textContent = stats.totalTrips;
-  // estimated ton display removed
+  // 显示总预计吨位（如果页面有该元素）
+  const estEl = document.getElementById('totalEstimatedTon');
+  if (estEl) {
+    // 如果 totalEstimatedTon 未提供，尝试从车辆数据求和，最后回退为 0
+    let tonTotal = (typeof stats.totalEstimatedTon !== 'undefined')
+      ? stats.totalEstimatedTon
+      : (Array.isArray(stats.vehicleData)
+        ? stats.vehicleData.reduce((sum, v) => sum + (parseFloat(v.estimatedTon) || 0), 0)
+        : 0);
+    estEl.textContent = (parseFloat(tonTotal) || 0).toFixed(2);
+  }
   document.getElementById('totalCommission').textContent = `RM ${stats.totalCommission.toFixed(2)}`;
   document.getElementById('totalExpenses').textContent = `RM ${stats.totalExpenses.toFixed(2)}`;
 }
@@ -174,6 +202,7 @@ function updateDashboardChart(vehicleData) {
   const tripsData = vehicleData.map(v => v.trips);
   const commissionData = vehicleData.map(v => v.commission);
   const expensesData = vehicleData.map(v => v.tollFees + v.fuelCosts);
+  const estimatedTonData = vehicleData.map(v => v.estimatedTon || 0);
 
   window.dashboardChart = new Chart(ctx, {
     type: 'bar',
@@ -181,6 +210,7 @@ function updateDashboardChart(vehicleData) {
       labels,
       datasets: [
         { label: 'Trip数量', data: tripsData, backgroundColor: 'rgba(54, 162, 235, 0.8)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1, yAxisID: 'y' },
+        { label: '预计吨位 (吨)', data: estimatedTonData, backgroundColor: 'rgba(13, 148, 136, 0.7)', borderColor: 'rgba(13, 148, 136, 1)', borderWidth: 1, yAxisID: 'y' },
         { label: '车税 (RM)', data: commissionData, backgroundColor: 'rgba(75, 192, 192, 0.8)', borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 1, yAxisID: 'y1' },
         { label: '总开销 (RM)', data: expensesData, backgroundColor: 'rgba(255, 99, 132, 0.8)', borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 1, yAxisID: 'y1' }
       ]
@@ -190,7 +220,7 @@ function updateDashboardChart(vehicleData) {
       interaction: { mode: 'index', intersect: false },
       scales: {
         x: { display: true, title: { display: true, text: '车牌号' } },
-        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Trip数量' } },
+        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Trip / 吨位' } },
         y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: '金额 (RM)' }, grid: { drawOnChartArea: false } }
       },
       plugins: {
@@ -237,6 +267,7 @@ function updateVehicleTable(vehicleData) {
     row.innerHTML = `
       <td>${String(vehicle.plate || '').trim()}</td>
       <td>${vehicle.trips}</td>
+      <td>${(vehicle.estimatedTon || 0).toFixed(2)}</td>
       <td>${vehicle.commission.toFixed(2)}</td>
       <td>${vehicle.tollFees.toFixed(2)}</td>
       <td>${vehicle.fuelCosts.toFixed(2)}</td>

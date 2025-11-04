@@ -5,10 +5,9 @@
   window.LORRY_TYRE_COUNT_MAP = window.LORRY_TYRE_COUNT_MAP || new Map(); // plate -> tyres
   window.TYRE_TON_RULES = window.TYRE_TON_RULES || new Map(); // key `${tyres}|${product}` -> ton
   
-  function normalizeTyreKey(tyres, product) {
-    const pr = (product || '').toString().trim().toLowerCase();
+  function normalizeTyreKey(tyres) {
     const ty = String(tyres || '').trim();
-    return `${ty}|${pr}`;
+    return ty;
   }
 
   function buildLorryTyreCountMap() {
@@ -30,12 +29,11 @@
       window.TYRE_TON_RULES = new Map();
       (window.CONFIG && window.CONFIG.tyreTonRules || []).forEach(rec => {
         let tyres = rec && (rec.tyres ?? rec.tyreCount);
-        const pr = (rec && rec.product || '').toString().trim();
         let ton = rec && rec.ton;
-        if (pr && ton != null && ton !== '' && tyres != null && tyres !== '') {
+        if (ton != null && ton !== '' && tyres != null && tyres !== '') {
           tyres = parseInt(tyres, 10);
           if (!Number.isNaN(tyres)) {
-            const key = normalizeTyreKey(tyres, pr);
+            const key = normalizeTyreKey(tyres);
             window.TYRE_TON_RULES.set(key, ton);
           }
         }
@@ -64,12 +62,11 @@
     window.LORRY_TYRE_COUNT_MAP.set(p, num);
   }
 
-  function getEstimatedTonFromTyreRules(product, tyres, dateContext) {
+  function getEstimatedTonFromTyreRules(tyres, dateContext) {
     if (!window.TYRE_TON_RULES || window.TYRE_TON_RULES.size === 0) return null;
-    const prN = (product || '').toString().trim();
     const tyN = String(tyres || '').trim();
-    if (!prN || !tyN) return null;
-    const key = normalizeTyreKey(tyres, product);
+    if (!tyN) return null;
+    const key = normalizeTyreKey(tyres);
     let val = window.TYRE_TON_RULES.get(key);
     if (val == null) return null;
     if (typeof val === 'number' && !isNaN(val)) return String(Number(val).toFixed(2));

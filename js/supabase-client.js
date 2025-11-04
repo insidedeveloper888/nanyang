@@ -13,7 +13,8 @@
       const url = env.SUPABASE_URL || env.url;
       const key = env.SUPABASE_ANON_KEY || env.key;
       if (url && key) {
-        window.sb = window.supabase.createClient(url, key);
+        // Disable session persistence to avoid localStorage/IndexedDB quota issues
+        window.sb = window.supabase.createClient(url, key, { auth: { persistSession: false } });
         window.__SB = window.sb;
         return;
       }
@@ -25,7 +26,8 @@
       const url = window.__SUPABASE_URL || localStorage.getItem('SUPABASE_URL');
       const key = window.__SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY');
       if (url && key) {
-        window.sb = window.supabase.createClient(url, key);
+        // Disable session persistence to avoid localStorage/IndexedDB quota issues
+        window.sb = window.supabase.createClient(url, key, { auth: { persistSession: false } });
         window.__SB = window.sb;
         console.warn('Supabase initialized from local fallback variables');
         return;
@@ -88,4 +90,3 @@
   window.clearSupabaseLocalConfig = window.clearSupabaseLocalConfig || clearSupabaseLocalConfig;
   window.testSupabaseConnection = window.testSupabaseConnection || testSupabaseConnection;
 })();
-
