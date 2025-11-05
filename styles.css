@@ -118,6 +118,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* 允许在窄屏时换行，避免与右上角标签或表格重叠 */
+    flex-wrap: wrap;
+    row-gap: 8px;
 }
 
 .toolbar h2 {
@@ -168,6 +171,8 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    /* 当屏幕变窄时，让日期与缩放、搜索控件自动换行 */
+    flex-wrap: wrap;
 }
 
 .btn-nav {
@@ -1052,6 +1057,8 @@ select:focus,
 
 .search-input {
     width: 240px;
+    max-width: 50vw;
+    flex: 1 1 220px;
     padding: 8px 10px;
     border: 1px solid #ced4da;
     border-radius: 6px;
@@ -1600,6 +1607,40 @@ select:focus,
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) inset;
 }
 
+/* 保持右上角标签固定在右上角，不在小屏幕时移动位置 */
+
+/* Option A — 更精致的处理：不再增加大的顶部留白，而是在工具栏右侧预留水平空间，避免内容与固定标签重叠 */
+.top-right-tabs ~ .container .toolbar {
+    /* 预留一段水平空间供右上角标签悬浮覆盖，避免搜索/分组在其下方不可点击 */
+    padding-right: var(--tabs-reserve, 240px);
+}
+
+/* 中等及更窄视口：压缩右上角按钮体积，减少遮挡范围 */
+@media (max-width: 1500px) {
+    .top-right-tabs { gap: 6px; padding: 3px; }
+    .top-tab { padding: 5px 10px; font-size: 13px; }
+    .top-right-tabs ~ .container .toolbar { padding-right: var(--tabs-reserve-md, 200px); }
+}
+
+@media (max-width: 1100px) {
+    .top-right-tabs { gap: 4px; padding: 2px; }
+    .top-tab { padding: 4px 8px; font-size: 12px; }
+    .top-right-tabs ~ .container .toolbar { padding-right: var(--tabs-reserve-sm, 170px); }
+}
+
+/* 提前换行策略：当视口较窄时，使缩放与搜索区域独占一行，避免与日期选择并排过挤 */
+@media (max-width: 1500px) {
+    .date-navigator { flex-basis: 100%; }
+    .zoom-controls { flex-basis: 100%; }
+    .zoom-controls .search-box { flex: 1 1 100%; order: 2; margin-top: 6px; }
+    .search-input { width: 100%; max-width: 100%; }
+}
+
+@media (max-width: 1100px) {
+    .zoom-controls { gap: 6px; }
+    .search-input { width: 100%; max-width: 100%; }
+}
+
 /* ===================== Zoom Controls Styles ===================== */
 /* Zoom controls */
 :root {
@@ -1623,6 +1664,8 @@ select:focus,
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    /* 支持在小屏幕上换行，避免遮挡 */
+    flex-wrap: wrap;
 }
 
 .zoom-btn {
