@@ -1,8 +1,11 @@
 // Date utilities extracted from logistics-planner.html
 // NOTE: Kept function names and behavior identical. Attached to window to preserve inline handlers.
 
-// Current date state
-let currentDate = new Date();
+// Current date state binding shared between global lexical scope and window
+// Many parts of logistics-planner.html reference `currentDate` directly (global binding),
+// so we maintain BOTH the lexical binding and window.currentDate, kept in sync.
+let currentDate = (window.currentDate instanceof Date) ? window.currentDate : new Date();
+window.currentDate = currentDate;
 
 function getChineseWeekday(date) {
   const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -17,15 +20,17 @@ function formatDateISO(date) {
 }
 
 function updateDateDisplay() {
+  const d = currentDate instanceof Date ? currentDate : new Date();
   const dateElement = document.getElementById('currentDate');
   // Show only weekday in Chinese next to the native date input, inside the same box
-  if (dateElement) dateElement.textContent = getChineseWeekday(currentDate);
+  if (dateElement) dateElement.textContent = getChineseWeekday(d);
   const picker = document.getElementById('datePicker');
-  if (picker) picker.value = formatDateISO(currentDate);
+  if (picker) picker.value = formatDateISO(d);
 }
 
 async function navigateDate(direction) {
   currentDate.setDate(currentDate.getDate() + direction);
+  window.currentDate = currentDate; // keep in sync
   updateDateDisplay();
   // supabaseLoadSchedule and populateTable are defined elsewhere; we call them here identically.
   if (typeof window.supabaseLoadSchedule === 'function') {
@@ -37,7 +42,7 @@ async function navigateDate(direction) {
 }
 
 // Expose to global for existing inline event handlers
-window.currentDate = currentDate;
+// Ensure window.currentDate mirrors our lexical binding
 window.getChineseWeekday = getChineseWeekday;
 window.formatDateISO = formatDateISO;
 window.updateDateDisplay = updateDateDisplay;
@@ -45,6 +50,4 @@ window.navigateDate = navigateDate;
 
 // Debug marker to verify script loading order
 window.__DATE_UTILS_LOADED__ = true;
-try {
-  console.debug('[date-utils] loaded. updateDateDisplay type:', typeof window.updateDateDisplay);
-} catch (_) {}
+// Removed debug console output for production

@@ -29,14 +29,13 @@
         // Disable session persistence to avoid localStorage/IndexedDB quota issues
         window.sb = window.supabase.createClient(url, key, { auth: { persistSession: false } });
         window.__SB = window.sb;
-        console.warn('Supabase initialized from local fallback variables');
         return;
       }
     } catch (_) { }
-    // No Supabase available; continue in local-only mode
-    window.sb = null;
-    console.warn('Supabase not configured. Running in local-only mode.');
-  }
+  // No Supabase available; continue in local-only mode
+  window.sb = null;
+  // Removed console warning for production cleanliness
+}
 
   function loadSupabaseLocalConfig() {
     try {

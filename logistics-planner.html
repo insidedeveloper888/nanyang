@@ -579,7 +579,7 @@
             return Array.from(destinations).sort((a, b) => a.localeCompare(b));
         }
 
-        function getCommissionFromRules(pu, pr, de, dateContext = currentDate) {
+        function getCommissionFromRules(pu, pr, de, dateContext = window.currentDate) {
             // Strict matching only: if any field is blank, do NOT apply commission
             if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return null;
             const puN = (pu || '').toString().trim();
@@ -738,19 +738,19 @@
                             if (error) {
                                 // If it's an exclusion constraint violation, we can skip or handle it
                                 if (error.code === '23P01') {
-                                    console.warn('Skipping overlapping rule:', rule);
+                                    /* Skip overlapping rule silently */
                                 } else {
-                                    console.warn('Failed to insert rule:', rule, error);
+                                    /* Silent on production for failed insert */
                                 }
                             }
-                        } catch (e) {
-                            console.warn('Failed to insert rule:', rule, e);
-                        }
+                         } catch (e) {
+                            /* Silent on production for failed insert */
+                         }
                     }
                 }
-            } catch (e) {
-                console.warn('Failed to load commission rules from Excel', e);
-            }
+             } catch (e) {
+                /* Silent on production for Excel load failures */
+             }
         }
 
         function applyCommissionToSampleData() {
@@ -766,7 +766,7 @@
                         trip.commission = '';
                         return;
                     }
-                    const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+            const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, window.currentDate);
                     // Only auto-fill when commission is non-empty; otherwise clear
                     if (cm != null && cm !== '') {
                         trip.commission = cm;
@@ -802,7 +802,6 @@
                     SUPABASE_COMMISSION_RULES.set(key, arr);
                 });
             } catch (e) {
-                console.warn('Failed to load commission rules from Supabase', e);
                 SUPABASE_COMMISSION_RULES = new Map();
             }
         }
@@ -831,7 +830,6 @@
                     SUPABASE_TON_RULES.set(key, arr);
                 });
             } catch (e) {
-                console.warn('Failed to load ton rules from Supabase', e);
                 SUPABASE_TON_RULES = new Map();
             }
         }
@@ -866,7 +864,7 @@
                     pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
                     productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
                     destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
-                } catch (e) { console.warn('Local options fallback failed', e); }
+                } catch (e) { /* silent on production */ }
                 // Ensure tyre maps are built when operating without Supabase
                 try {
                     buildLorryTyreCountMap();
@@ -970,7 +968,6 @@
                 destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
                 applyTripColors(CONFIG);
             } catch (e) {
-                console.warn('Failed to load options from Supabase, using local config', e);
                 CONFIG = loadConfig();
                 window.CONFIG = CONFIG;
                 pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
@@ -1047,9 +1044,7 @@
                     for (const chunk of chunkArray(tyreList, 50)) {
                         await sb.from('lorry_plates').upsert(chunk, { onConflict: 'plate_no' });
                     }
-                } catch (e) {
-                    console.warn('Failed to persist tyre counts to lorry_plates', e);
-                }
+                } catch (e) { /* silent on production */ }
 
                 // Persist tyre-based ton rules to ton_rules keyed only by tyre_count (product removed)
                 try {
@@ -1090,9 +1085,7 @@
                     for (const chunk of chunkArray(ruleList, 50)) {
                         await sb.from('ton_rules').upsert(chunk, { onConflict: 'tyre_count' });
                     }
-                } catch (e) {
-                    console.warn('Failed to persist tyre-based ton rules to ton_rules', e);
-                }
+                } catch (e) { /* silent on production */ }
                 return true;
             } catch (e) {
                 console.error('Failed saving options to Supabase', e);
@@ -1106,7 +1099,7 @@
             if (!val) return;
             try {
                 await sb.from('config_options').upsert({ category, name: val, active: true }, { onConflict: 'category,name' });
-            } catch (e) { console.warn('Upsert option failed', category, val, e); }
+            } catch (e) { /* silent on production */ }
             const addUnique = (arr, v) => {
                 const low = String(v).toLowerCase();
                 if (!arr.some(x => String(x).toLowerCase() === low)) arr.push(v);
@@ -1150,7 +1143,7 @@
                     }
                     // Also remove ALL schedule rows for the current date to ensure nothing resurfaces
                     try {
-                        const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            const dstr = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.currentDate.getDate()).padStart(2, '0')}`;
                         await sb.from('schedules').delete().eq('work_date', dstr);
                     } catch (_) { }
                 }
@@ -1185,11 +1178,11 @@
                 });
 
                 // 6) Save schedule so persistence matches UI
-                await supabaseSaveSchedule(currentDate, sampleData);
+            await supabaseSaveSchedule(window.currentDate, sampleData);
                 sortSampleRows();
                 populateTable();
             } catch (e) {
-                console.warn('Reset lorry plates failed', e);
+                /* silent on production */
             }
         }
 
@@ -1214,7 +1207,7 @@
                 }
                 // Clear today’s schedules entirely
                 try {
-                    const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            const dstr = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.currentDate.getDate()).padStart(2, '0')}`;
                     await sb.from('schedules').delete().eq('work_date', dstr);
                 } catch (_) { }
                 // Reset local config and persist
@@ -1226,12 +1219,12 @@
                 await supabaseSaveOptions();
                 // Clear current view and reload
                 sampleData = [];
-                await supabaseLoadSchedule(currentDate);
+            await supabaseLoadSchedule(window.currentDate);
                 populateTable();
                 // Expose for manual triggers in console
                 window.debugClearAllPlatesDone = true;
             } catch (e) {
-                console.warn('Clear all active plates failed', e);
+                /* silent on production */
             }
         }
 
@@ -1514,7 +1507,7 @@
                             updateRowStatistics(row, data);
                             return;
                         }
-                        const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+            const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, window.currentDate);
                         if (cm != null) {
                             trip.commission = cm;
                             if (commissionInput) { commissionInput.value = cm; commissionInput.classList.add('autofilled'); }
@@ -1842,7 +1835,7 @@
                         updateRowStatistics(row, data);
                         return;
                     }
-                    const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, currentDate);
+            const cm = getCommissionFromRules(trip.pickUp, trip.product, trip.destination, window.currentDate);
                     if (cm != null) {
                         trip.commission = cm;
                         if (commissionInput) { commissionInput.value = cm; commissionInput.classList.add('autofilled'); }
@@ -2240,9 +2233,9 @@
         function queueAutosave(delay = 300) {
             if (autosaveTimer) clearTimeout(autosaveTimer);
             autosaveTimer = setTimeout(() => {
-                supabaseSaveSchedule(currentDate, sampleData);
+                supabaseSaveSchedule(window.currentDate, sampleData);
                 // Local fallback persistence
-                localSaveSchedule(currentDate, sampleData);
+                localSaveSchedule(window.currentDate, sampleData);
                 autosaveTimer = null;
             }, Math.max(0, delay));
         }
@@ -2251,9 +2244,9 @@
             if (autosaveTimer) {
                 clearTimeout(autosaveTimer);
                 autosaveTimer = null;
-                supabaseSaveSchedule(currentDate, sampleData);
+                supabaseSaveSchedule(window.currentDate, sampleData);
                 // Local fallback persistence
-                localSaveSchedule(currentDate, sampleData);
+                localSaveSchedule(window.currentDate, sampleData);
             }
         }
 
@@ -2393,6 +2386,7 @@
 
         // Load schedule rows for a given date from Supabase
         async function supabaseLoadSchedule(date) {
+            
             if (!sb) {
                 // Local-only mode: load from localStorage; if empty, seed from CONFIG.lorryPlates
                 const local = localLoadSchedule(date);
@@ -2466,29 +2460,8 @@
                     const hiddenSetLoad = new Set(CONFIG.hiddenLorryPlates || []);
                     const archivedSetLoad = new Set(CONFIG.archivedLorryPlates || []);
                     sampleData = sampleData.filter(r => !hiddenSetLoad.has(r.lorryPlate) && !archivedSetLoad.has(r.lorryPlate));
-                    // Ensure any active lorry plates from Config also appear, even if no schedule row exists yet
-                    try {
-                        const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
-                        const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
-                        const existing = new Set(sampleData.map(r => String(r.lorryPlate)));
-                        (CONFIG.lorryPlates || [])
-                            .filter(p => allowSet.has(String(p)))
-                            .filter(p => !hiddenSet.has(p) && !archivedSet.has(p))
-                            .forEach(p => {
-                                if (!existing.has(String(p))) {
-                                    sampleData.push({
-                                        lorryPlate: p,
-                                        trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                                        tol_amount: '',
-                                        petrol_amount: ''
-                                    });
-                                }
-                            });
-                    } catch (_) { /* non-critical */ }
+                    // Strict date view: do not auto-seed plates when schedule rows exist —
+                    // sampleData should contain ONLY rows from Supabase for the selected date.
                     // Merge local cached edits (e.g., reason) on top of DB data
                     const local = localLoadSchedule(date);
                     if (Array.isArray(local) && local.length) {
@@ -2514,15 +2487,20 @@
                         const lp = await sb.from('lorry_plates').select('plate_no');
                         const activePlates = (!lp.error && lp.data) ? lp.data.map(r => String(r.plate_no)) : (CONFIG.lorryPlates || []);
                         const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
-                        sampleData = activePlates.filter(p => !hiddenSet.has(p)).map(plate => ({
-                            lorryPlate: plate,
-                            trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        }));
-                        // Apply local cache if available
+                        const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+                        sampleData = activePlates
+                            .filter(p => !hiddenSet.has(p) && !archivedSet.has(p))
+                            .map(plate => ({
+                                lorryPlate: plate,
+                                trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                tol_amount: '',
+                                petrol_amount: ''
+                            }));
+                        // Apply local cache if available (e.g., offline edits for this date)
                         const local = localLoadSchedule(date);
                         if (Array.isArray(local) && local.length) {
                             const map = new Map(local.map(r => [String(r.lorryPlate), r]));
@@ -2543,14 +2521,16 @@
                         }
                     } catch (_) {
                         // Fallback to local CONFIG list if DB load fails
-                        sampleData = (CONFIG.lorryPlates || []).filter(p => !((CONFIG.hiddenLorryPlates || []).includes(p))).map(plate => ({
-                            lorryPlate: plate,
-                            trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                            trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        }));
+                        sampleData = (CONFIG.lorryPlates || [])
+                            .filter(p => !((CONFIG.hiddenLorryPlates || []).includes(p)) && !((CONFIG.archivedLorryPlates || []).includes(p)))
+                            .map(plate => ({
+                                lorryPlate: plate,
+                                trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' }
+                            }));
                     }
                 }
 
@@ -2565,6 +2545,7 @@
                     saveConfig(CONFIG);
                     // Ensure stable row order after loading
                     sortSampleRows();
+                    
                 } catch (_) { /* non-critical */ }
             } catch (e) {
                 console.error('Failed to load schedule from Supabase', e);
@@ -2576,10 +2557,10 @@
         // Clear today's schedules (delete all rows for the selected date)
         async function clearTodaySchedule() {
             try {
-                const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            const dstr = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.currentDate.getDate()).padStart(2, '0')}`;
                 await sb.from('schedules').delete().eq('work_date', dstr);
                 // Reload after deletion; this will repopulate empty rows for active lorry plates
-                await supabaseLoadSchedule(currentDate);
+                await supabaseLoadSchedule(window.currentDate);
                 applyCommissionToSampleData();
                 populateTable();
             } catch (e) {
@@ -2591,7 +2572,7 @@
         async function reloadPlannerTable() {
             try { showToast('正在刷新…'); } catch (_) { /* noop */ }
             try {
-                await supabaseLoadSchedule(currentDate);
+                await supabaseLoadSchedule(window.currentDate);
             } catch (e) {
                 console.error('Reload failed during Supabase load', e);
             }
@@ -2625,6 +2606,13 @@
                 container.appendChild(pill);
             });
         }
+
+        // Expose key planner functions to window for cross-module calls (e.g., date-utils.js)
+        try {
+            window.supabaseLoadSchedule = window.supabaseLoadSchedule || supabaseLoadSchedule;
+            window.populateTable = window.populateTable || populateTable;
+            window.reloadPlannerTable = window.reloadPlannerTable || reloadPlannerTable;
+        } catch (_) { /* non-critical */ }
 
         // Alphabet index builder for quick jump within a table
         function updateAlphaIndexFor(tableId, items, filterLow = '') {
@@ -2986,8 +2974,6 @@
         }
 
         function openConfig() {
-            console.log('openConfig called');
-            console.log('CONFIG:', CONFIG);
 
             // Snapshot for cancel/close without saving
             window.ORIG_LORRY_PLATES = Array.from(CONFIG.lorryPlates || []);
@@ -2996,10 +2982,10 @@
             window.CONFIG_MODAL_SAVED = false;
             window.IN_CONFIG_MODAL = true;
 
-            console.log('About to call clearUnsaved');
+            
             clearUnsaved();
 
-            console.log('About to render tables');
+            
             const f = document.getElementById('searchLorry')?.value || '';
             renderLorryTable(f);
             // Also render deleted plates list if table exists
@@ -3013,7 +2999,7 @@
 
             // 车税与默认设置已移除
             // Prefill color inputs
-            console.log('About to set color inputs');
+            
             const c = CONFIG.tripColors || defaultConfig.tripColors;
             const c1 = document.getElementById('colorTrip1'); if (c1) c1.value = c.trip1;
             const c2 = document.getElementById('colorTrip2'); if (c2) c2.value = c.trip2;
@@ -3021,11 +3007,10 @@
             const c4 = document.getElementById('colorTrip4'); if (c4) c4.value = c.trip4;
             const c5 = document.getElementById('colorTrip5'); if (c5) c5.value = c.trip5;
 
-            console.log('About to show modal');
             modalManager.open('config');
-            console.log('Modal opened using modalManager');
+            
 
-            console.log('About to call showTab');
+            
             showTab('tab-lorry');
             // Prefill Supabase settings panel
             try {
@@ -3037,7 +3022,7 @@
                 if (keyInput) keyInput.value = key;
                 if (statusEl) statusEl.textContent = sb ? '连接状态：已连接' : (url && key ? '连接状态：待测试' : '连接状态：未配置');
             } catch (_) { }
-            console.log('openConfig completed');
+            
         }
 
         function closeConfig() {
@@ -3150,7 +3135,7 @@
                     }
                     // Also remove current-date schedule rows for removed plates
                     try {
-                        const dstr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            const dstr = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.currentDate.getDate()).padStart(2, '0')}`;
                         await sb.from('schedules').delete().eq('work_date', dstr).in('lorry_plate', removed);
                     } catch (_) { }
                 }
@@ -3192,7 +3177,7 @@
                 // Autosave schedule so new rows are persisted
                 flushAutosave();
                 // Reload schedule from DB to reflect removals and prevent ghost rows
-                await supabaseLoadSchedule(currentDate);
+            await supabaseLoadSchedule(window.currentDate);
                 populateTable();
                 queueAutosave();
                 closeConfig();
@@ -3516,13 +3501,13 @@
                 // Load reason data for reason selection popup
                 await loadReasonGroups();
                 await loadReasons();
-                await supabaseLoadSchedule(currentDate);
+            await supabaseLoadSchedule(window.currentDate);
             } else {
                 // Local-only: merge Excel overrides if present; no DB schedule
                 await loadLorryOrderFromCSV();
                 mergeCommissionRulesPreferExcel();
                 // mergeTonRulesPreferExcel(); // 已停用
-                await supabaseLoadSchedule(currentDate);
+            await supabaseLoadSchedule(window.currentDate);
                 applyCommissionToSampleData();
             }
             // After loading schedule rows from DB, apply commission/ton based on active rules again
@@ -3625,13 +3610,23 @@
             const dp = document.getElementById('datePicker');
             if (dp) {
                 dp.addEventListener('change', async () => {
+                    
                     const v = dp.value;
                     if (!v) return;
                     const [yy, mm, dd] = v.split('-').map(Number);
                     currentDate = new Date(yy, (mm || 1) - 1, dd || 1);
+                    window.currentDate = currentDate; // keep in sync
                     updateDateDisplay();
-                    await supabaseLoadSchedule(currentDate);
+                    // Clear view immediately to avoid showing stale rows while loading
+                    try {
+                        sampleData = [];
+                        const tableBody = document.getElementById('tableBody');
+                        if (tableBody) tableBody.innerHTML = '';
+                    } catch (_) {}
+        await supabaseLoadSchedule(window.currentDate);
+                    applyCommissionToSampleData();
                     populateTable();
+                    
                 });
             }
 

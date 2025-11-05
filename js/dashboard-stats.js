@@ -7,7 +7,7 @@ async function calculateDashboardStats() {
 
   // 如果 Supabase 未配置，使用本地当前日期的排程数据进行统计回退
   if (!window.sb) {
-    console.warn('[dashboard] Supabase 未配置，使用本地数据进行统计');
+    // Silent fallback in production
     return calculateStatsFromLocalRange(startDate, endDate);
   }
 

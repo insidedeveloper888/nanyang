@@ -608,12 +608,12 @@
         if (url && key) {
           sb = window.supabase.createClient(url, key);
           window.__SB = sb;
-          console.warn('Supabase initialized from local fallback variables');
+          /* Removed debug logging */
           return;
         }
       } catch (_) { }
       sb = null;
-      console.warn('Supabase not configured. Running in local-only mode.');
+      /* Silent local-only mode in production */
     }
     const optionsCache = { pickup: [], product: [], destination: [] };
     // On tablets, the full-screen overlay can block the view. Enable typing-only mode here.
@@ -687,9 +687,7 @@
         fillDL(dlPU, optionsCache.pickup);
         fillDL(dlPR, optionsCache.product);
         fillDL(dlDE, optionsCache.destination);
-      } catch (e) {
-        console.warn('Failed to load options', e);
-      }
+      } catch (e) { /* silent on production */ }
     }
 
     async function loadRules() {
@@ -743,11 +741,13 @@
                 <input type="date" class="inpEnd" value="${e}">
               </div>
             </td>
-            <td style="display:flex;gap:8px;align-items:center;">
+            <td style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+              <span class="save-badge saved" title="已保存">已保存</span>
               <button class="btn btn-primary btnSave">保存</button>
               <button class="btn btn-danger btnDelete">删除</button>
             </td>`;
           tbody.appendChild(tr);
+          const saveBtn = tr.querySelector('.btnSave'); if (saveBtn) saveBtn.disabled = true;
         });
       // Always show one empty row at bottom for adding new rule
       const empty = document.createElement('tr');
@@ -764,7 +764,8 @@
             <input type="date" class="inpEnd">
           </div>
         </td>
-        <td style="display:flex;gap:8px;align-items:center;">
+        <td style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          <span class="save-badge unsaved" title="未保存">未保存</span>
           <button class="btn btn-primary btnSave">保存</button>
           <button class="btn btn-danger btnDelete">删除</button>
         </td>`;
@@ -775,6 +776,29 @@
     const ENFORCE_NO_OVERLAP = (typeof window.__CM_ENFORCE_NO_OVERLAP === 'boolean') ? window.__CM_ENFORCE_NO_OVERLAP : true;
     // 是否启用行内自动保存（开发环境可关闭以避免频繁写入或误追加）
     const AUTOSAVE = (typeof window.__CM_AUTOSAVE === 'boolean') ? window.__CM_AUTOSAVE : true;
+
+    // 保存状态徽章与按钮启用/禁用的辅助函数
+    (function injectSaveBadgeStyles(){
+      const styleTag = document.createElement('style');
+      styleTag.textContent = `
+        .save-badge { display:inline-block; padding:2px 6px; border-radius:8px; font-size:12px; line-height:1; }
+        .save-badge.saved { background:#e6ffed; color:#087f23; border:1px solid #a4e5b0; }
+        .save-badge.unsaved { background:#fff7e6; color:#a15c00; border:1px solid #ffd48a; }
+      `;
+      document.head.appendChild(styleTag);
+    })();
+    function markRowUnsaved(tr) {
+      const badge = tr.querySelector('.save-badge');
+      if (badge) { badge.textContent = '未保存'; badge.classList.remove('saved'); badge.classList.add('unsaved'); }
+      const btn = tr.querySelector('.btnSave'); if (btn) btn.disabled = false;
+      tr.dataset.dirty = '1';
+    }
+    function markRowSaved(tr) {
+      const badge = tr.querySelector('.save-badge');
+      if (badge) { badge.textContent = '已保存'; badge.classList.remove('unsaved'); badge.classList.add('saved'); }
+      const btn = tr.querySelector('.btnSave'); if (btn) btn.disabled = true;
+      delete tr.dataset.dirty;
+    }
 
     // 检查指定三元组与给定日期范围是否与现有规则重叠（用于避免数据库排斥约束 23P01）
     function rangesOverlap(aStart, aEnd, bStart, bEnd) {
@@ -801,7 +825,7 @@
         .eq('pick_up', pu)
         .eq('product', pr)
         .eq('destination', de);
-      if (error) { console.warn('查询重叠规则失败', error); return []; }
+      if (error) { return []; }
       return (data || []).filter(r => rangesOverlap(r.valid_from, r.valid_to, start, end));
     }
 
@@ -826,9 +850,7 @@
             alert(['添加失败：新期间与现有规则重叠。', ...lines, '请修改日期范围，或编辑现有规则。'].join('\n'));
             return;
           }
-        } catch (e) {
-          console.warn('重叠检查失败', e);
-        }
+        } catch (e) { /* silent on production */ }
       }
       const { error } = await sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: cm, active: ac, valid_from: start, valid_to: end }], { onConflict: 'pick_up,product,destination,valid_from' });
       if (error) { alert('添加失败：' + error.message); return; }
@@ -1037,7 +1059,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         Array.from(deSet).forEach(name => optRows.push({ category: 'destination', name, active: true }));
         if (optRows.length) {
           const { error: optErr } = await sb.from('config_options').upsert(optRows, { onConflict: 'category,name' });
-          if (optErr) console.warn('Upsert options failed', optErr);
+          /* Silent on production if upsert options failed */
         }
         const msg = [
           `导入完成：${rulesRows.length} 条规则已写入（重复组合已自动去重）`,
@@ -1049,7 +1071,6 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         alert(msg.join('\n'));
         await loadRules();
       } catch (e) {
-        console.warn(e);
         alert('导入失败：' + e.message);
       }
     }
@@ -1186,7 +1207,6 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         alert(msg.join('\n'));
         await loadRules();
       } catch (e) {
-        console.warn(e);
         alert('文件导入失败：' + e.message);
       }
     }
@@ -1207,10 +1227,8 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
     // Auto-save on edit（可通过 AUTOSAVE 关闭）
     const tbodyEl = document.querySelector('#rulesTable tbody');
     tbodyEl.addEventListener('input', (ev) => {
-      if (!AUTOSAVE) return; // dev: disable auto-save; prefer explicit Save
       const tr = ev.target.closest('tr');
       if (!tr) return;
-      if (!sb) { console.warn('Supabase not initialized, skipping auto-save'); return; }
       // Only save when editing meaningful fields
       if (ev.target.classList && (
         ev.target.classList.contains('inpPU') ||
@@ -1220,6 +1238,10 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         ev.target.classList.contains('inpStart') ||
         ev.target.classList.contains('inpEnd')
       )) {
+        // 变化后立即标记为未保存，启用保存按钮（不依赖 AUTOSAVE）
+        markRowUnsaved(tr);
+        // 若未启用 AUTOSAVE 或 Supabase 未准备好，则不继续自动保存，改为手动保存
+        if (!AUTOSAVE || !sb) return;
         // debounce
         if (!window.__saveTimers) window.__saveTimers = new WeakMap();
         const timers = window.__saveTimers;
@@ -1250,7 +1272,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
               return sb.from('commission_rules').upsert([{ pick_up: pu, product: pr, destination: de, commission: cm, valid_from: s, valid_to: e, active: true }], { onConflict: 'pick_up,product,destination,valid_from' });
             }))
             .then(async ({ error }) => {
-              if (error) console.warn('保存失败', error);
+              if (error) { /* silent on production */ }
               else if (tr.dataset.new === '1') {
                 delete tr.dataset.new;
                 const blank = document.createElement('tr');
@@ -1267,9 +1289,11 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
                       <input type="date" class="inpEnd">
                     </div>
                   </td>
-                  <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+                  <td style="display:flex;gap:8px;align-items:center;"><span class="save-badge unsaved">未保存</span><button class="btn btn-danger btnDelete">删除</button></td>`;
                 tr.parentElement.appendChild(blank);
               }
+              // 成功保存当前行，更新徽章与按钮状态
+              if (!error) markRowSaved(tr);
               // Upsert the edited values into config_options to keep pickUp/product/destination synced
               try {
                 const rows = [];
@@ -1293,7 +1317,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
                 fillDL('dlDestinations', optionsCache.destination);
                 // Notify parent (planner) to update its option lists
                 try { window.parent && window.parent.postMessage({ type: 'optionsUpdated', added: rows.map(r => ({ category: r.category, name: r.name })) }, '*'); } catch (_) { }
-              } catch (e) { console.warn('同步配置选项失败', e); }
+              } catch (e) { /* silent on production */ }
             });
         }, 500);
         timers.set(tr, t);
@@ -1306,55 +1330,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
       ev.target.dispatchEvent(new Event('input', { bubbles: true }));
     }, true);
 
-    // 行内删除：点击“删除”按钮后，按当前行填写的工厂/产品/地方删除规则；空白新行仅清空
-    tbodyEl.addEventListener('click', async (ev) => {
-      const btn = ev.target;
-      if (!btn || !btn.classList || !btn.classList.contains('btnDelete')) return;
-      const tr = btn.closest('tr');
-      if (!tr) return;
-      const get = (sel) => tr.querySelector(sel);
-      const pu = formatCase(get('.inpPU')?.value || '');
-      const pr = formatCase(get('.inpPR')?.value || '');
-      const de = formatCase(get('.inpDE')?.value || '');
-      if (tr.dataset.new === '1' && !pu && !pr && !de) {
-        ['.inpPU','.inpPR','.inpDE','.inpCM','.inpStart','.inpEnd'].forEach(sel => { const el = get(sel); if (el) el.value = ''; });
-        return;
-      }
-      if (!pu || !pr || !de) { alert('请先填写完整“工厂 / 产品 / 地方”再删除'); return; }
-      if (!sb) { alert('Supabase 未初始化，无法删除'); return; }
-      if (!confirm(`确定删除规则：\n工厂：${pu}\n产品：${pr}\n地方：${de}`)) return;
-      try {
-        // Prefer delete by id when available to avoid deleting multiple rows of the same三元组
-        const id = tr.dataset.id ? Number(tr.dataset.id) : null;
-        const { error } = id
-          ? await sb.from('commission_rules').delete().eq('id', id)
-          : await sb.from('commission_rules').delete().match({ pick_up: pu, product: pr, destination: de });
-        if (error) throw error;
-        const parent = tr.parentElement;
-        tr.remove();
-        const last = parent.lastElementChild;
-        if (!last || last.dataset?.new !== '1') {
-          const blank = document.createElement('tr');
-          blank.dataset.new = '1';
-          blank.innerHTML = `
-            <td><div class="combo"><input type="text" class="inpPU" placeholder="工厂" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
-            <td><div class="combo"><input type="text" class="inpPR" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
-            <td><div class="combo"><input type="text" class="inpDE" placeholder="地方" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
-            <td><input type="text" class="inpCM" placeholder="RM"></td>
-            <td>
-              <div class="date-range">
-                <input type="date" class="inpStart">
-                <span class="range-sep">至</span>
-                <input type="date" class="inpEnd">
-              </div>
-            </td>
-            <td><button class="btn btn-danger btnDelete">删除</button></td>`;
-          parent.appendChild(blank);
-        }
-      } catch (e) {
-        alert('删除失败：' + e.message);
-      }
-    });
+    // 删除事件已合并到统一的委托处理器，避免重复绑定导致二次弹窗
     // 已移除“导入Excel”按钮，以简化顶部区域，仅保留“滚到底部”
 
     // Mobile-friendly full list overlay for datalist alternatives
@@ -1538,8 +1514,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
             return;
           }
         } catch (e) {
-          console.warn('Overlap check failed', e);
-          // Proceed, but inform user that validation could not be completed
+          // Proceed, but inform user that validation could not be completed (silent in production)
         }
         let res;
         if (id) {
@@ -1591,9 +1566,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         if (params.get('autoImport') === '1') {
           await importFromExcel('Book1.xlsx');
         }
-      } catch (e) {
-        console.warn('Auto import failed', e);
-      }
+      } catch (e) { /* silent on production */ }
     })();
 
     // Function to close the commission panel by communicating with parent window
@@ -1609,9 +1582,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
             window.closeCommissionPanel();
           }
         }
-      } catch (e) {
-        console.warn('Failed to close commission panel', e);
-      }
+      } catch (e) { /* silent on production */ }
     }
   </script>
 </body>

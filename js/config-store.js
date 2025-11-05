@@ -45,7 +45,7 @@
       const parsed = JSON.parse(raw);
       return { ...defaultConfig, ...parsed };
     } catch (e) {
-      console.warn('Failed to load config, using defaults', e);
+      // Silent fallback to defaults in production
       return { ...defaultConfig };
     }
   }
@@ -64,11 +64,10 @@
     try {
       localStorage.setItem('nanyang_config', JSON.stringify(cfg));
     } catch (e) {
-      if (e.name === 'QuotaExceededError') {
-        console.warn('LocalStorage quota exceeded. Could not save config. Please consider clearing some space.');
-      } else {
+      if (e.name !== 'QuotaExceededError') {
         console.error('Failed to save config to localStorage:', e);
       }
+      // Suppress non-critical warning logs in production
     }
     // Keep in-memory maps in sync immediately after saves
     try {
