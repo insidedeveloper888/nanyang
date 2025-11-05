@@ -45,13 +45,16 @@
                     <button id="zoomIn" class="zoom-btn" title="放大">＋</button>
                     <!-- Reload real-time table -->
                     <button id="reloadTable" class="zoom-btn" title="刷新表格">⟳</button>
-                    <!-- Inline search (main table) -->
-                    <div class="search-box" style="margin-left:8px;">
-                        <input id="searchInput" class="search-input" type="text" placeholder="搜索：啰里/工厂/产品/地方/车税/吨位/原因">
-                    </div>
                 </div>
             </div>
-            <!-- toolbar-actions container kept minimal; group toggles will be injected next to date via ensureTyreGroupToggle() -->
+            <!-- Filters row: search + group-by toggles -->
+            <div class="filter-controls">
+                <div class="search-box">
+                    <input id="searchInput" class="search-input" type="text" placeholder="搜索：啰里/工厂/产品/地方/车税/吨位/原因">
+                </div>
+                <!-- ensureTyreGroupToggle() will append the '按胎数组' checkbox here -->
+            </div>
+            <!-- toolbar-actions preserved (hidden) for potential future controls -->
             <div class="toolbar-actions" style="display:none"></div>
         </div>
 
@@ -1667,7 +1670,7 @@
 
         // Add a single Group-by-Tyres toggle that shows colored group headers like "6 Tyres"
         function ensureTyreGroupToggle() {
-            const actions = document.querySelector('.date-navigator');
+            const actions = document.querySelector('.filter-controls');
             if (!actions || actions.__tyreGroupAdded) return;
             const lbl = document.createElement('label');
             lbl.style.display = 'inline-flex';
