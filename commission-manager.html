@@ -625,11 +625,18 @@
     };
 
     function norm(s) { return (s || '').toString().trim(); }
+    // Smarter Title Case that:
+    // - capitalizes each alphabetic word
+    // - preserves numbers and separators like /, -, ' correctly
+    // - avoids turning "C/Sand" into "C/sand" or "3/4 Agg" into "3/4 agg"
     function titleCase(s) {
-      const v = norm(s).toLowerCase();
-      return v.replace(/(^|\s)([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase());
+      const v = norm(s);
+      // Capitalize the first letter of each alphabetic word and lowercase the rest
+      // Word boundaries are handled so segments after separators are capitalized too.
+      return v.replace(/\b([A-Za-z])[A-Za-z']*/g, (m) => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase());
     }
-    function formatCase(s) { return titleCase(s); }
+    // Fully uppercase formatting for pickup/product/destination per request
+    function formatCase(s) { return norm(s).toUpperCase(); }
     function toRM(s) {
       if (s == null) return '';
       const m = String(s).match(/[0-9]+(?:\.[0-9]+)?/);
@@ -649,7 +656,7 @@
           for (const raw of items) {
             const key = norm(raw).toLowerCase();
             if (!key) continue;
-            if (!map.has(key)) map.set(key, titleCase(raw));
+            if (!map.has(key)) map.set(key, formatCase(raw));
           }
           return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
         };
@@ -1296,13 +1303,19 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
               if (!error) markRowSaved(tr);
               // Upsert the edited values into config_options to keep pickUp/product/destination synced
               try {
+                // Canonicalize names to Title Case before upsert
+                const toTitleCaseSmart = (s) => formatCase(s);
+                const normalizeLabelKey = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
                 const rows = [];
-                if (pu) rows.push({ category: 'pickup', name: pu, active: true });
-                if (pr) rows.push({ category: 'product', name: pr, active: true });
-                if (de) rows.push({ category: 'destination', name: de, active: true });
+                if (pu) rows.push({ category: 'pickup', name: toTitleCaseSmart(pu), active: true });
+                if (pr) rows.push({ category: 'product', name: toTitleCaseSmart(pr), active: true });
+                if (de) rows.push({ category: 'destination', name: toTitleCaseSmart(de), active: true });
                 if (rows.length) await sb.from('config_options').upsert(rows, { onConflict: 'category,name' });
                 // Update local caches and datalists for immediate availability in overlays
-                const addUnique = (arr, v) => { const k = String(v).toLowerCase(); if (!arr.some(x => String(x).toLowerCase() === k)) arr.push(v); };
+                const addUnique = (arr, v) => {
+                  const key = normalizeLabelKey(v);
+                  if (!arr.some(x => normalizeLabelKey(x) === key)) arr.push(toTitleCaseSmart(v));
+                };
                 if (pu) addUnique(optionsCache.pickup, pu);
                 if (pr) addUnique(optionsCache.product, pr);
                 if (de) addUnique(optionsCache.destination, de);
@@ -1420,7 +1433,9 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
     window.addEventListener('message', (ev) => {
       const d = ev?.data; if (!d) return;
       if (d.type === 'optionsUpdated' && Array.isArray(d.added)) {
-        const addUnique = (arr, v) => { const k = String(v).toLowerCase(); if (!arr.some(x => String(x).toLowerCase() === k)) arr.push(v); };
+        const toTitleCaseSmart = (s) => formatCase(s);
+        const normalizeLabelKey = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+        const addUnique = (arr, v) => { const k = normalizeLabelKey(v); if (!arr.some(x => normalizeLabelKey(x) === k)) arr.push(toTitleCaseSmart(v)); };
         d.added.forEach(({ category, name }) => {
           if (category === 'pickup') addUnique(optionsCache.pickup, name);
           if (category === 'product') addUnique(optionsCache.product, name);
@@ -1526,6 +1541,8 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         }
         if (res.error) { alert('保存失败：' + res.error.message); return; }
         alert('已保存');
+        // 通知父页面（排程规划器）车税规则已更改，以便自动刷新主表
+        try { window.parent && window.parent.postMessage({ type: 'commissionRulesChanged' }, '*'); } catch (_) {}
         await loadRules();
       } else if (btn.classList.contains('btnDelete')) {
         const pu = formatCase(get('.inpPU').value);
@@ -1550,6 +1567,8 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         const delRes = await sb.from('commission_rules').delete().eq('id', id);
         if (delRes.error) { alert('删除失败：' + delRes.error.message); return; }
         alert('已删除（仅该行）');
+        // 删除后同样通知父页面刷新
+        try { window.parent && window.parent.postMessage({ type: 'commissionRulesChanged' }, '*'); } catch (_) {}
         await loadRules();
       }
     });

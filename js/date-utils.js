@@ -29,16 +29,28 @@ function updateDateDisplay() {
 }
 
 async function navigateDate(direction) {
+  // Show loading overlay to make feedback obvious during date navigation
+  try { if (typeof window.showLoading === 'function') window.showLoading('正在加载所选日期…'); } catch (_) {}
   currentDate.setDate(currentDate.getDate() + direction);
   window.currentDate = currentDate; // keep in sync
   updateDateDisplay();
+  // Clear existing table quickly to avoid showing stale rows while fetching
+  try {
+    if (typeof window.sampleData !== 'undefined') window.sampleData = [];
+    const tb = document.getElementById('tableBody');
+    if (tb) tb.innerHTML = '';
+  } catch (_) {}
   // supabaseLoadSchedule and populateTable are defined elsewhere; we call them here identically.
   if (typeof window.supabaseLoadSchedule === 'function') {
     await window.supabaseLoadSchedule(currentDate);
   }
+  if (typeof window.applyCommissionToSampleData === 'function') {
+    try { window.applyCommissionToSampleData(); } catch (_) {}
+  }
   if (typeof window.populateTable === 'function') {
     window.populateTable();
   }
+  try { if (typeof window.hideLoading === 'function') window.hideLoading('已更新当天排程'); } catch (_) {}
 }
 
 // Expose to global for existing inline event handlers

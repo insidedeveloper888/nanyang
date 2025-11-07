@@ -18,6 +18,13 @@
     </div>
     <!-- Toast notifications -->
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <!-- Global Loading Overlay -->
+    <div id="appLoadingOverlay" class="app-loading-overlay" role="alert" aria-live="assertive" aria-busy="true" style="display:none">
+        <div class="panel">
+            <div class="spinner" aria-hidden="true"></div>
+            <div class="message" id="appLoadingMessage">正在加载…</div>
+        </div>
+    </div>
 
     <div class="container">
         <div class="toolbar">
@@ -291,6 +298,7 @@
                         <input type="text" id="inputLorryPlate" placeholder="添加啰里">
                         <button class="btn btn-primary" id="btnAddLorry">添加</button>
                     </div>
+                    <div class="inline-error" id="errorLorry" aria-live="polite"></div>
                     <div class="config-input-row">
                         <input type="text" id="searchLorry" placeholder="搜索啰里">
                     </div>
@@ -320,6 +328,7 @@
                         <input type="text" id="inputPickUp" placeholder="添加工厂">
                         <button class="btn btn-primary" id="btnAddPickUp">添加</button>
                     </div>
+                    <div class="inline-error" id="errorPickUp" aria-live="polite"></div>
                     <div class="config-input-row"><input type="text" id="searchPickUp" placeholder="搜索工厂"></div>
                     <div class="alpha-index" id="alpha-pickup"></div>
                     <table class="config-table" id="tablePickUp">
@@ -338,6 +347,7 @@
                         <input type="text" id="inputProduct" placeholder="添加产品">
                         <button class="btn btn-primary" id="btnAddProduct">添加</button>
                     </div>
+                    <div class="inline-error" id="errorProduct" aria-live="polite"></div>
                     <div class="config-input-row"><input type="text" id="searchProduct" placeholder="搜索产品"></div>
                     <div class="alpha-index" id="alpha-product"></div>
                     <table class="config-table" id="tableProduct">
@@ -356,6 +366,7 @@
                         <input type="text" id="inputDestination" placeholder="添加地方">
                         <button class="btn btn-primary" id="btnAddDestination">添加</button>
                     </div>
+                    <div class="inline-error" id="errorDestination" aria-live="polite"></div>
                     <div class="config-input-row"><input type="text" id="searchDestination" placeholder="搜索地方">
                     </div>
                     <div class="alpha-index" id="alpha-destination"></div>
@@ -388,6 +399,7 @@
                             <button class="btn btn-primary" id="btnAddTyreTonRule">添加规则</button>
                             <input type="text" id="searchTyreTonRules" placeholder="搜索规则 (仅轮胎)">
                         </div>
+                        <div class="inline-error" id="errorTyreRules" aria-live="polite"></div>
                             <table class="config-table" id="tableTyreTonRules">
                                 <thead>
                                     <tr>
@@ -525,8 +537,29 @@
         let EXCEL_TON_RULES = new Map();
         let SUPABASE_TON_RULES = new Map();
 
+        // General label normalization helpers
+        // - normalizeLabelKey: space-insensitive, lowercased key used for comparison/dedup
+        // - toTitleCaseSmart: display formatting for labels
+        // - canonicalizeOptionList: remove duplicates by normalized key and format for display
+        function normalizeLabelKey(s) { return String(s || '').replace(/\s+/g, '').toLowerCase(); }
+        // Display formatter: ALL CAPS for Latin letters; non-Latin characters remain unchanged
+        function toTitleCaseSmart(s) { return String(s || '').trim().toUpperCase(); }
+        function canonicalizeOptionList(list = []) {
+            const seen = new Set();
+            const out = [];
+            for (const raw of (list || [])) {
+                const t = String(raw || '').trim();
+                if (!t) continue;
+                const k = normalizeLabelKey(t);
+                if (seen.has(k)) continue;
+                seen.add(k);
+                out.push(toTitleCaseSmart(t));
+            }
+            return out;
+        }
+
         function normalizeKey(pu, pr, de) {
-            const norm = (s) => (s || '').toString().trim().toLowerCase();
+            const norm = (s) => normalizeLabelKey(s);
             return `${norm(pu)}|${norm(pr)}|${norm(de)}`;
         }
 
@@ -534,7 +567,7 @@
             // Get unique products available for a specific pick up location
             if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
 
-            const puNorm = (pickUp || '').toString().trim().toLowerCase();
+            const puNorm = normalizeLabelKey(pickUp);
             if (!puNorm) return [];
 
             const products = new Set();
@@ -544,9 +577,7 @@
                 const [keyPu, keyPr, keyDe] = key.split('|');
                 if (keyPu === puNorm && keyPr && keyDe) {
                     // Find the original case-sensitive product name from productOptions
-                    const originalProduct = productOptions.find(p =>
-                        p.toString().trim().toLowerCase() === keyPr
-                    );
+                    const originalProduct = productOptions.find(p => normalizeLabelKey(p) === keyPr);
                     if (originalProduct) {
                         products.add(originalProduct);
                     }
@@ -560,7 +591,7 @@
             // Get unique destinations available for a specific pick up location
             if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
 
-            const puNorm = (pickUp || '').toString().trim().toLowerCase();
+            const puNorm = normalizeLabelKey(pickUp);
             if (!puNorm) return [];
 
             const destinations = new Set();
@@ -570,9 +601,7 @@
                 const [keyPu, keyPr, keyDe] = key.split('|');
                 if (keyPu === puNorm && keyPr && keyDe) {
                     // Find the original case-sensitive destination name from destinationOptions
-                    const originalDestination = destinationOptions.find(d =>
-                        d.toString().trim().toLowerCase() === keyDe
-                    );
+                    const originalDestination = destinationOptions.find(d => normalizeLabelKey(d) === keyDe);
                     if (originalDestination) {
                         destinations.add(originalDestination);
                     }
@@ -720,15 +749,15 @@
                 CONFIG.products = prList;
                 CONFIG.destinations = deList;
                 saveConfig(CONFIG);
-                pickUpOptions = CONFIG.pickUps;
-                productOptions = CONFIG.products;
-                destinationOptions = CONFIG.destinations;
+        pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
+        productOptions = canonicalizeOptionList(CONFIG.products || []);
+        destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
 
                 // Persist options to Supabase config_options
                 const optRows = [];
-                Array.from(puSet).forEach(name => optRows.push({ category: 'pickup', name, active: true }));
-                Array.from(prSet).forEach(name => optRows.push({ category: 'product', name, active: true }));
-                Array.from(deSet).forEach(name => optRows.push({ category: 'destination', name, active: true }));
+                Array.from(puSet).forEach(name => optRows.push({ category: 'pickup', name: toTitleCaseSmart(name), active: true }));
+                Array.from(prSet).forEach(name => optRows.push({ category: 'product', name: toTitleCaseSmart(name), active: true }));
+                Array.from(deSet).forEach(name => optRows.push({ category: 'destination', name: toTitleCaseSmart(name), active: true }));
                 if (optRows.length) {
                     await sb.from('config_options').upsert(optRows, { onConflict: 'category,name' });
                 }
@@ -864,9 +893,9 @@
                     CONFIG = loadConfig();
                     window.CONFIG = CONFIG;
                     applyTripColors(CONFIG);
-                    pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
-                    productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
-                    destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+                pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
+                productOptions = canonicalizeOptionList(CONFIG.products || []);
+                destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
                 } catch (e) { /* silent on production */ }
                 // Ensure tyre maps are built when operating without Supabase
                 try {
@@ -966,16 +995,16 @@
                 cfg.archivedLorryPlates = [];
                 CONFIG = cfg;
                 window.CONFIG = CONFIG;
-                pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
-                productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
-                destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+                pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
+                productOptions = canonicalizeOptionList(CONFIG.products || []);
+                destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
                 applyTripColors(CONFIG);
             } catch (e) {
                 CONFIG = loadConfig();
                 window.CONFIG = CONFIG;
-                pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
-                productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
-                destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+                pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
+                productOptions = canonicalizeOptionList(CONFIG.products || []);
+                destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
                 applyTripColors(CONFIG);
             }
             // Always rebuild in-memory tyre maps after any CONFIG load/update
@@ -989,6 +1018,22 @@
             try {
                 // Normalize and build new active rows
                 const uniq = (arr = []) => Array.from(new Set(arr.map(v => (v || '').trim()).filter(Boolean)));
+                // Helpers for consistent display and de-duplication across pickup/product/destination
+                window.normalizeLabelKey = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+                window.toTitleCaseSmart = (s) => String(s || '').trim().replace(/\b([A-Za-z])[A-Za-z']*/g, (m) => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase());
+                window.canonicalizeOptionList = (list = []) => {
+                    const seen = new Set();
+                    const out = [];
+                    for (const raw of (list || [])) {
+                        const t = String(raw || '').trim();
+                        if (!t) continue;
+                        const k = normalizeLabelKey(t);
+                        if (seen.has(k)) continue;
+                        seen.add(k);
+                        out.push(toTitleCaseSmart(t));
+                    }
+                    return out;
+                };
                 const newByCat = {
                     lorry_plate: uniq(CONFIG.lorryPlates || []),
                     pickup: uniq((CONFIG.pickUps || []).filter(Boolean)),
@@ -1097,19 +1142,28 @@
         }
 
         // Helper: upsert a single option to Supabase and update local CONFIG/option arrays
-        async function upsertOptionAndSync(category, name) {
-            const val = String(name || '').trim();
-            if (!val) return;
+async function upsertOptionAndSync(category, name) {
+            // Canonicalize to ALL CAPS for display; use space-insensitive, case-insensitive key for dedup
+            const raw = String(name || '').trim();
+            const val = toTitleCaseSmart(raw);
+            if (!val) return false;
+            // Client-side duplicate check before persisting
+            const arr = category === 'pickup' ? (CONFIG.pickUps || [])
+                       : category === 'product' ? (CONFIG.products || [])
+                       : category === 'destination' ? (CONFIG.destinations || [])
+                       : [];
+            const exists = arr.some(x => normalizeLabelKey(x) === normalizeLabelKey(val));
+            if (exists) { showToast(`已存在相同项：${val}`, 'danger'); return false; }
             try {
                 await sb.from('config_options').upsert({ category, name: val, active: true }, { onConflict: 'category,name' });
             } catch (e) { /* silent on production */ }
             const addUnique = (arr, v) => {
-                const low = String(v).toLowerCase();
-                if (!arr.some(x => String(x).toLowerCase() === low)) arr.push(v);
+                const key = normalizeLabelKey(v);
+                if (!arr.some(x => normalizeLabelKey(x) === key)) arr.push(toTitleCaseSmart(v));
             };
-            if (category === 'pickup') { addUnique(CONFIG.pickUps, val); pickUpOptions = CONFIG.pickUps; }
-            if (category === 'product') { addUnique(CONFIG.products, val); productOptions = CONFIG.products; }
-            if (category === 'destination') { addUnique(CONFIG.destinations, val); destinationOptions = CONFIG.destinations; }
+            if (category === 'pickup') { addUnique(CONFIG.pickUps, val); pickUpOptions = canonicalizeOptionList(CONFIG.pickUps); }
+            if (category === 'product') { addUnique(CONFIG.products, val); productOptions = canonicalizeOptionList(CONFIG.products); }
+            if (category === 'destination') { addUnique(CONFIG.destinations, val); destinationOptions = canonicalizeOptionList(CONFIG.destinations); }
 
             // Notify embedded commission manager to update its datalists immediately
             try {
@@ -1118,6 +1172,82 @@
                     ifr.contentWindow.postMessage({ type: 'optionsUpdated', added: [{ category, name: val }] }, '*');
                 }
             } catch (_) { /* non-critical */ }
+            return true;
+        }
+
+        // Inline error helpers for Config inputs (global scope)
+        function setInlineError(category, message) {
+            const ids = {
+                pickup: 'errorPickUp',
+                product: 'errorProduct',
+                destination: 'errorDestination',
+                lorry: 'errorLorry',
+                tyre_rules: 'errorTyreRules'
+            };
+            const id = ids[category];
+            const el = id ? document.getElementById(id) : null;
+            if (!el) return;
+            el.textContent = message || '';
+        }
+
+        function clearInlineError(category) { setInlineError(category, ''); }
+
+        // Visual cue for duplicate adds in Config tab: shake the input, focus it,
+        // show a red inline error message, filter the table to the duplicate,
+        // and highlight the first matching row.
+        function showDuplicateFeedback(category, value) {
+            const map = {
+                pickup: {
+                    input: 'inputPickUp', search: 'searchPickUp', table: 'tablePickUp',
+                    render: (filterVal) => renderItemsTable('tablePickUp', CONFIG.pickUps, filterVal)
+                },
+                product: {
+                    input: 'inputProduct', search: 'searchProduct', table: 'tableProduct',
+                    render: (filterVal) => renderItemsTable('tableProduct', CONFIG.products, filterVal)
+                },
+                destination: {
+                    input: 'inputDestination', search: 'searchDestination', table: 'tableDestination',
+                    render: (filterVal) => renderItemsTable('tableDestination', CONFIG.destinations, filterVal)
+                },
+                lorry: {
+                    input: 'inputLorryPlate', search: 'searchLorry', table: 'tableLorry',
+                    render: (filterVal) => renderLorryTable(filterVal)
+                },
+                tyre_rules: {
+                    input: 'inputTyres', search: 'searchTyreTonRules', table: 'tableTyreTonRules',
+                    render: (filterVal) => renderTyreTonRulesTable(filterVal)
+                }
+            };
+            const m = map[category]; if (!m) return;
+            const iv = document.getElementById(m.input);
+            if (iv) {
+                iv.focus();
+                iv.classList.add('shake-error');
+                iv.classList.add('input-error');
+                iv.setAttribute('data-error', 'duplicate');
+                setTimeout(() => { iv.classList.remove('shake-error'); iv.removeAttribute('data-error'); }, 900);
+            }
+            // Inline error under the input row
+            const displayVal = category === 'tyre_rules' ? String(value || '') : toTitleCaseSmart(value || '');
+            const msg = category === 'tyre_rules'
+              ? `已存在相同轮胎规则：${displayVal}（添加失败）`
+              : `已存在相同项：${displayVal}（添加失败）`;
+            setInlineError(category, msg);
+            // Do NOT auto-set search or filter the list; only find and highlight the matching row
+            const table = document.getElementById(m.table);
+            let targetRow = null;
+            if (table) {
+                const rows = table.querySelectorAll('tbody tr');
+                for (const r of rows) {
+                    const cellText = toTitleCaseSmart(String(r.querySelector('td')?.textContent || '').trim());
+                    if (normalizeLabelKey(cellText) === normalizeLabelKey(displayVal)) { targetRow = r; break; }
+                }
+            }
+            if (targetRow) {
+                targetRow.classList.add('highlight-pulse');
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => targetRow.classList.remove('highlight-pulse'), 2200);
+            }
         }
 
         // Reset lorry plates to a specific list, removing others
@@ -1242,16 +1372,14 @@
         window.CONFIG = CONFIG;
         // Apply customizable trip colors immediately
         applyTripColors(CONFIG);
-        let pickUpOptions = (CONFIG.pickUps || []).map(v => String(v).trim()).filter(Boolean);
-        let productOptions = (CONFIG.products || []).map(v => String(v).trim()).filter(Boolean);
-        let destinationOptions = (CONFIG.destinations || []).map(v => String(v).trim()).filter(Boolean);
+        let pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
+        let productOptions = canonicalizeOptionList(CONFIG.products || []);
+        let destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
 
         // Utility casing helpers (for consistent display in overlay)
         function norm(s) { return (s || '').toString().trim(); }
-        function titleCase(s) {
-            const v = norm(s).toLowerCase();
-            return v.replace(/(^|\s)([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase());
-        }
+        // Use global ALL-CAPS policy for overlay display
+        function titleCase(s) { return toTitleCaseSmart(s); }
 
         // Open large overlay picker (mobile-friendly, with search + A–Z index)
         function openOptionsPanel(label, srcOptions, targetInput) {
@@ -1406,8 +1534,9 @@
             input.className = 'combo-input';
             input.autocomplete = 'off';
             input.placeholder = '';
-            input.value = selectedValue || '';
-            input.title = selectedValue || '';
+            // Display value in Title Case for better readability (storage and matching remain case/space-insensitive)
+            input.value = toTitleCaseSmart(selectedValue || '');
+            input.title = toTitleCaseSmart(selectedValue || '');
             // Open large overlay on single click for fast selection; keep input read-only to avoid accidental typing
             input.readOnly = true;
             input.setAttribute('aria-readonly', 'true');
@@ -2289,6 +2418,23 @@
             setTimeout(() => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); }, 1600);
         }
 
+        // Global loading overlay controls
+        function showLoading(message = '正在加载…') {
+            const ov = document.getElementById('appLoadingOverlay');
+            const msg = document.getElementById('appLoadingMessage');
+            if (!ov || !msg) return;
+            msg.textContent = message;
+            ov.style.display = 'flex';
+            ov.setAttribute('aria-busy', 'true');
+        }
+        function hideLoading(successMessage) {
+            const ov = document.getElementById('appLoadingOverlay');
+            if (!ov) return;
+            ov.style.display = 'none';
+            ov.setAttribute('aria-busy', 'false');
+            if (successMessage) try { showToast(successMessage, 'success'); } catch (_) { /* noop */ }
+        }
+
         function markUnsaved() {
             const b = document.getElementById('unsavedBadge');
             if (b) { b.style.display = 'inline-block'; b.classList.add('pulse'); }
@@ -2573,7 +2719,7 @@
 
         // 刷新主表（实时）
         async function reloadPlannerTable() {
-            try { showToast('正在刷新…'); } catch (_) { /* noop */ }
+            try { showLoading('正在刷新表格…'); } catch (_) { /* noop */ }
             try {
                 await supabaseLoadSchedule(window.currentDate);
             } catch (e) {
@@ -2586,9 +2732,10 @@
                 if (localStorage.getItem('trip_board_mode') === '1') {
                     try { renderTripBoard(); } catch (_) { /* noop */ }
                 }
-                try { showToast('已刷新', 'success'); } catch (_) { /* noop */ }
+                try { hideLoading('已刷新'); } catch (_) { /* noop */ }
             } catch (e) {
                 console.error('Reload table failed', e);
+                try { hideLoading(); } catch (_) { /* noop */ }
             }
         }
 
@@ -2694,7 +2841,7 @@
                         tr.id = `anchor-${tableId}-${letter}`;
                         seenLetters.add(letter);
                     }
-                    const tdName = document.createElement('td'); tdName.textContent = it; tr.appendChild(tdName);
+                    const tdName = document.createElement('td'); tdName.textContent = toTitleCaseSmart(it); tr.appendChild(tdName);
                     const tdAct = document.createElement('td');
                     const btnDel = document.createElement('button'); btnDel.className = 'mini-btn'; btnDel.textContent = '删除';
                     btnDel.addEventListener('click', () => {
@@ -3093,6 +3240,9 @@
             if (btnCloseCfg) btnCloseCfg.addEventListener('click', closeConfig);
             const btnSaveCfg = document.getElementById('btnSaveConfig');
             if (btnSaveCfg) btnSaveCfg.addEventListener('click', async () => {
+                // 显示加载遮罩并禁用按钮，避免重复点击
+                try { showLoading('正在保存配置…'); } catch (_) {}
+                btnSaveCfg.disabled = true;
                 // 保存 Supabase 设置（本地）
                 const urlInput = document.getElementById('inputSupabaseUrl');
                 const keyInput = document.getElementById('inputSupabaseAnonKey');
@@ -3153,9 +3303,9 @@
                 window.CONFIG_MODAL_SAVED = true;
                 clearUnsaved();
                 await supabaseSaveOptions();
-                pickUpOptions = CONFIG.pickUps;
-                productOptions = CONFIG.products;
-                destinationOptions = CONFIG.destinations;
+        pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
+        productOptions = canonicalizeOptionList(CONFIG.products || []);
+        destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
                 // Ensure newly added lorry plates immediately appear as rows
                 const existingPlates = new Set(sampleData.map(r => r.lorryPlate));
                 CONFIG.lorryPlates.forEach(plate => {
@@ -3184,6 +3334,8 @@
                 populateTable();
                 queueAutosave();
                 closeConfig();
+                try { hideLoading('配置已保存'); } catch (_) {}
+                btnSaveCfg.disabled = false;
             });
             const btnResetCfg = document.getElementById('btnResetConfig');
             if (btnResetCfg) btnResetCfg.addEventListener('click', () => {
@@ -3210,28 +3362,34 @@
             const btnAddTyreTonRule = document.getElementById('btnAddTyreTonRule');
             if (btnAddTyreTonRule) {
                 btnAddTyreTonRule.addEventListener('click', async () => {
+                    try { showLoading('正在添加轮胎规则…'); } catch (_) {}
                     const countRaw = document.getElementById('inputTyres')?.value || '';
                     const tonRaw = document.getElementById('inputTyreRuleTon')?.value || '';
                     const count = countRaw.trim();
                     const ton = parseFloat(tonRaw);
                     if (!count || isNaN(ton)) {
                         showToast('请填写完整的轮胎规则（轮胎/吨数）', 'danger');
+                        try { hideLoading(); } catch (_) {}
                         return;
                     }
                     if (!Array.isArray(CONFIG.tyreTonRules)) CONFIG.tyreTonRules = [];
-                    // 如果已存在相同轮胎规则，则更新吨位而不是重复添加
+                    // 如果已存在相同轮胎规则（同一轮胎数），则阻止重复添加并显示直观错误
                     const existingIdx = CONFIG.tyreTonRules.findIndex(r =>
                         String(r.tyres ?? r.tyreCount ?? '').trim() === String(count)
                     );
                     if (existingIdx >= 0) {
-                        CONFIG.tyreTonRules[existingIdx].ton = ton;
-                        CONFIG.tyreTonRules[existingIdx].tyres = count; // 规范化属性名
-                        showToast('已更新现有轮胎规则的吨位', 'success');
-                    } else {
-                        // Store using canonical property 'tyres' so map builder picks it up
-                        CONFIG.tyreTonRules.push({ tyres: count, ton });
-                        showToast('已添加轮胎吨位规则', 'success');
+                        showToast(`已存在相同轮胎规则：${count}（添加失败）`, 'danger');
+                        showDuplicateFeedback('tyre_rules', count);
+                        const it = document.getElementById('inputTyres');
+                        const iton = document.getElementById('inputTyreRuleTon');
+                        if (it) it.classList.add('input-error');
+                        if (iton) iton.classList.add('input-error');
+                        try { hideLoading(); } catch (_) {}
+                        return;
                     }
+                    // Store using canonical property 'tyres' so map builder picks it up
+                    CONFIG.tyreTonRules.push({ tyres: count, ton });
+                    showToast('已添加轮胎吨位规则', 'success');
                     // Rebuild in-memory map immediately so main table can reflect new rule
                     try { buildTyreTonRulesMap(); } catch (_) { }
                     // Persist to Supabase immediately
@@ -3244,16 +3402,27 @@
                     // Clear inputs
                     const ids = ['inputTyres', 'inputTyreRuleTon'];
                     ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                    clearInlineError('tyre_rules');
+                    const it = document.getElementById('inputTyres');
+                    const iton = document.getElementById('inputTyreRuleTon');
+                    if (it) it.classList.remove('input-error');
+                    if (iton) iton.classList.remove('input-error');
                     renderTyreTonRulesTable(document.getElementById('searchTyreTonRules')?.value || '');
                     markUnsaved();
+                    try { hideLoading('规则已添加'); } catch (_) {}
                 });
             }
             const searchTyre = document.getElementById('searchTyreTonRules');
             if (searchTyre) searchTyre.addEventListener('input', () => renderTyreTonRulesTable(searchTyre.value));
+            const ity = document.getElementById('inputTyres');
+            if (ity) ity.addEventListener('input', () => { clearInlineError('tyre_rules'); ity.classList.remove('input-error'); });
+            const iton = document.getElementById('inputTyreRuleTon');
+            if (iton) iton.addEventListener('input', () => { clearInlineError('tyre_rules'); iton.classList.remove('input-error'); });
             const tableTyre = document.getElementById('tableTyreTonRules');
             if (tableTyre) tableTyre.addEventListener('click', async (e) => {
                 const tgt = e.target;
                 if (tgt && tgt.classList && tgt.classList.contains('btn-delete-tyre-rule')) {
+                    try { showLoading('正在删除轮胎规则…'); } catch (_) {}
                     const idxStr = tgt.dataset.index;
                     const idx = parseInt(idxStr, 10);
                     if (!isNaN(idx) && CONFIG.tyreTonRules && CONFIG.tyreTonRules[idx]) {
@@ -3269,6 +3438,7 @@
                                 await sb.from('ton_rules').delete().eq('tyre_count', countInt);
                             }
                         } catch (_) { /* non-critical */ }
+                        try { hideLoading('已删除该规则'); } catch (_) {}
                     }
                 }
             });
@@ -3297,54 +3467,93 @@
             // Add actions and search events
             const btnAddLorry = document.getElementById('btnAddLorry');
             if (btnAddLorry) btnAddLorry.addEventListener('click', async () => {
-                const val = document.getElementById('inputLorryPlate').value.trim();
+                const input = document.getElementById('inputLorryPlate');
+                const val = String(input?.value || '').trim();
                 if (!val) return;
+                // Duplicate check (case/space-insensitive)
+                const exists = (CONFIG.lorryPlates || []).some(p => normalizeLabelKey(p) === normalizeLabelKey(val));
+                if (exists) {
+                    showToast(`已存在相同项：${val}（添加失败）`, 'danger');
+                    showDuplicateFeedback('lorry', val);
+                    return;
+                }
                 // Stage-only: update local CONFIG while modal is open; persist on 保存配置
                 const lpSet = new Set(CONFIG.lorryPlates || []); lpSet.add(val);
                 CONFIG.lorryPlates = Array.from(lpSet);
                 CONFIG.hiddenLorryPlates = (CONFIG.hiddenLorryPlates || []).filter(p => p !== val);
                 CONFIG.archivedLorryPlates = (CONFIG.archivedLorryPlates || []).filter(p => p !== val);
                 // Do not persist or update main table until saved
-                document.getElementById('inputLorryPlate').value = '';
+                if (input) { input.value = ''; input.classList.remove('input-error'); }
+                clearInlineError('lorry');
                 const f = document.getElementById('searchLorry')?.value || '';
                 renderLorryTable(f);
                 markUnsaved();
                 showToast(`已添加啰里 ${val}`, 'success');
             });
+            const ilp = document.getElementById('inputLorryPlate');
+            if (ilp) ilp.addEventListener('input', () => { clearInlineError('lorry'); ilp.classList.remove('input-error'); });
             const sl = document.getElementById('searchLorry'); if (sl) sl.addEventListener('input', () => { renderLorryTable(sl.value); });
             const btnAddPickUp = document.getElementById('btnAddPickUp');
             if (btnAddPickUp) btnAddPickUp.addEventListener('click', async () => {
                 const val = document.getElementById('inputPickUp').value.trim();
                 if (!val) return;
-                await upsertOptionAndSync('pickup', val);
-                document.getElementById('inputPickUp').value = '';
-                renderItemsTable('tablePickUp', CONFIG.pickUps, document.getElementById('searchPickUp')?.value || '');
-                markUnsaved();
-                showToast(`已添加工厂 ${val}`, 'success');
+                try { showLoading('正在添加工厂…'); } catch (_) {}
+                const ok = await upsertOptionAndSync('pickup', val);
+                if (ok) {
+                    document.getElementById('inputPickUp').value = '';
+                    renderItemsTable('tablePickUp', CONFIG.pickUps, document.getElementById('searchPickUp')?.value || '');
+                    markUnsaved();
+                    clearInlineError('pickup');
+                    showToast(`已添加工厂 ${toTitleCaseSmart(val)}`, 'success');
+                    try { hideLoading('已添加'); } catch (_) {}
+                } else {
+                    // Stronger signal for duplicates
+                    showDuplicateFeedback('pickup', val);
+                    try { hideLoading(); } catch (_) {}
+                }
             });
             const sp = document.getElementById('searchPickUp'); if (sp) sp.addEventListener('input', () => renderItemsTable('tablePickUp', CONFIG.pickUps, sp.value));
+            const ipu = document.getElementById('inputPickUp'); if (ipu) ipu.addEventListener('input', () => { clearInlineError('pickup'); ipu.classList.remove('input-error'); });
             const btnAddProduct = document.getElementById('btnAddProduct');
             if (btnAddProduct) btnAddProduct.addEventListener('click', async () => {
                 const val = document.getElementById('inputProduct').value.trim();
                 if (!val) return;
-                await upsertOptionAndSync('product', val);
-                document.getElementById('inputProduct').value = '';
-                renderItemsTable('tableProduct', CONFIG.products, document.getElementById('searchProduct')?.value || '');
-                markUnsaved();
-                showToast(`已添加产品 ${val}`, 'success');
+                try { showLoading('正在添加产品…'); } catch (_) {}
+                const ok = await upsertOptionAndSync('product', val);
+                if (ok) {
+                    document.getElementById('inputProduct').value = '';
+                    renderItemsTable('tableProduct', CONFIG.products, document.getElementById('searchProduct')?.value || '');
+                    markUnsaved();
+                    clearInlineError('product');
+                    showToast(`已添加产品 ${toTitleCaseSmart(val)}`, 'success');
+                    try { hideLoading('已添加'); } catch (_) {}
+                } else {
+                    showDuplicateFeedback('product', val);
+                    try { hideLoading(); } catch (_) {}
+                }
             });
             const sprod = document.getElementById('searchProduct'); if (sprod) sprod.addEventListener('input', () => renderItemsTable('tableProduct', CONFIG.products, sprod.value));
+            const iprod = document.getElementById('inputProduct'); if (iprod) iprod.addEventListener('input', () => { clearInlineError('product'); iprod.classList.remove('input-error'); });
             const btnAddDestination = document.getElementById('btnAddDestination');
             if (btnAddDestination) btnAddDestination.addEventListener('click', async () => {
                 const val = document.getElementById('inputDestination').value.trim();
                 if (!val) return;
-                await upsertOptionAndSync('destination', val);
-                document.getElementById('inputDestination').value = '';
-                renderItemsTable('tableDestination', CONFIG.destinations, document.getElementById('searchDestination')?.value || '');
-                markUnsaved();
-                showToast(`已添加地方 ${val}`, 'success');
+                try { showLoading('正在添加地方…'); } catch (_) {}
+                const ok = await upsertOptionAndSync('destination', val);
+                if (ok) {
+                    document.getElementById('inputDestination').value = '';
+                    renderItemsTable('tableDestination', CONFIG.destinations, document.getElementById('searchDestination')?.value || '');
+                    markUnsaved();
+                    clearInlineError('destination');
+                    showToast(`已添加地方 ${toTitleCaseSmart(val)}`, 'success');
+                    try { hideLoading('已添加'); } catch (_) {}
+                } else {
+                    showDuplicateFeedback('destination', val);
+                    try { hideLoading(); } catch (_) {}
+                }
             });
             const sd = document.getElementById('searchDestination'); if (sd) sd.addEventListener('input', () => renderItemsTable('tableDestination', CONFIG.destinations, sd.value));
+            const idst = document.getElementById('inputDestination'); if (idst) idst.addEventListener('input', () => { clearInlineError('destination'); idst.classList.remove('input-error'); });
             // 已移除：车税添加与搜索事件绑定
 
             // Add Row button removed per user request; guard in case element exists
@@ -3547,7 +3756,10 @@
                 if (d.type === 'optionsUpdated' && Array.isArray(d.added)) {
                     for (const item of d.added) {
                         const cat = item.category; const name = item.name;
+                        // 显示加载提示以反馈正在同步新增选项
+                        try { showLoading('正在同步新增选项…'); } catch (_) {}
                         await upsertOptionAndSync(cat, name);
+                        try { hideLoading('已同步选项'); } catch (_) {}
                     }
                     // Refresh config modal tables if open
                     if (window.IN_CONFIG_MODAL) {
@@ -3559,7 +3771,21 @@
                         renderItemsTable('tableDestination', CONFIG.destinations, sd?.value || '');
                     }
                 } else if (d.type === 'optionAdded' && d.category && d.name) {
+                    try { showLoading('正在添加选项…'); } catch (_) {}
                     await upsertOptionAndSync(d.category, d.name);
+                    try { hideLoading('已添加选项'); } catch (_) {}
+                } else if (d.type === 'commissionRulesChanged') {
+                    // 车税规则更新：重新加载规则并刷新当前表
+                    try { showLoading('正在刷新车税规则…'); } catch (_) {}
+                    try {
+                        await loadCommissionRulesFromSupabase();
+                        mergeCommissionRulesPreferExcel();
+                        applyCommissionToSampleData();
+                        populateTable();
+                        try { hideLoading('车税规则已更新'); } catch (_) {}
+                    } catch (_) {
+                        try { hideLoading(); } catch (_) {}
+                    }
                 }
             });
 
@@ -3613,6 +3839,7 @@
             const dp = document.getElementById('datePicker');
             if (dp) {
                 dp.addEventListener('change', async () => {
+                    showLoading('正在加载所选日期…');
                     
                     const v = dp.value;
                     if (!v) return;
@@ -3629,7 +3856,7 @@
         await supabaseLoadSchedule(window.currentDate);
                     applyCommissionToSampleData();
                     populateTable();
-                    
+                    hideLoading('已更新当天排程');
                 });
             }
 
