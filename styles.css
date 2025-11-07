@@ -1148,6 +1148,15 @@ select:focus,
     overflow: auto;
 }
 
+/* 让配置面板的标签紧贴标题栏（去掉顶部间距） */
+#configModal .modal-body {
+  padding-top: 0;
+}
+
+#configModal .config-tabs {
+  margin-top: 0; /* 确保标签紧贴标题行 */
+}
+
 /* ===================== Config Styles ===================== */
 .config-grid {
     display: grid;
@@ -1197,7 +1206,7 @@ select:focus,
 /* 新增：配置面板标签与表格样式，使界面更整齐 */
 .config-tabs {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     margin-bottom: 12px;
     position: sticky;
     top: 0;

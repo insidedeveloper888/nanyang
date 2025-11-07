@@ -436,6 +436,8 @@
                                 <input type="text" id="inputReasonGroup" placeholder="添加原因组合 (例如: 客户, 司机, 啰里, JPJ)">
                                 <button class="btn btn-primary" id="btnAddReasonGroup">添加</button>
                             </div>
+                            <!-- Inline feedback for reason group actions (duplicate/add/etc.) -->
+                            <div id="reasonGroupFeedback" style="display:none; margin-top:4px; font-size:12px; color:#6c757d"></div>
                             <div class="config-input-row">
                                 <input type="text" id="searchReasonGroup" placeholder="搜索原因组合">
                             </div>
@@ -4086,6 +4088,24 @@ async function upsertOptionAndSync(category, name) {
         let allReasons = []; // 存储所有原因的完整数据
         let selectedReasonGroupId = null;
 
+        // Feedback helper for reason group input
+        function setReasonGroupFeedback(message = '', type = 'info') {
+            const el = document.getElementById('reasonGroupFeedback');
+            if (!el) return;
+            if (!message) { el.style.display = 'none'; el.textContent = ''; return; }
+            el.textContent = message;
+            el.style.display = 'block';
+            el.style.color = type === 'error' ? '#dc3545' : (type === 'success' ? '#28a745' : '#6c757d');
+        }
+
+        // Normalize helpers to prevent duplication (trim, collapse spaces, case-insensitive key)
+        function normReasonText(s) {
+            return String(s || '').trim().replace(/\s+/g, ' ');
+        }
+        function normReasonKey(s) {
+            return normReasonText(s).toLowerCase();
+        }
+
         async function loadReasonGroups() {
             if (!sb) return;
             try {
@@ -4130,13 +4150,38 @@ async function upsertOptionAndSync(category, name) {
         async function addReasonGroup(name, description = '') {
             if (!sb) return;
             try {
+                const inputName = normReasonText(name);
+                const key = normReasonKey(inputName);
+                const existing = (reasonGroups || []).find(g => normReasonKey(g.name) === key);
+                if (existing) {
+                    // Already exists: select it and inform
+                    selectedReasonGroupId = existing.id;
+                    updateReasonGroupSelector();
+                    updateReasonInputs();
+                    await loadReasons(existing.id);
+                    // Inline red error message as requested
+                    setReasonGroupFeedback(`原因组合已存在：${existing.name}（已为你选中）`, 'error');
+                    showToast(`原因组合已存在: ${existing.name}，已为你选中`, 'danger');
+                    return;
+                }
                 const { data, error } = await sb
                     .from('reason_groups')
-                    .insert({ name: name.trim(), description: description.trim() })
+                    .insert({ name: inputName, description: normReasonText(description) })
                     .select();
                 if (error) throw error;
                 await loadReasonGroups();
-                showToast(`已添加原因组合: ${name}`, 'success');
+                // Auto-select the newly added group
+                const newly = (data && data[0]) || (reasonGroups.find(g => normReasonKey(g.name) === key));
+                if (newly) {
+                    selectedReasonGroupId = newly.id;
+                    updateReasonGroupSelector();
+                    updateReasonInputs();
+                    await loadReasons(newly.id);
+                }
+                // 标记配置未保存（统一显示顶部徽章）
+                try { markUnsaved(); } catch (_) {}
+                setReasonGroupFeedback(`已添加原因组合：${inputName}`, 'success');
+                showToast(`已添加原因组合: ${inputName}`, 'success');
             } catch (error) {
                 console.error('Error adding reason group:', error);
                 showToast('添加原因组合失败', 'danger');
@@ -4157,6 +4202,8 @@ async function upsertOptionAndSync(category, name) {
                     await loadReasons();
                     updateReasonInputs();
                 }
+                // 删除也视为有改动，提示未保存
+                try { markUnsaved(); } catch (_) {}
                 showToast('已删除原因组合', 'success');
             } catch (error) {
                 console.error('Error deleting reason group:', error);
@@ -4167,18 +4214,34 @@ async function upsertOptionAndSync(category, name) {
         async function addReason(reasonGroupId, name, description = '') {
             if (!sb) return;
             try {
+                const inputName = normReasonText(name);
+                const key = normReasonKey(inputName);
+                // Check duplicates within the selected group (case-insensitive, collapsed spaces)
+                const dup = (allReasons || []).find(r => r.reason_group_id === reasonGroupId && normReasonKey(r.name) === key);
+                if (dup) {
+                    showToast(`该组合已存在原因: ${dup.name}`, 'warning');
+                    // 不要自动填充搜索输入，保持完整列表可见。
+                    // 仅滚动到原因列表以提示用户。
+                    const reasonsTable = document.getElementById('tableReason');
+                    if (reasonsTable) {
+                        reasonsTable.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    return;
+                }
                 const { data, error } = await sb
                     .from('reasons')
                     .insert({
                         reason_group_id: reasonGroupId,
-                        name: name.trim(),
-                        description: description.trim()
+                        name: inputName,
+                        description: normReasonText(description)
                     })
                     .select();
                 if (error) throw error;
-                await loadReasons();
+                await loadReasons(reasonGroupId);
                 await loadReasonGroups(); // Refresh to update reason count
-                showToast(`已添加原因: ${name}`, 'success');
+                // 统一显示未保存更改徽章
+                try { markUnsaved(); } catch (_) {}
+                showToast(`已添加原因: ${inputName}`, 'success');
             } catch (error) {
                 console.error('Error adding reason:', error);
                 showToast('添加原因失败', 'danger');
@@ -4193,8 +4256,10 @@ async function upsertOptionAndSync(category, name) {
                     .delete()
                     .eq('id', id);
                 if (error) throw error;
-                await loadReasons();
+                // 保持当前选中的原因组合不变，避免表格重置为“全部”
+                await loadReasons(selectedReasonGroupId || null);
                 await loadReasonGroups(); // Refresh to update reason count
+                try { markUnsaved(); } catch (_) {}
                 showToast('已删除原因', 'success');
             } catch (error) {
                 console.error('Error deleting reason:', error);
@@ -4211,7 +4276,8 @@ async function upsertOptionAndSync(category, name) {
             );
 
             tbody.innerHTML = filteredGroups.map(group => {
-                const reasonCount = reasons.filter(r => r.reason_group_id === group.id).length;
+                // 使用 allReasons 统计每个组合的原因总数，避免当前 reasons 被筛选后导致其他组合显示为 0。
+                const reasonCount = (allReasons || []).filter(r => r.reason_group_id === group.id).length;
                 return `
                     <tr>
                         <td>${group.name}</td>
@@ -4274,23 +4340,41 @@ async function upsertOptionAndSync(category, name) {
             updateReasonGroupSelector();
             updateReasonInputs();
             loadReasons(id);
+            // Auto-focus reason input and scroll to the reasons list
+            const inputReason = document.getElementById('inputReason');
+            if (inputReason) {
+                inputReason.focus();
+            }
+            const reasonsTable = document.getElementById('tableReason');
+            if (reasonsTable) {
+                // Try smooth scroll into view
+                reasonsTable.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Adjust for any fixed headers (e.g., 70px) after a short delay
+                setTimeout(() => {
+                    const rect = reasonsTable.getBoundingClientRect();
+                    const absoluteTop = window.scrollY + rect.top;
+                    window.scrollTo({ top: Math.max(absoluteTop - 70, 0), behavior: 'smooth' });
+                }, 200);
+            }
         }
         // Expose functions for inline onclick handlers (module scope -> window)
-        window.selectReasonGroup = window.selectReasonGroup || selectReasonGroup;
+        // IMPORTANT: Avoid being shadowed by DOM globals (e.g., element with id="selectReasonGroup")
+        // Always assign the function to window to ensure inline onclick works
+        window.selectReasonGroup = selectReasonGroup;
 
         function confirmDeleteReasonGroup(id, name) {
             if (confirm(`确定要删除原因组合 "${name}" 吗？这将同时删除该组合下的所有原因。`)) {
                 deleteReasonGroup(id);
             }
         }
-        window.confirmDeleteReasonGroup = window.confirmDeleteReasonGroup || confirmDeleteReasonGroup;
+        window.confirmDeleteReasonGroup = confirmDeleteReasonGroup;
 
         function confirmDeleteReason(id, name) {
             if (confirm(`确定要删除原因 "${name}" 吗？`)) {
                 deleteReason(id);
             }
         }
-        window.confirmDeleteReason = window.confirmDeleteReason || confirmDeleteReason;
+        window.confirmDeleteReason = confirmDeleteReason;
 
         // Open reason selection overlay for remarks input
         async function openReasonSelectionPanel(targetInput) {
@@ -4443,6 +4527,22 @@ async function upsertOptionAndSync(category, name) {
             if (searchReasonGroup) {
                 searchReasonGroup.addEventListener('input', (e) => {
                     renderReasonGroupTable(e.target.value);
+                });
+            }
+
+            // Allow selecting reason group from dropdown as well
+            const selectReasonGroupDropdown = document.getElementById('selectReasonGroup');
+            if (selectReasonGroupDropdown) {
+                selectReasonGroupDropdown.addEventListener('change', (e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val)) {
+                        selectReasonGroup(val);
+                    } else {
+                        // Reset inputs when cleared
+                        selectedReasonGroupId = null;
+                        updateReasonInputs();
+                        loadReasons(null);
+                    }
                 });
             }
 
