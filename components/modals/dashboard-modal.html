@@ -1,0 +1,90 @@
+<div class="modal-overlay" id="dashboardModal" style="display:none">
+  <div class="modal dashboard-modal">
+    <div class="modal-header">
+      <div class="dashboard-title">
+        <span>仪表盘</span>
+        <div class="date-range" id="dashboardDateRange">01/01/2025 - 31/01/2025</div>
+      </div>
+      <button class="close-btn" id="closeDashboard" title="关闭">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="dashboard-header">
+        <div class="period-selector">
+          <button id="periodPrev" class="btn btn-nav" title="上一期">‹</button>
+          <label for="periodSelect">统计周期：</label>
+          <select id="periodSelect" class="period-select">
+            <option value="week">周</option>
+            <option value="month" selected>月</option>
+            <option value="year">年</option>
+          </select>
+          <input type="date" id="periodDate" class="period-date">
+          <button id="periodNext" class="btn btn-nav" title="下一期">›</button>
+        </div>
+      </div>
+      <div class="dashboard-content">
+        <div class="stats-summary">
+          <div class="stat-card">
+            <h3>总车辆数</h3>
+            <div class="stat-value" id="totalVehicles">-</div>
+          </div>
+          <div class="stat-card">
+            <h3>总行程数</h3>
+            <div class="stat-value" id="totalTrips">-</div>
+          </div>
+          <div class="stat-card">
+            <h3>总预计吨位（吨）</h3>
+            <div class="stat-value" id="totalEstimatedTon">-</div>
+          </div>
+          <div class="stat-card">
+            <h3>总车税</h3>
+            <div class="stat-value" id="totalCommission">RM -</div>
+          </div>
+          <div class="stat-card">
+            <h3>总费用</h3>
+            <div class="stat-value" id="totalExpenses">RM -</div>
+          </div>
+        </div>
+        <div class="vehicle-details-table" id="accordionVehicles">
+          <h3 class="accordion-header" role="button" aria-expanded="true">
+            <span>车辆详细统计</span>
+            <span class="accordion-indicator" aria-hidden="true">▾</span>
+          </h3>
+          <div class="table-wrapper">
+            <table id="vehicleStatsTable" class="dashboard-table">
+              <thead>
+                <tr>
+                  <th class="sortable" data-key="plate">啰里 <span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="trips">行程数 <span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="estimatedTon">预计吨位(吨) <span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="commission">车税 (RM) <span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="tollFees">过路费 (RM) <span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="fuelCosts">油费 (RM) <span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="totalExpenses">总费用 (RM) <span class="sort-indicator"></span></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="destination-details-table" id="accordionDestinations">
+          <h3 class="accordion-header" role="button" aria-expanded="true">
+            <span>地方订单统计</span>
+            <span class="accordion-indicator" aria-hidden="true">▾</span>
+          </h3>
+          <div class="table-wrapper">
+            <table id="destinationStatsTable" class="dashboard-table">
+              <thead>
+                <tr>
+                  <th class="sortable" data-key="destination">地方<span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="lastDate">最后一次运送日期<span class="sort-indicator"></span></th>
+                  <th class="sortable" data-key="daysSince">距离今天（天）<span class="sort-indicator"></span></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

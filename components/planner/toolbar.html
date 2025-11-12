@@ -1,0 +1,32 @@
+<div class="toolbar">
+    <div class="date-navigator">
+        <button class="btn btn-nav" onclick="navigateDate(-1)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15,18 9,12 15,6"></polyline>
+            </svg>
+        </button>
+        <div class="date-display">
+            <input type="date" id="datePicker" class="date-input" aria-label="选择日期">
+            <span class="weekday-display" id="currentDate" aria-live="polite"></span>
+        </div>
+        <button class="btn btn-nav" onclick="navigateDate(1)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9,18 15,12 9,6"></polyline>
+            </svg>
+        </button>
+        <div class="zoom-controls" aria-label="缩放" style="margin-left: 8px;">
+            <button id="fitAll" class="zoom-btn primary" title="适配整页">Fit All</button>
+            <button id="zoomOut" class="zoom-btn" title="缩小">—</button>
+            <span id="zoomValue" style="min-width:48px;text-align:center">100%</span>
+            <button id="zoomIn" class="zoom-btn" title="放大">＋</button>
+            <button id="reloadTable" class="zoom-btn" title="刷新表格">⟳</button>
+        </div>
+    </div>
+    <div class="filter-controls">
+        <div class="search-box">
+            <input id="searchInput" class="search-input" type="text" placeholder="搜索：啰里/工厂/产品/地方/车税/吨位/原因">
+        </div>
+        <!-- ensureTyreGroupToggle() will append the '按胎数组' checkbox here -->
+    </div>
+    <div class="toolbar-actions" style="display:none"></div>
+</div>

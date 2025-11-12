@@ -7,6 +7,9 @@
         content="width=device-width, initial-scale=1.0, minimum-scale=0.1, maximum-scale=6.0, user-scalable=yes">
     <title>砂石运输计划</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Componentized CSS (placeholders; Phase 1 no visual change) -->
+    <link rel="stylesheet" href="css/planner.css">
+    <link rel="stylesheet" href="css/modals.css">
 </head>
 
 <body>
@@ -495,6 +498,8 @@
     <!-- SheetJS for reading Excel commission rules -->
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <!-- Date utilities extracted for modularization -->
+    <!-- Component loader (safe-by-default; only runs when flag is enabled) -->
+    <script src="js/component-loader.js"></script>
     <script src="js/date-utils.js"></script>
     <!-- Dashboard utilities and stats -->
     <script src="js/dashboard-utils.js"></script>
@@ -611,6 +616,111 @@
             }
 
             return Array.from(destinations).sort((a, b) => a.localeCompare(b));
+        }
+
+        function getPickUpsForProduct(product) {
+            // Get unique pick up locations available for a specific product
+            if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
+
+            const prNorm = normalizeLabelKey(product);
+            if (!prNorm) return [];
+
+            const pickups = new Set();
+            for (const [key] of COMMISSION_RULES.entries()) {
+                const [keyPu, keyPr, keyDe] = key.split('|');
+                if (keyPr === prNorm && keyPu && keyDe) {
+                    const originalPickUp = pickUpOptions.find(p => normalizeLabelKey(p) === keyPu);
+                    if (originalPickUp) pickups.add(originalPickUp);
+                }
+            }
+            return Array.from(pickups).sort((a, b) => a.localeCompare(b));
+        }
+
+        function getDestinationsForProduct(product) {
+            // Get unique destinations available for a specific product
+            if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
+
+            const prNorm = normalizeLabelKey(product);
+            if (!prNorm) return [];
+
+            const destinations = new Set();
+            for (const [key] of COMMISSION_RULES.entries()) {
+                const [keyPu, keyPr, keyDe] = key.split('|');
+                if (keyPr === prNorm && keyPu && keyDe) {
+                    const originalDestination = destinationOptions.find(d => normalizeLabelKey(d) === keyDe);
+                    if (originalDestination) destinations.add(originalDestination);
+                }
+            }
+            return Array.from(destinations).sort((a, b) => a.localeCompare(b));
+        }
+
+        function getPickUpsForDestination(destination) {
+            // Get unique pick up locations available for a specific destination
+            if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
+
+            const deNorm = normalizeLabelKey(destination);
+            if (!deNorm) return [];
+
+            const pickups = new Set();
+            for (const [key] of COMMISSION_RULES.entries()) {
+                const [keyPu, keyPr, keyDe] = key.split('|');
+                if (keyDe === deNorm && keyPu && keyPr) {
+                    const originalPickUp = pickUpOptions.find(p => normalizeLabelKey(p) === keyPu);
+                    if (originalPickUp) pickups.add(originalPickUp);
+                }
+            }
+            return Array.from(pickups).sort((a, b) => a.localeCompare(b));
+        }
+
+        function getProductsForDestination(destination) {
+            // Get unique products available for a specific destination
+            if (!COMMISSION_RULES || COMMISSION_RULES.size === 0) return [];
+
+            const deNorm = normalizeLabelKey(destination);
+            if (!deNorm) return [];
+
+            const products = new Set();
+            for (const [key] of COMMISSION_RULES.entries()) {
+                const [keyPu, keyPr, keyDe] = key.split('|');
+                if (keyDe === deNorm && keyPu && keyPr) {
+                    const originalProduct = productOptions.find(p => normalizeLabelKey(p) === keyPr);
+                    if (originalProduct) products.add(originalProduct);
+                }
+            }
+            return Array.from(products).sort((a, b) => a.localeCompare(b));
+        }
+
+        // --- Combined intersection helpers for multi-field constraints ---
+        function intersectStrings(a = [], b = []) {
+            const setB = new Set(b);
+            return a.filter(v => setB.has(v));
+        }
+
+        function getPickUpsFor(product, destination) {
+            if (product && destination) {
+                return intersectStrings(getPickUpsForProduct(product), getPickUpsForDestination(destination));
+            }
+            if (product) return getPickUpsForProduct(product);
+            if (destination) return getPickUpsForDestination(destination);
+            return [];
+        }
+
+        function getProductsFor(pickUp, destination) {
+            if (pickUp && destination) {
+                return intersectStrings(getProductsForPickUp(pickUp), getProductsForDestination(destination));
+            }
+            if (pickUp) return getProductsForPickUp(pickUp);
+            if (destination) return getProductsForDestination(destination);
+            return [];
+        }
+
+        function getDestinationsFor(pickUp, product) {
+            if (pickUp && product) {
+                return intersectStrings(getDestinationsForPickUp(pickUp), getDestinationsForProduct(product));
+            }
+            if (pickUp) return getDestinationsForPickUp(pickUp);
+            if (product) return getDestinationsForProduct(product);
+            return [];
         }
 
         function getCommissionFromRules(pu, pr, de, dateContext = window.currentDate) {
@@ -911,9 +1021,10 @@
                     sb.from('config_options').select('category,name,active').eq('active', true),
                     // Only keep defaultCompletion from app_settings; do not use tripColors/lorryTyreCounts/tyreTonRules
                     sb.from('app_settings').select('key,value').in('key', ['defaultCompletion']),
-                    // Read lorry plates (and tyre counts) directly from lorry_plates, ordered by sort_order ASC then plate_no ASC
+                    // Read ACTIVE lorry plates (and tyre counts) from lorry_plates, ordered by sort_order ASC then plate_no ASC
                     sb.from('lorry_plates')
                       .select('plate_no,tyre_count,sort_order')
+                      .eq('active', true)
                       .order('sort_order', { ascending: true })
                       .order('plate_no', { ascending: true }),
                     // Read tyre-based ton rules directly from ton_rules (product removed)
@@ -1259,7 +1370,7 @@ async function upsertOptionAndSync(category, name) {
                 // 1) Fetch current lorry_plates
                 let current = [];
                 try {
-                    const r = await sb.from('lorry_plates').select('plate_no');
+                    const r = await sb.from('lorry_plates').select('plate_no').eq('active', true);
                     if (!r.error && r.data) current = r.data.map(d => String(d.plate_no));
                 } catch (_) { /* non-critical */ }
 
@@ -1269,12 +1380,12 @@ async function upsertOptionAndSync(category, name) {
                     try {
                         const del = await sb.from('lorry_plates').delete().in('plate_no', toDelete);
                         if (del && del.error) {
-                            // Fallback if hard delete blocked: mark plates inactive and hidden in bulk
-                            await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', toDelete);
+                            // Fallback if hard delete blocked: mark plates inactive (no hidden column in DB)
+                            await sb.from('lorry_plates').update({ active: false }).in('plate_no', toDelete);
                         }
                     } catch (_) {
                         // Best-effort fallback even if delete throws
-                        try { await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', toDelete); } catch (_) { }
+                        try { await sb.from('lorry_plates').update({ active: false }).in('plate_no', toDelete); } catch (_) { }
                     }
                     // Also remove ALL schedule rows for the current date to ensure nothing resurfaces
                     try {
@@ -1286,7 +1397,32 @@ async function upsertOptionAndSync(category, name) {
                 // 3) Upsert desired plates
                 const toAdd = desired.filter(p => !current.includes(p)).map(p => ({ plate_no: p, active: true }));
                 if (toAdd.length) {
-                    try { await sb.from('lorry_plates').upsert(toAdd, { onConflict: 'plate_no' }); } catch (_) { }
+                    try {
+                        // Auto-assign sort_order so newly added plates are ordered after existing ones
+                        let maxOrder = 0;
+                        try {
+                            const ro = await sb.from('lorry_plates')
+                                .select('sort_order')
+                                .not('sort_order', 'is', null)
+                                .order('sort_order', { ascending: false })
+                                .limit(1);
+                            if (!ro.error && ro.data && ro.data.length) {
+                                maxOrder = Number(ro.data[0].sort_order) || 0;
+                            }
+                        } catch (_) { /* noop */ }
+                        const toAddWithOrder = toAdd.map((o, idx) => ({ ...o, sort_order: maxOrder + 1 + idx }));
+                        await sb.from('lorry_plates').upsert(toAddWithOrder, { onConflict: 'plate_no' });
+                        // Also create schedule rows for current date so they render in planner immediately
+                        try {
+                            const dstr = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.currentDate.getDate()).padStart(2, '0')}`;
+                            for (const o of toAddWithOrder) {
+                                const exists = await sb.from('schedules').select('id').eq('work_date', dstr).eq('lorry_plate', o.plate_no).limit(1);
+                                if (!exists.error && (!exists.data || exists.data.length === 0)) {
+                                    await sb.from('schedules').insert({ work_date: dstr, lorry_plate: o.plate_no });
+                                }
+                            }
+                        } catch (_) { /* non-blocking */ }
+                    } catch (_) { }
                 }
 
                 // 4) Update local CONFIG and persist options
@@ -1327,17 +1463,18 @@ async function upsertOptionAndSync(category, name) {
                 // Fetch all current plates
                 let all = [];
                 try {
-                    const r = await sb.from('lorry_plates').select('plate_no');
+                    const r = await sb.from('lorry_plates').select('plate_no').eq('active', true);
                     if (!r.error && r.data) all = r.data.map(d => String(d.plate_no));
                 } catch (_) { }
                 if (all.length) {
                     try {
                         const del = await sb.from('lorry_plates').delete().in('plate_no', all);
                         if (del && del.error) {
-                            await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', all);
+                            // Fallback: mark inactive only (schema has no hidden column)
+                            await sb.from('lorry_plates').update({ active: false }).in('plate_no', all);
                         }
                     } catch (_) {
-                        try { await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', all); } catch (_) { }
+                        try { await sb.from('lorry_plates').update({ active: false }).in('plate_no', all); } catch (_) { }
                     }
                 }
                 // Clear today’s schedules entirely
@@ -1659,6 +1796,60 @@ async function upsertOptionAndSync(category, name) {
                     puRow.style.color = 'var(--text-muted)';
                     const pu = createDropdown(pickUpOptions, trip.pickUp, () => {
                         trip.pickUp = pu.value;
+                        // Intersection-aware filtering for Product/Destination based on pickup
+                        if (trip.pickUp) {
+                            // Products: if destination exists, intersect; else map by pickup only
+                            const filteredProducts = trip.destination
+                                ? getProductsFor(trip.pickUp, trip.destination)
+                                : getProductsForPickUp(trip.pickUp);
+                            if (filteredProducts && filteredProducts.length > 0) {
+                                if (pr) {
+                                    if (trip.product && !filteredProducts.includes(trip.product)) {
+                                        trip.product = '';
+                                        pr.value = '';
+                                    }
+                                    pr.filteredOptions = filteredProducts;
+                                }
+                            } else {
+                                trip.product = '';
+                                if (pr) { pr.value = ''; pr.filteredOptions = []; }
+                            }
+
+                            // Destinations: if product exists, intersect; else map by pickup only
+                            const filteredDestinations = trip.product
+                                ? getDestinationsFor(trip.pickUp, trip.product)
+                                : getDestinationsForPickUp(trip.pickUp);
+                            if (filteredDestinations && filteredDestinations.length > 0) {
+                                if (de) {
+                                    if (trip.destination && !filteredDestinations.includes(trip.destination)) {
+                                        trip.destination = '';
+                                        de.value = '';
+                                    }
+                                    de.filteredOptions = filteredDestinations;
+                                }
+                            } else {
+                                trip.destination = '';
+                                if (de) { de.value = ''; de.filteredOptions = []; }
+                            }
+                        } else {
+                            // Pickup cleared: re-apply restrictions based on other fields, or reset
+                            if (trip.product && trip.destination) {
+                                if (pu) pu.filteredOptions = getPickUpsFor(trip.product, trip.destination);
+                                // Also apply intersections to the other fields
+                                if (pr) pr.filteredOptions = getProductsFor(null, trip.destination); // fallback handled below
+                                if (de) de.filteredOptions = getDestinationsFor(null, trip.product);
+                            } else if (trip.product) {
+                                if (pu) pu.filteredOptions = getPickUpsForProduct(trip.product);
+                                if (de) de.filteredOptions = getDestinationsForProduct(trip.product);
+                            } else if (trip.destination) {
+                                if (pu) pu.filteredOptions = getPickUpsForDestination(trip.destination);
+                                if (pr) pr.filteredOptions = getProductsForDestination(trip.destination);
+                            } else {
+                                if (pr) pr.filteredOptions = null;
+                                if (de) de.filteredOptions = null;
+                            }
+                        }
+
                         queueAutosave();
                         updateCommission();
                     }, '工厂');
@@ -1671,11 +1862,56 @@ async function upsertOptionAndSync(category, name) {
                     prRow.textContent = 'Product';
                     prRow.style.fontSize = '12px';
                     prRow.style.color = 'var(--text-muted)';
-                    const pr = createDropdown(productOptions, trip.product, () => {
-                        trip.product = pr.value;
-                        queueAutosave();
-                        updateCommission();
-                    }, '产品');
+                const pr = createDropdown(productOptions, trip.product, () => {
+                    trip.product = pr.value;
+                    // Intersection-aware filtering: adjust Pick Up and Destination based on Product (+ other field if present)
+                    if (trip.product) {
+                        const puList = trip.destination
+                            ? getPickUpsFor(trip.product, trip.destination)
+                            : getPickUpsForProduct(trip.product);
+                        if (puList && puList.length > 0) {
+                            if (trip.pickUp && !puList.includes(trip.pickUp)) {
+                                trip.pickUp = '';
+                                if (pu) pu.value = '';
+                            }
+                            if (pu) pu.filteredOptions = puList;
+                        } else {
+                            trip.pickUp = '';
+                            if (pu) { pu.value = ''; pu.filteredOptions = []; }
+                        }
+
+                        const deList = trip.pickUp
+                            ? getDestinationsFor(trip.pickUp, trip.product)
+                            : getDestinationsForProduct(trip.product);
+                        if (deList && deList.length > 0) {
+                            if (trip.destination && !deList.includes(trip.destination)) {
+                                trip.destination = '';
+                                if (de) de.value = '';
+                            }
+                            if (de) de.filteredOptions = deList;
+                        } else {
+                            trip.destination = '';
+                            if (de) { de.value = ''; de.filteredOptions = []; }
+                        }
+                    } else {
+                        // Product cleared: fall back to restrictions driven by other fields
+                        if (trip.pickUp && trip.destination) {
+                            if (pr) pr.filteredOptions = getProductsFor(trip.pickUp, trip.destination);
+                        } else if (trip.pickUp) {
+                            if (pr) pr.filteredOptions = getProductsForPickUp(trip.pickUp);
+                            if (de) de.filteredOptions = getDestinationsForPickUp(trip.pickUp);
+                        } else if (trip.destination) {
+                            if (pu) pu.filteredOptions = getPickUpsForDestination(trip.destination);
+                            if (pr) pr.filteredOptions = getProductsForDestination(trip.destination);
+                        } else {
+                            if (pu) pu.filteredOptions = null;
+                            if (de) de.filteredOptions = null;
+                        }
+                    }
+
+                    queueAutosave();
+                    updateCommission();
+                }, '产品');
                     pr.style.width = '100%';
                     tbox.appendChild(prRow);
                     tbox.appendChild(pr);
@@ -1685,14 +1921,91 @@ async function upsertOptionAndSync(category, name) {
                     deRow.textContent = 'Destination';
                     deRow.style.fontSize = '12px';
                     deRow.style.color = 'var(--text-muted)';
-                    const de = createDropdown(destinationOptions, trip.destination, () => {
-                        trip.destination = de.value;
-                        queueAutosave();
-                        updateCommission();
-                    }, '地方');
+                const de = createDropdown(destinationOptions, trip.destination, () => {
+                    trip.destination = de.value;
+                    // Intersection-aware filtering: adjust Pick Up and Product based on Destination (+ other field if present)
+                    if (trip.destination) {
+                        const puList = trip.product
+                            ? getPickUpsFor(trip.product, trip.destination)
+                            : getPickUpsForDestination(trip.destination);
+                        if (puList && puList.length > 0) {
+                            if (trip.pickUp && !puList.includes(trip.pickUp)) {
+                                trip.pickUp = '';
+                                if (pu) pu.value = '';
+                            }
+                            if (pu) pu.filteredOptions = puList;
+                        } else {
+                            trip.pickUp = '';
+                            if (pu) { pu.value = ''; pu.filteredOptions = []; }
+                        }
+
+                        const prList = trip.pickUp
+                            ? getProductsFor(trip.pickUp, trip.destination)
+                            : getProductsForDestination(trip.destination);
+                        if (prList && prList.length > 0) {
+                            if (trip.product && !prList.includes(trip.product)) {
+                                trip.product = '';
+                                if (pr) pr.value = '';
+                            }
+                            if (pr) pr.filteredOptions = prList;
+                        } else {
+                            trip.product = '';
+                            if (pr) { pr.value = ''; pr.filteredOptions = []; }
+                        }
+                    } else {
+                        // Destination cleared: fall back to restrictions from other fields
+                        if (trip.pickUp && trip.product) {
+                            if (de) de.filteredOptions = getDestinationsFor(trip.pickUp, trip.product);
+                        } else if (trip.pickUp) {
+                            if (pr) pr.filteredOptions = getProductsForPickUp(trip.pickUp);
+                            if (de) de.filteredOptions = getDestinationsForPickUp(trip.pickUp);
+                        } else if (trip.product) {
+                            if (pu) pu.filteredOptions = getPickUpsForProduct(trip.product);
+                            if (de) de.filteredOptions = getDestinationsForProduct(trip.product);
+                        } else {
+                            if (pu) pu.filteredOptions = null;
+                            if (pr) pr.filteredOptions = null;
+                        }
+                    }
+
+                    queueAutosave();
+                    updateCommission();
+                }, '地方');
                     de.style.width = '100%';
                     tbox.appendChild(deRow);
                     tbox.appendChild(de);
+
+                    // Initial pre-filters for each dropdown based on currently set values (intersection-aware)
+                    // Pick Up options
+                    if (!trip.pickUp) {
+                        if (trip.product && trip.destination) {
+                            pu.filteredOptions = getPickUpsFor(trip.product, trip.destination);
+                        } else if (trip.product) {
+                            pu.filteredOptions = getPickUpsForProduct(trip.product);
+                        } else if (trip.destination) {
+                            pu.filteredOptions = getPickUpsForDestination(trip.destination);
+                        }
+                    }
+                    // Product options
+                    if (!trip.product) {
+                        if (trip.pickUp && trip.destination) {
+                            pr.filteredOptions = getProductsFor(trip.pickUp, trip.destination);
+                        } else if (trip.pickUp) {
+                            pr.filteredOptions = getProductsForPickUp(trip.pickUp);
+                        } else if (trip.destination) {
+                            pr.filteredOptions = getProductsForDestination(trip.destination);
+                        }
+                    }
+                    // Destination options
+                    if (!trip.destination) {
+                        if (trip.pickUp && trip.product) {
+                            de.filteredOptions = getDestinationsFor(trip.pickUp, trip.product);
+                        } else if (trip.pickUp) {
+                            de.filteredOptions = getDestinationsForPickUp(trip.pickUp);
+                        } else if (trip.product) {
+                            de.filteredOptions = getDestinationsForProduct(trip.product);
+                        }
+                    }
 
                     // Completion
                     const compRow = document.createElement('div');
@@ -1992,40 +2305,83 @@ async function upsertOptionAndSync(category, name) {
                     if (checkbox) checkbox.checked = false;
 
                     // Filter products based on selected pick up location
-                    const filteredProducts = getProductsForPickUp(trip.pickUp);
-                    if (filteredProducts.length > 0) {
-                        // Update the product dropdown with filtered options
-                        const productInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 7 + 3) + ') .combo-input');
+                    {
+        const productInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 3) + ') .combo-input');
                         if (productInput) {
-                            // Clear current product selection if it's not in filtered list
-                            if (trip.product && !filteredProducts.includes(trip.product)) {
-                                trip.product = '';
-                                productInput.value = '';
+                            if (trip.pickUp) {
+                                const filteredProducts = getProductsFor(trip.pickUp, trip.destination);
+                                if (filteredProducts.length > 0) {
+                                    // Clear current product selection if it's not in filtered list
+                                    if (trip.product && !filteredProducts.includes(trip.product)) {
+                                        trip.product = '';
+                                        productInput.value = '';
+                                    }
+                                    productInput.filteredOptions = filteredProducts;
+                                } else {
+                                    // No mapping for this pickup: force product empty and no options
+                                    trip.product = '';
+                                    productInput.value = '';
+                                    productInput.filteredOptions = [];
+                                }
+                            } else {
+                                // Pickup cleared: re-apply restrictions driven by other fields or reset
+                                if (trip.destination) {
+                                    const prList = getProductsForDestination(trip.destination);
+                                    productInput.filteredOptions = prList.length ? prList : [];
+                                    if (prList.length === 0) productInput.value = '';
+                                } else {
+                                    productInput.filteredOptions = null; // reset to full list
+                                }
                             }
-                            // Store filtered options for this product input
-                            productInput.filteredOptions = filteredProducts;
                         }
                     }
 
                     // Filter destinations based on selected pick up location
-                    const filteredDestinations = getDestinationsForPickUp(trip.pickUp);
-                    if (filteredDestinations.length > 0) {
-                        // Update the destination dropdown with filtered options
-                        const destinationInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 7 + 4) + ') .combo-input');
+                    {
+        const destinationInput = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 4) + ') .combo-input');
                         if (destinationInput) {
-                            // Clear current destination selection if it's not in filtered list
-                            if (trip.destination && !filteredDestinations.includes(trip.destination)) {
-                                trip.destination = '';
-                                destinationInput.value = '';
+                            if (trip.pickUp) {
+                                const filteredDestinations = getDestinationsFor(trip.pickUp, trip.product);
+                                if (filteredDestinations.length > 0) {
+                                    if (trip.destination && !filteredDestinations.includes(trip.destination)) {
+                                        trip.destination = '';
+                                        destinationInput.value = '';
+                                    }
+                                    destinationInput.filteredOptions = filteredDestinations;
+                                } else {
+                                    trip.destination = '';
+                                    destinationInput.value = '';
+                                    destinationInput.filteredOptions = [];
+                                }
+                            } else {
+                                // Pickup cleared: fall back to restrictions from other fields or reset
+                                if (trip.product) {
+                                    const deList = getDestinationsForProduct(trip.product);
+                                    destinationInput.filteredOptions = deList.length ? deList : [];
+                                    if (deList.length === 0) destinationInput.value = '';
+                                } else {
+                                    destinationInput.filteredOptions = null; // reset to full list
+                                }
                             }
-                            // Store filtered options for this destination input
-                            destinationInput.filteredOptions = filteredDestinations;
                         }
                     }
 
                     queueAutosave();
                     updateCommission();
                 }, '工厂');
+                // Initial restriction for Pick Up at render time
+                // If pickup is empty but product and/or destination are set, constrain using intersection
+                if (!trip.pickUp || !String(trip.pickUp).trim()) {
+                    const puListInit = getPickUpsFor(
+                        trip.product && String(trip.product).trim() ? trip.product : null,
+                        trip.destination && String(trip.destination).trim() ? trip.destination : null
+                    );
+                    if (puListInit.length > 0 || (trip.product || trip.destination)) {
+                        puInput.filteredOptions = puListInit.length ? puListInit : [];
+                    } else {
+                        puInput.filteredOptions = null; // use full list when no constraints
+                    }
+                }
                 pickUpCell.appendChild(puInput);
                 // Make entire cell clickable to open overlay
                 pickUpCell.addEventListener('click', (ev) => {
@@ -2043,9 +2399,27 @@ async function upsertOptionAndSync(category, name) {
                 // Apply factory-based filtering for products
                 let filteredProducts = productOptions;
                 if (trip.pickUp && trip.pickUp.trim()) {
-                    const productsForPickUp = getProductsForPickUp(trip.pickUp);
-                    if (productsForPickUp.length > 0) {
-                        filteredProducts = productsForPickUp;
+                    const productsInit = getProductsFor(trip.pickUp, trip.destination && trip.destination.trim() ? trip.destination : null);
+                    if (productsInit.length > 0) {
+                        filteredProducts = productsInit;
+                    } else {
+                        // No mapping: force empty list and clear any prior product value
+                        filteredProducts = [];
+                        if (trip.product && trip.product.trim()) {
+                            trip.product = '';
+                        }
+                    }
+                }
+                // Also restrict by existing destination selection if present when pickup not set
+                if ((!trip.pickUp || !trip.pickUp.trim()) && trip.destination && trip.destination.trim()) {
+                    const productsForDestination = getProductsFor(null, trip.destination);
+                    if (productsForDestination.length > 0) {
+                        filteredProducts = productsForDestination;
+                    } else {
+                        filteredProducts = [];
+                        if (trip.product && trip.product.trim()) {
+                            trip.product = '';
+                        }
                     }
                 }
 
@@ -2054,6 +2428,66 @@ async function upsertOptionAndSync(category, name) {
                     // Ensure completion is manual-only: reset when fields change
                     trip.completed = false;
                     if (checkbox) checkbox.checked = false;
+
+                    // Filter pickup based on selected product
+                    {
+        const puEl = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 2) + ') .combo-input');
+                        if (puEl) {
+                            if (trip.product) {
+                                const pickupsForProduct = getPickUpsFor(trip.product, trip.destination);
+                                if (pickupsForProduct.length > 0) {
+                                    if (trip.pickUp && !pickupsForProduct.includes(trip.pickUp)) {
+                                        trip.pickUp = '';
+                                        puEl.value = '';
+                                    }
+                                    puEl.filteredOptions = pickupsForProduct;
+                                } else {
+                                    trip.pickUp = '';
+                                    puEl.value = '';
+                                    puEl.filteredOptions = [];
+                                }
+                            } else {
+                                // Product cleared: re-apply restrictions based on other fields or reset
+                                if (trip.destination) {
+                                    const puList = getPickUpsFor(null, trip.destination);
+                                    puEl.filteredOptions = puList.length ? puList : [];
+                                    if (puList.length === 0) puEl.value = '';
+                                } else {
+                                    puEl.filteredOptions = null; // reset to full list
+                                }
+                            }
+                        }
+                    }
+
+                    // Filter destinations based on selected product
+                    {
+        const deEl = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 4) + ') .combo-input');
+                        if (deEl) {
+                            if (trip.product) {
+                                const destinationsForProduct = getDestinationsFor(trip.pickUp, trip.product);
+                                if (destinationsForProduct.length > 0) {
+                                    if (trip.destination && !destinationsForProduct.includes(trip.destination)) {
+                                        trip.destination = '';
+                                        deEl.value = '';
+                                    }
+                                    deEl.filteredOptions = destinationsForProduct;
+                                } else {
+                                    trip.destination = '';
+                                    deEl.value = '';
+                                    deEl.filteredOptions = [];
+                                }
+                            } else {
+                                // Product cleared: if a pickup is set, restrict by pickup; else reset
+                                if (trip.pickUp) {
+                                    const deList = getDestinationsFor(trip.pickUp, null);
+                                    deEl.filteredOptions = deList.length ? deList : [];
+                                    if (deList.length === 0) deEl.value = '';
+                                } else {
+                                    deEl.filteredOptions = null;
+                                }
+                            }
+                        }
+                    }
                     queueAutosave();
                     updateCommission();
                 }, '产品');
@@ -2072,9 +2506,27 @@ async function upsertOptionAndSync(category, name) {
                 // Apply factory-based filtering for destinations
                 let filteredDestinations = destinationOptions;
                 if (trip.pickUp && trip.pickUp.trim()) {
-                    const destinationsForPickUp = getDestinationsForPickUp(trip.pickUp);
-                    if (destinationsForPickUp.length > 0) {
-                        filteredDestinations = destinationsForPickUp;
+                    const destinationsInit = getDestinationsFor(trip.pickUp, trip.product && trip.product.trim() ? trip.product : null);
+                    if (destinationsInit.length > 0) {
+                        filteredDestinations = destinationsInit;
+                    } else {
+                        // No mapping: force empty list and clear any prior destination value
+                        filteredDestinations = [];
+                        if (trip.destination && trip.destination.trim()) {
+                            trip.destination = '';
+                        }
+                    }
+                }
+                // Also restrict by existing product selection if present when pickup not set
+                if ((!trip.pickUp || !trip.pickUp.trim()) && trip.product && trip.product.trim()) {
+                    const destinationsForProduct = getDestinationsFor(null, trip.product);
+                    if (destinationsForProduct.length > 0) {
+                        filteredDestinations = destinationsForProduct;
+                    } else {
+                        filteredDestinations = [];
+                        if (trip.destination && trip.destination.trim()) {
+                            trip.destination = '';
+                        }
                     }
                 }
 
@@ -2083,6 +2535,66 @@ async function upsertOptionAndSync(category, name) {
                     // Ensure completion is manual-only: reset when fields change
                     trip.completed = false;
                     if (checkbox) checkbox.checked = false;
+
+                    // Filter pickup based on selected destination
+                    {
+        const puEl = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 2) + ') .combo-input');
+                        if (puEl) {
+                            if (trip.destination) {
+                                const pickupsForDestination = getPickUpsFor(trip.product, trip.destination);
+                                if (pickupsForDestination.length > 0) {
+                                    if (trip.pickUp && !pickupsForDestination.includes(trip.pickUp)) {
+                                        trip.pickUp = '';
+                                        puEl.value = '';
+                                    }
+                                    puEl.filteredOptions = pickupsForDestination;
+                                } else {
+                                    trip.pickUp = '';
+                                    puEl.value = '';
+                                    puEl.filteredOptions = [];
+                                }
+                            } else {
+                                // Destination cleared: fall back based on other fields or reset
+                                if (trip.product) {
+                                    const puList = getPickUpsFor(trip.product, null);
+                                    puEl.filteredOptions = puList.length ? puList : [];
+                                    if (puList.length === 0) puEl.value = '';
+                                } else {
+                                    puEl.filteredOptions = null;
+                                }
+                            }
+                        }
+                    }
+
+                    // Filter products based on selected destination
+                    {
+        const prEl = row.querySelector('.dropdown-cell:nth-child(' + (tripIndex * 6 + 3) + ') .combo-input');
+                        if (prEl) {
+                            if (trip.destination) {
+                                const productsForDestination = getProductsFor(trip.pickUp, trip.destination);
+                                if (productsForDestination.length > 0) {
+                                    if (trip.product && !productsForDestination.includes(trip.product)) {
+                                        trip.product = '';
+                                        prEl.value = '';
+                                    }
+                                    prEl.filteredOptions = productsForDestination;
+                                } else {
+                                    trip.product = '';
+                                    prEl.value = '';
+                                    prEl.filteredOptions = [];
+                                }
+                            } else {
+                                // Destination cleared: if pickup is set, restrict by pickup; else reset
+                                if (trip.pickUp) {
+                                    const prList = getProductsFor(trip.pickUp, null);
+                                    prEl.filteredOptions = prList.length ? prList : [];
+                                    if (prList.length === 0) prEl.value = '';
+                                } else {
+                                    prEl.filteredOptions = null;
+                                }
+                            }
+                        }
+                    }
                     queueAutosave();
                     updateCommission();
                 }, '地方');
@@ -2588,7 +3100,7 @@ async function upsertOptionAndSync(category, name) {
                     allowSet = new Set((CONFIG.lorryPlates || []).map(p => String(p)));
                 } else {
                     try {
-                        const lp = await sb.from('lorry_plates').select('plate_no');
+                        const lp = await sb.from('lorry_plates').select('plate_no').eq('active', true);
                         if (!lp.error && lp.data) allowSet = new Set(lp.data.map(r => String(r.plate_no)));
                     } catch (_) { /* non-critical */ }
                 }
@@ -2596,23 +3108,61 @@ async function upsertOptionAndSync(category, name) {
                 if (data && data.length) {
                     // Detect remarks columns presence on the schedules table
                     HAS_REASON_COLUMNS = ['t1_reason', 't2_reason', 't3_reason', 't4_reason', 't5_reason'].some(k => k in (data[0] || {}));
+
+                    // Build map of schedule rows keyed by plate
+                    const scheduleMap = new Map();
                     const filtered = allowSet.size === 0 ? [] : data.filter(s => allowSet.has(String(s.lorry_plate)));
-                    sampleData = filtered.map(s => ({
-                        lorryPlate: s.lorry_plate,
-                        trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', reason: s.t1_reason || '' },
-                        trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', reason: s.t2_reason || '' },
-                        trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', reason: s.t3_reason || '' },
-                        trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', reason: s.t4_reason || '' },
-                        trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', reason: s.t5_reason || '' },
-                        tol_amount: s.tol_amount != null && Number(s.tol_amount) > 0 ? String(Number(s.tol_amount).toFixed(2)) : '',
-                        petrol_amount: s.petrol_amount != null && Number(s.petrol_amount) > 0 ? String(Number(s.petrol_amount).toFixed(2)) : ''
-                    }));
-                    // Exclude hidden and archived lorry plates from display (persist across refresh)
+                    for (const s of filtered) scheduleMap.set(String(s.lorry_plate), s);
+
+                    // Fetch active lorry plates (sorted by sort_order then plate_no)
+                    let activePlatesSorted = [];
+                    try {
+                        const lp = await sb
+                            .from('lorry_plates')
+                            .select('plate_no, sort_order')
+                            .eq('active', true)
+                            .order('sort_order', { ascending: true, nullsFirst: false })
+                            .order('plate_no', { ascending: true });
+                        if (!lp.error && lp.data) {
+                            activePlatesSorted = lp.data.map(r => String(r.plate_no));
+                        }
+                    } catch (_) { /* non-critical */ }
+
+                    // Exclude hidden and archived lorry plates from display
                     const hiddenSetLoad = new Set(CONFIG.hiddenLorryPlates || []);
                     const archivedSetLoad = new Set(CONFIG.archivedLorryPlates || []);
-                    sampleData = sampleData.filter(r => !hiddenSetLoad.has(r.lorryPlate) && !archivedSetLoad.has(r.lorryPlate));
-                    // Strict date view: do not auto-seed plates when schedule rows exist —
-                    // sampleData should contain ONLY rows from Supabase for the selected date.
+
+                    // Always render ALL active plates for the selected date.
+                    // If a plate has a schedule row, map it; otherwise seed a blank row.
+                    sampleData = [];
+                    for (const plate of activePlatesSorted) {
+                        if (hiddenSetLoad.has(plate) || archivedSetLoad.has(plate)) continue;
+                        const s = scheduleMap.get(plate);
+                        if (s) {
+                            sampleData.push({
+                                lorryPlate: s.lorry_plate,
+                                trip1: { pickUp: s.t1_pick_up || '', product: s.t1_product || '', destination: s.t1_destination || '', completed: parseBoolean(s.t1_completed), commission: s.t1_commission != null ? String(Number(s.t1_commission).toFixed(2)) : '', reason: s.t1_reason || '' },
+                                trip2: { pickUp: s.t2_pick_up || '', product: s.t2_product || '', destination: s.t2_destination || '', completed: parseBoolean(s.t2_completed), commission: s.t2_commission != null ? String(Number(s.t2_commission).toFixed(2)) : '', reason: s.t2_reason || '' },
+                                trip3: { pickUp: s.t3_pick_up || '', product: s.t3_product || '', destination: s.t3_destination || '', completed: parseBoolean(s.t3_completed), commission: s.t3_commission != null ? String(Number(s.t3_commission).toFixed(2)) : '', reason: s.t3_reason || '' },
+                                trip4: { pickUp: s.t4_pick_up || '', product: s.t4_product || '', destination: s.t4_destination || '', completed: parseBoolean(s.t4_completed), commission: s.t4_commission != null ? String(Number(s.t4_commission).toFixed(2)) : '', reason: s.t4_reason || '' },
+                                trip5: { pickUp: s.t5_pick_up || '', product: s.t5_product || '', destination: s.t5_destination || '', completed: parseBoolean(s.t5_completed), commission: s.t5_commission != null ? String(Number(s.t5_commission).toFixed(2)) : '', reason: s.t5_reason || '' },
+                                tol_amount: s.tol_amount != null && Number(s.tol_amount) > 0 ? String(Number(s.tol_amount).toFixed(2)) : '',
+                                petrol_amount: s.petrol_amount != null && Number(s.petrol_amount) > 0 ? String(Number(s.petrol_amount).toFixed(2)) : ''
+                            });
+                        } else {
+                            sampleData.push({
+                                lorryPlate: plate,
+                                trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                                tol_amount: '',
+                                petrol_amount: ''
+                            });
+                        }
+                    }
+
                     // Merge local cached edits (e.g., reason) on top of DB data
                     const local = localLoadSchedule(date);
                     if (Array.isArray(local) && local.length) {
@@ -2635,7 +3185,7 @@ async function upsertOptionAndSync(category, name) {
                 } else {
                     // No schedules yet for this date: seed rows from Supabase lorry_plates (fallback to local CONFIG)
                     try {
-                        const lp = await sb.from('lorry_plates').select('plate_no');
+                        const lp = await sb.from('lorry_plates').select('plate_no').eq('active', true);
                         const activePlates = (!lp.error && lp.data) ? lp.data.map(r => String(r.plate_no)) : (CONFIG.lorryPlates || []);
                         const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
                         const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
@@ -3064,11 +3614,52 @@ async function upsertOptionAndSync(category, name) {
         // 归档功能已移除
 
         async function deletePlatePermanent(plate) {
-            // Stage-only delete: update the modal view and config locally, but do not persist
-            const act = new Set(CONFIG.lorryPlates || []); act.delete(plate);
-            CONFIG.lorryPlates = Array.from(act);
-            // Do not touch archived/hidden or Supabase here; persistence happens on 保存配置
+            // Remove from in-memory config immediately (use normalized key to avoid case/space mismatches)
+            const key = normalizeLabelKey(String(plate || ''));
+            CONFIG.lorryPlates = (CONFIG.lorryPlates || []).filter(p => normalizeLabelKey(p) !== key);
+            CONFIG.hiddenLorryPlates = (CONFIG.hiddenLorryPlates || []).filter(p => normalizeLabelKey(p) !== key);
+            CONFIG.archivedLorryPlates = (CONFIG.archivedLorryPlates || []).filter(p => normalizeLabelKey(p) !== key);
+            // Do NOT modify the original snapshot here; let 保存配置 compute 'removed' correctly
+            // Persist deletion to Supabase right away so the plate disappears from DB and main table
+            try {
+                const del = await sb.from('lorry_plates').delete().eq('plate_no', plate);
+                if (del && del.error) {
+                    // Fallback for environments where hard delete may be blocked
+                    await sb.from('lorry_plates').update({ active: false }).eq('plate_no', plate);
+                }
+            } catch (_) {
+                try { await sb.from('lorry_plates').update({ active: false }).eq('plate_no', plate); } catch (_) { }
+            }
+            // Keep historical schedules. If hard delete is blocked by FK, unlink all schedules by nulling lorry_plate, then retry delete
+            try {
+                const delCheck = await sb.from('lorry_plates').select('plate_no').eq('plate_no', plate).limit(1);
+                if (!delCheck.error && delCheck.data && delCheck.data.length) {
+                    // Try a second hard delete to verify removal
+                    const del2 = await sb.from('lorry_plates').delete().eq('plate_no', plate);
+                    if (del2 && del2.error) {
+                        // Unlink schedules across all dates (preserve history but remove plate linkage)
+                        try { await sb.rpc?.('noop'); } catch (_) { /* ignore */ }
+                        try {
+                            await sb.from('schedules').update({ lorry_plate: null }).eq('lorry_plate', plate);
+                            // Retry hard delete once more
+                            await sb.from('lorry_plates').delete().eq('plate_no', plate);
+                        } catch (_) { /* final fallback handled above via active=false */ }
+                    }
+                }
+            } catch (_) { /* non-blocking */ }
+            // Drop the row from the current table view and re-render
+            try { sampleData = (sampleData || []).filter(r => normalizeLabelKey(r.lorryPlate) !== key); } catch (_) { /* noop */ }
+            populateTable();
+            // Re-sync from Supabase so UI strictly follows DB state
+            try {
+                await supabaseLoadOptions();
+                await supabaseLoadSchedule(window.currentDate);
+            } catch (_) { /* non-critical */ }
+            // Update the modal lists
             renderLorryTable('');
+            renderDeletedLorryTable('');
+            // Provide feedback
+            showToast(`已删除啰里 ${plate}（已同步到云端）`, 'success');
         }
 
         async function restorePlate(plate) {
@@ -3115,10 +3706,11 @@ async function upsertOptionAndSync(category, name) {
             try {
                 const del = await sb.from('lorry_plates').delete().eq('plate_no', plate);
                 if (del && del.error) {
-                    await sb.from('lorry_plates').update({ active: false, hidden: true }).eq('plate_no', plate);
+                    // Fallback: mark inactive only (schema has no hidden column)
+                    await sb.from('lorry_plates').update({ active: false }).eq('plate_no', plate);
                 }
             } catch (_) {
-                try { await sb.from('lorry_plates').update({ active: false, hidden: true }).eq('plate_no', plate); } catch (_) { }
+                try { await sb.from('lorry_plates').update({ active: false }).eq('plate_no', plate); } catch (_) { }
             }
             CONFIG.archivedLorryPlates = (CONFIG.archivedLorryPlates || []).filter(p => p !== plate);
             saveConfig(CONFIG);
@@ -3283,28 +3875,60 @@ async function upsertOptionAndSync(category, name) {
                     try {
                         const del = await sb.from('lorry_plates').delete().in('plate_no', removed);
                         if (del && del.error) {
-                            await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', removed);
+                            // If hard delete blocked (e.g., FK), unlink schedules across all dates for each removed plate, then retry once
+                            try {
+                                for (const p of removed) {
+                                    await sb.from('schedules').update({ lorry_plate: null }).eq('lorry_plate', p);
+                                }
+                                await sb.from('lorry_plates').delete().in('plate_no', removed);
+                            } catch (_) { /* ignore and fall back */ }
+                            // Final fallback: mark inactive only
+                            await sb.from('lorry_plates').update({ active: false }).in('plate_no', removed);
                         }
                     } catch (_) {
-                        try { await sb.from('lorry_plates').update({ active: false, hidden: true }).in('plate_no', removed); } catch (_) { }
+                        // Best-effort fallback even if delete throws
+                        try { await sb.from('lorry_plates').update({ active: false }).in('plate_no', removed); } catch (_) { }
                     }
-                    // Also remove current-date schedule rows for removed plates
-                    try {
-            const dstr = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.currentDate.getDate()).padStart(2, '0')}`;
-                        await sb.from('schedules').delete().eq('work_date', dstr).in('lorry_plate', removed);
-                    } catch (_) { }
                 }
                 if (added.length) {
                     try {
+                        // Auto-assign sort_order for newly added plates so they appear in a stable order
+                        let maxOrder = 0;
+                        try {
+                            const ro = await sb.from('lorry_plates')
+                                .select('sort_order')
+                                .not('sort_order', 'is', null)
+                                .order('sort_order', { ascending: false })
+                                .limit(1);
+                            if (!ro.error && ro.data && ro.data.length) {
+                                maxOrder = Number(ro.data[0].sort_order) || 0;
+                            }
+                        } catch (_) { /* noop */ }
                         await sb.from('lorry_plates').upsert(
-                            added.map(p => ({ plate_no: p, active: true })),
+                            added.map((p, idx) => ({ plate_no: p, active: true, sort_order: maxOrder + 1 + idx })),
                             { onConflict: 'plate_no' }
                         );
+                        // Ensure each newly added plate has a schedule row for the current viewing date so it renders
+                        try {
+                            const dstr = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}-${String(window.currentDate.getDate()).padStart(2, '0')}`;
+                            for (const p of added) {
+                                const exists = await sb.from('schedules').select('id').eq('work_date', dstr).eq('lorry_plate', p).limit(1);
+                                if (!exists.error && (!exists.data || exists.data.length === 0)) {
+                                    await sb.from('schedules').insert({ work_date: dstr, lorry_plate: p });
+                                }
+                            }
+                        } catch (_) { /* non-blocking */ }
                     } catch (_) { /* non-blocking */ }
                 }
                 window.CONFIG_MODAL_SAVED = true;
                 clearUnsaved();
+                // Persist other option lists and tyre/ton rules
                 await supabaseSaveOptions();
+                // Reload CONFIG from Supabase so lorry list strictly follows DB state
+                // This prevents stale local entries (e.g., 55553) from lingering after deletion
+                try {
+                    await supabaseLoadOptions();
+                } catch (_) { /* non-critical */ }
         pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
         productOptions = canonicalizeOptionList(CONFIG.products || []);
         destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
@@ -3331,7 +3955,7 @@ async function upsertOptionAndSync(category, name) {
                 populateTable();
                 // Autosave schedule so new rows are persisted
                 flushAutosave();
-                // Reload schedule from DB to reflect removals and prevent ghost rows
+                // Reload schedule from DB to reflect removals and the refreshed allow-set from Supabase
             await supabaseLoadSchedule(window.currentDate);
                 populateTable();
                 queueAutosave();
