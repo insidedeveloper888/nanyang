@@ -33,8 +33,16 @@ async function calculateDashboardStats() {
     let totalEstimatedTon = 0;
 
     if (data && data.length > 0) {
+      // 仅统计当前有效且未隐藏/未归档的车牌，避免仪表盘出现已删除的车牌
+      const activeList = Array.isArray(window.CONFIG?.lorryPlates) ? window.CONFIG.lorryPlates : [];
+      const activeSet = new Set(activeList);
+      const hiddenSet = new Set((window.CONFIG && window.CONFIG.hiddenLorryPlates) || []);
+      const archivedSet = new Set((window.CONFIG && window.CONFIG.archivedLorryPlates) || []);
       data.forEach((row) => {
         const plate = String(row.lorry_plate || '').trim();
+        if (!plate || !activeSet.has(plate) || hiddenSet.has(plate) || archivedSet.has(plate)) {
+          return; // skip this row
+        }
         if (!vehicleStats.has(plate)) {
           vehicleStats.set(plate, {
             plate: plate,
@@ -239,6 +247,36 @@ function updateVehicleTable(vehicleData) {
   const data = (vehicleData || []).slice();
   const key = window.vehicleSort?.key || null;
   const dir = window.vehicleSort?.direction || 'none';
+
+  // 初次加载时按 Supabase 的 sort_order 进行排序（与主表一致），随后用户可点击表头自行排序
+  if (!key || dir === 'none') {
+    try {
+      const orderMap = (typeof window.SUPABASE_LORRY_ORDER_MAP !== 'undefined') ? window.SUPABASE_LORRY_ORDER_MAP : null;
+      const configOrderList = Array.isArray(window.CONFIG?.lorryPlates) ? window.CONFIG.lorryPlates : [];
+      const configOrderIndex = new Map(configOrderList.map((p, i) => [String(p).trim(), i]));
+      const getOrder = (plate, idx) => {
+        const p = String(plate || '').trim();
+        if (orderMap && typeof orderMap.get === 'function') {
+          const v = orderMap.get(p);
+          if (Number.isFinite(v)) return v;
+        }
+        if (configOrderIndex.has(p)) {
+          // 使用 CONFIG.lorryPlates 的顺序作为次级兜底
+          return 2000000 + (configOrderIndex.get(p) || 0);
+        }
+        // 未找到时，使用一个很大的基数并按车牌字母顺序兜底，保证稳定
+        return 1000000 + (idx || 0);
+      };
+      data.sort((a, b) => {
+        const oa = getOrder(a.plate, a.__idx);
+        const ob = getOrder(b.plate, b.__idx);
+        if (oa !== ob) return oa - ob;
+        const pa = String(a.plate || '').trim();
+        const pb = String(b.plate || '').trim();
+        return pa.localeCompare(pb, undefined, { numeric: true, sensitivity: 'base' });
+      });
+    } catch (_) { /* 安静兜底，不影响后续渲染 */ }
+  }
 
   if (key && dir !== 'none') {
     data.sort((a, b) => {

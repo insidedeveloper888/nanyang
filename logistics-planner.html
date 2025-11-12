@@ -298,7 +298,7 @@
 
                 <div class="tab-panel active" id="tab-lorry">
                     <div class="config-input-row">
-                        <input type="text" id="inputLorryPlate" placeholder="添加啰里">
+                        <input type="text" id="inputLorryPlate" placeholder="添加啰里" inputmode="numeric" pattern="[0-9]*" aria-describedby="errorLorry">
                         <button class="btn btn-primary" id="btnAddLorry">添加</button>
                     </div>
                     <div class="inline-error" id="errorLorry" aria-live="polite"></div>
@@ -3782,6 +3782,18 @@ async function upsertOptionAndSync(category, name) {
             window.IN_CONFIG_MODAL = false;
             clearUnsaved();
             modalManager.close('config');
+            // 返回到排程主表，并高亮“排程”标签
+            const topTabPlanner = document.getElementById('topTabPlanner');
+            const topTabConfig = document.getElementById('topTabConfig');
+            const topTabCommission = document.getElementById('topTabCommission');
+            const topTabDashboard = document.getElementById('topTabDashboard');
+            // 优先使用 setActive，如果不可用则直接操作 class
+            if (typeof setActive === 'function') {
+                setActive(topTabPlanner);
+            } else {
+                [topTabPlanner, topTabConfig, topTabCommission, topTabDashboard].forEach(b => b?.classList.remove('active'));
+                topTabPlanner?.classList.add('active');
+            }
         }
 
         function wireConfigEvents() {
@@ -4094,8 +4106,16 @@ async function upsertOptionAndSync(category, name) {
             const btnAddLorry = document.getElementById('btnAddLorry');
             if (btnAddLorry) btnAddLorry.addEventListener('click', async () => {
                 const input = document.getElementById('inputLorryPlate');
-                const val = String(input?.value || '').trim();
-                if (!val) return;
+                const raw = String(input?.value || '').trim();
+                if (!raw) return;
+                // Numeric-only validation
+                if (!/^\d+$/.test(raw)) {
+                    setInlineError('lorry', '仅允许数字');
+                    if (input) { input.classList.add('input-error'); input.focus(); }
+                    showToast('车牌号仅允许数字', 'danger');
+                    return;
+                }
+                const val = raw; // already numeric-only
                 // Duplicate check (case/space-insensitive)
                 const exists = (CONFIG.lorryPlates || []).some(p => normalizeLabelKey(p) === normalizeLabelKey(val));
                 if (exists) {
@@ -4117,7 +4137,15 @@ async function upsertOptionAndSync(category, name) {
                 showToast(`已添加啰里 ${val}`, 'success');
             });
             const ilp = document.getElementById('inputLorryPlate');
-            if (ilp) ilp.addEventListener('input', () => { clearInlineError('lorry'); ilp.classList.remove('input-error'); });
+            if (ilp) {
+                ilp.addEventListener('input', () => {
+                    // Strip non-digit characters while typing
+                    const cleaned = ilp.value.replace(/[^\d]/g, '');
+                    if (ilp.value !== cleaned) ilp.value = cleaned;
+                    clearInlineError('lorry');
+                    ilp.classList.remove('input-error');
+                });
+            }
             const sl = document.getElementById('searchLorry'); if (sl) sl.addEventListener('input', () => { renderLorryTable(sl.value); });
             const btnAddPickUp = document.getElementById('btnAddPickUp');
             if (btnAddPickUp) btnAddPickUp.addEventListener('click', async () => {
@@ -5029,7 +5057,13 @@ async function upsertOptionAndSync(category, name) {
             header.className = 'options-header';
             const title = document.createElement('div');
             title.className = 'options-title';
-            title.textContent = '选择原因';
+            title.textContent = '选择：原因';
+
+            // Search input to quickly filter reasons
+            const searchInput = document.createElement('input');
+            searchInput.className = 'options-search';
+            searchInput.placeholder = '搜索 / Search';
+            searchInput.autocomplete = 'off';
 
             // Add a clear button
             const clearBtn = document.createElement('button');
@@ -5040,43 +5074,35 @@ async function upsertOptionAndSync(category, name) {
             const list = document.createElement('div');
             list.className = 'options-list';
 
-            // Right-side index for reason groups
-            const alphaIndex = document.createElement('div');
-            alphaIndex.className = 'alpha-index';
-
+            // Compose header (title + search + clear), same as pickup overlay
             header.appendChild(title);
+            header.appendChild(searchInput);
             header.appendChild(clearBtn);
 
             const body = document.createElement('div');
             body.className = 'options-body';
-            body.appendChild(alphaIndex);
             body.appendChild(list);
+            panel.appendChild(header);
             panel.appendChild(body);
 
             document.body.appendChild(overlay);
             document.body.appendChild(panel);
 
-            const updateIndex = () => {
-                alphaIndex.innerHTML = '';
-                reasonGroups.forEach(group => {
-                    const btn = document.createElement('button');
-                    btn.className = 'alpha-btn';
-                    btn.textContent = group.name;
-                    btn.addEventListener('click', () => {
-                        const anchor = list.querySelector(`#anchor-reason-group-${group.id}`);
-                        if (anchor) {
-                            const top = anchor.offsetTop;
-                            list.scrollTo({ top, behavior: 'smooth' });
-                        }
-                    });
-                    alphaIndex.appendChild(btn);
-                });
-            };
+            // Group index removed to match pickup UX
+            const updateIndex = () => {};
 
             const render = () => {
+                const q = (searchInput.value || '').toLowerCase().trim();
                 list.innerHTML = '';
 
                 reasonGroups.forEach(group => {
+                    // Filter reasons by search
+                    const groupReasons = (allReasons || [])
+                        .filter(r => r.reason_group_id === group.id)
+                        .filter(r => !q || String(r.name || '').toLowerCase().includes(q));
+
+                    if (groupReasons.length === 0) return; // skip empty groups in filtered view
+
                     // Add reason group header
                     const hdr = document.createElement('div');
                     hdr.className = 'alpha-header';
@@ -5085,7 +5111,6 @@ async function upsertOptionAndSync(category, name) {
                     list.appendChild(hdr);
 
                     // Add reasons for this group
-                    const groupReasons = allReasons.filter(r => r.reason_group_id === group.id);
                     groupReasons.forEach(reason => {
                         const div = document.createElement('div');
                         div.className = 'option-item';
@@ -5097,16 +5122,6 @@ async function upsertOptionAndSync(category, name) {
                         });
                         list.appendChild(div);
                     });
-
-                    // Add empty state if no reasons
-                    if (groupReasons.length === 0) {
-                        const emptyDiv = document.createElement('div');
-                        emptyDiv.className = 'option-item';
-                        emptyDiv.style.fontStyle = 'italic';
-                        emptyDiv.style.color = '#888';
-                        emptyDiv.textContent = '暂无原因';
-                        list.appendChild(emptyDiv);
-                    }
                 });
 
                 updateIndex();
@@ -5124,6 +5139,8 @@ async function upsertOptionAndSync(category, name) {
                 close();
             });
 
+            // Re-render on search
+            searchInput.addEventListener('input', render);
             render();
             overlay.addEventListener('click', close);
             window.__closeReasonSelectionPanel = close;
@@ -5565,6 +5582,64 @@ async function upsertOptionAndSync(category, name) {
                 dashboardModal.addEventListener('click', function (e) {
                     if (e.target === dashboardModal) {
                         hideDashboard();
+                    }
+                });
+            }
+            // 点击配置模态框背景关闭
+            const configModal = document.getElementById('configModal');
+            if (configModal) {
+                configModal.addEventListener('click', function (e) {
+                    // 直接点击到遮罩层（可能存在嵌套的 modal-overlay），都视为关闭
+                    if (e.target === configModal || (e.target && e.target.classList && e.target.classList.contains('modal-overlay'))) {
+                        // 优先使用 closeConfig（含还原与清理逻辑）
+                        if (typeof closeConfig === 'function') {
+                            try { closeConfig(); } catch (_) {}
+                        } else {
+                            // 兜底：直接关闭并切回排程
+                            try { modalManager.close('config'); } catch (_) {}
+                            const topTabPlanner = document.getElementById('topTabPlanner');
+                            const topTabConfig = document.getElementById('topTabConfig');
+                            const topTabCommission = document.getElementById('topTabCommission');
+                            const topTabDashboard = document.getElementById('topTabDashboard');
+                            if (typeof setActive === 'function') {
+                                setActive(topTabPlanner);
+                            } else {
+                                [topTabPlanner, topTabConfig, topTabCommission, topTabDashboard].forEach(b => b?.classList.remove('active'));
+                                topTabPlanner?.classList.add('active');
+                            }
+                        }
+                        // 无论如何确保切回排程标签
+                        const topTabPlanner2 = document.getElementById('topTabPlanner');
+                        const topTabConfig2 = document.getElementById('topTabConfig');
+                        const topTabCommission2 = document.getElementById('topTabCommission');
+                        const topTabDashboard2 = document.getElementById('topTabDashboard');
+                        if (typeof setActive === 'function') {
+                            setActive(topTabPlanner2);
+                        } else {
+                            [topTabPlanner2, topTabConfig2, topTabCommission2, topTabDashboard2].forEach(b => b?.classList.remove('active'));
+                            topTabPlanner2?.classList.add('active');
+                        }
+                    }
+                });
+            }
+            // 点击车税管理模态框背景关闭
+            const commissionModal = document.getElementById('commissionModal');
+            if (commissionModal) {
+                commissionModal.addEventListener('click', function (e) {
+                    // 直接点击到遮罩层（可能存在嵌套的 modal-overlay），都视为关闭
+                    if (e.target === commissionModal || (e.target && e.target.classList && e.target.classList.contains('modal-overlay'))) {
+                        // 为避免作用域问题，不依赖 closeCommissionPanel，直接执行关闭 + 切回排程
+                        try { modalManager.close('commission'); } catch (_) {}
+                        const topTabPlanner = document.getElementById('topTabPlanner');
+                        const topTabConfig = document.getElementById('topTabConfig');
+                        const topTabCommission = document.getElementById('topTabCommission');
+                        const topTabDashboard = document.getElementById('topTabDashboard');
+                        if (typeof setActive === 'function') {
+                            setActive(topTabPlanner);
+                        } else {
+                            [topTabPlanner, topTabConfig, topTabCommission, topTabDashboard].forEach(b => b?.classList.remove('active'));
+                            topTabPlanner?.classList.add('active');
+                        }
                     }
                 });
             }

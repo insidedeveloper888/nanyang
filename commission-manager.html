@@ -792,14 +792,68 @@
         .save-badge { display:inline-block; padding:2px 6px; border-radius:8px; font-size:12px; line-height:1; }
         .save-badge.saved { background:#e6ffed; color:#087f23; border:1px solid #a4e5b0; }
         .save-badge.unsaved { background:#fff7e6; color:#a15c00; border:1px solid #ffd48a; }
+        /* 无效输入的样式：红色边框与淡红背景以示不可保存 */
+        input.invalid { border-color: #e74c3c !important; background: #fff1f0; }
+        /* 错误提示放在对应输入框下方 */
+        .invalid-hint { color:#e74c3c; font-size:12px; margin-top:4px; display:block; }
       `;
       document.head.appendChild(styleTag);
     })();
+    // 校验：只能使用列表中的值（仍允许键入以便过滤）
+    function isKnownOption(category, value) {
+      const arr = optionsCache[category] || [];
+      const key = String((value||'').trim()).toLowerCase();
+      return key && arr.some(v => String(v).trim().toLowerCase() === key);
+    }
+    function validateRow(tr) {
+      if (!tr) return false;
+      const puEl = tr.querySelector('.inpPU');
+      const prEl = tr.querySelector('.inpPR');
+      const deEl = tr.querySelector('.inpDE');
+      const pu = formatCase(puEl?.value || '');
+      const pr = formatCase(prEl?.value || '');
+      const de = formatCase(deEl?.value || '');
+      let okAll = true;
+      const ensureFieldHint = (inputEl) => {
+        if (!inputEl) return null;
+        const combo = inputEl.closest('.combo');
+        if (!combo) return null;
+        let hint = combo.nextElementSibling;
+        if (!hint || !hint.classList || !hint.classList.contains('invalid-hint')) {
+          hint = document.createElement('span');
+          hint.className = 'invalid-hint';
+          combo.insertAdjacentElement('afterend', hint);
+        }
+        return hint;
+      };
+      const clearFieldHint = (inputEl) => {
+        if (!inputEl) return;
+        const combo = inputEl.closest('.combo');
+        if (!combo) return;
+        const next = combo.nextElementSibling;
+        if (next && next.classList && next.classList.contains('invalid-hint')) next.remove();
+      };
+                const msg = '仅可从列表选择';
+      // PU
+      if (pu && !isKnownOption('pickup', pu)) { puEl?.classList.add('invalid'); const h = ensureFieldHint(puEl); if (h) h.textContent = msg; okAll = false; }
+      else { puEl?.classList.remove('invalid'); clearFieldHint(puEl); }
+      // PR
+      if (pr && !isKnownOption('product', pr)) { prEl?.classList.add('invalid'); const h = ensureFieldHint(prEl); if (h) h.textContent = msg; okAll = false; }
+      else { prEl?.classList.remove('invalid'); clearFieldHint(prEl); }
+      // DE
+      if (de && !isKnownOption('destination', de)) { deEl?.classList.add('invalid'); const h = ensureFieldHint(deEl); if (h) h.textContent = msg; okAll = false; }
+      else { deEl?.classList.remove('invalid'); clearFieldHint(deEl); }
+      const btn = tr.querySelector('.btnSave');
+      if (btn) btn.disabled = !okAll || !tr.dataset.dirty;
+      return okAll;
+    }
     function markRowUnsaved(tr) {
       const badge = tr.querySelector('.save-badge');
       if (badge) { badge.textContent = '未保存'; badge.classList.remove('saved'); badge.classList.add('unsaved'); }
       const btn = tr.querySelector('.btnSave'); if (btn) btn.disabled = false;
       tr.dataset.dirty = '1';
+      // 更新保存按钮状态：若有无效输入则禁用保存
+      validateRow(tr);
     }
     function markRowSaved(tr) {
       const badge = tr.querySelector('.save-badge');
@@ -848,6 +902,20 @@
       const end = endRaw || null;
       const ac = document.getElementById('newActive').checked;
       if (!pu || !pr || !de) { alert('请填写完整的工厂、产品、地方'); return; }
+      // 新增同样限制为必须从列表选择
+      if (!isKnownOption('pickup', pu) || !isKnownOption('product', pr) || !isKnownOption('destination', de)) {
+        alert('添加失败：工厂/产品/地方必须从列表中选择，不允许手动输入未知值。');
+        const focusFirstInvalid = () => {
+          const puEl = document.getElementById('newPU');
+          const prEl = document.getElementById('newPR');
+          const deEl = document.getElementById('newDE');
+          if (!isKnownOption('pickup', pu)) { puEl.focus(); openOptionsPanel('pickup', puEl); return; }
+          if (!isKnownOption('product', pr)) { prEl.focus(); openOptionsPanel('product', prEl); return; }
+          if (!isKnownOption('destination', de)) { deEl.focus(); openOptionsPanel('destination', deEl); return; }
+        };
+        focusFirstInvalid();
+        return;
+      }
       if (!cm) { alert('请输入有效的车税，例如 14.00'); return; }
       // Check for overlapping period before attempting insert to avoid 23P01
       if (ENFORCE_NO_OVERLAP) {
@@ -1248,6 +1316,13 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
       )) {
         // 变化后立即标记为未保存，启用保存按钮（不依赖 AUTOSAVE）
         markRowUnsaved(tr);
+        // 若当前输入不在列表中，则阻止自动保存，仅用于过滤建议
+        const get = (sel) => tr.querySelector(sel);
+        const pu = formatCase(get('.inpPU')?.value || '');
+        const pr = formatCase(get('.inpPR')?.value || '');
+        const de = formatCase(get('.inpDE')?.value || '');
+        const invalid = (pu && !isKnownOption('pickup', pu)) || (pr && !isKnownOption('product', pr)) || (de && !isKnownOption('destination', de));
+        if (invalid) { return; }
         // 若未启用 AUTOSAVE 或 Supabase 未准备好，则不继续自动保存，改为手动保存
         if (!AUTOSAVE || !sb) return;
         // debounce
@@ -1263,6 +1338,10 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
           const s = get('.inpStart').value || null;
           const e = get('.inpEnd').value || null;
           if (!pu || !pr || !de) return;
+          // 仅允许从列表中选择的值
+          if (!isKnownOption('pickup', pu) || !isKnownOption('product', pr) || !isKnownOption('destination', de)) {
+            return;
+          }
           // Pre-check overlap to prevent exclusion constraint violations
           ((ENFORCE_NO_OVERLAP ? findOverlappingRules(pu, pr, de, s, e) : Promise.resolve([]))
             .then(async (conflicts) => {
@@ -1308,18 +1387,19 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
                 const toTitleCaseSmart = (s) => formatCase(s);
                 const normalizeLabelKey = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
                 const rows = [];
-                if (pu) rows.push({ category: 'pickup', name: toTitleCaseSmart(pu), active: true });
-                if (pr) rows.push({ category: 'product', name: toTitleCaseSmart(pr), active: true });
-                if (de) rows.push({ category: 'destination', name: toTitleCaseSmart(de), active: true });
+                // 仅当值已存在于选项列表时，才写回 config_options（防止随意新增）
+                if (pu && isKnownOption('pickup', pu)) rows.push({ category: 'pickup', name: toTitleCaseSmart(pu), active: true });
+                if (pr && isKnownOption('product', pr)) rows.push({ category: 'product', name: toTitleCaseSmart(pr), active: true });
+                if (de && isKnownOption('destination', de)) rows.push({ category: 'destination', name: toTitleCaseSmart(de), active: true });
                 if (rows.length) await sb.from('config_options').upsert(rows, { onConflict: 'category,name' });
                 // Update local caches and datalists for immediate availability in overlays
                 const addUnique = (arr, v) => {
                   const key = normalizeLabelKey(v);
                   if (!arr.some(x => normalizeLabelKey(x) === key)) arr.push(toTitleCaseSmart(v));
                 };
-                if (pu) addUnique(optionsCache.pickup, pu);
-                if (pr) addUnique(optionsCache.product, pr);
-                if (de) addUnique(optionsCache.destination, de);
+                if (pu && isKnownOption('pickup', pu)) addUnique(optionsCache.pickup, pu);
+                if (pr && isKnownOption('product', pr)) addUnique(optionsCache.product, pr);
+                if (de && isKnownOption('destination', de)) addUnique(optionsCache.destination, de);
                 // Refresh datalists
                 const fillDL = (dlId, items) => {
                   const dl = document.getElementById(dlId); if (!dl) return;
@@ -1359,11 +1439,14 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
       const panel = document.createElement('div'); panel.className = 'options-panel';
       const header = document.createElement('div'); header.className = 'options-header';
       const title = document.createElement('div'); title.className = 'options-title'; title.textContent = `选择：${category}`;
+      const search = document.createElement('input'); search.type = 'text'; search.placeholder = '搜索...'; search.className = 'options-search'; search.value = String(targetInput?.value || '');
+      header.appendChild(title);
+      header.appendChild(search);
       const list = document.createElement('div'); list.className = 'options-list';
       // Right-side A–Z index
       const alphaIndex = document.createElement('div'); alphaIndex.className = 'alpha-index';
       panel.appendChild(alphaIndex);
-      panel.appendChild(header); header.appendChild(title); panel.appendChild(list);
+      panel.appendChild(header); panel.appendChild(list);
       document.body.appendChild(overlay); document.body.appendChild(panel);
       const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
       const getLetter = (s) => {
@@ -1392,7 +1475,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         });
       };
       const render = () => {
-        const q = '';
+        const q = String(search.value || '').toLowerCase();
         list.innerHTML = '';
         const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
         const seen = new Set();
@@ -1416,6 +1499,7 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         }
       };
       render();
+      search.addEventListener('input', render);
       overlay.addEventListener('click', closeOptionsPanel);
       function closeOptionsPanel() { overlay.remove(); panel.remove(); }
       window.__closeOptionsPanel = closeOptionsPanel;
@@ -1486,6 +1570,15 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         const newEN = get('.inpEnd').value || null;
         const newAC = get('.inpAC') ? get('.inpAC').checked : true;
         if (!newPU || !newPR || !newDE) { alert('工厂/产品/地方均为必填'); return; }
+        // 限制：只能选择列表中的值
+        if (!isKnownOption('pickup', newPU) || !isKnownOption('product', newPR) || !isKnownOption('destination', newDE)) {
+          alert('无法保存：工厂/产品/地方必须从列表中选择，不能手动输入未知值。\n请点击各字段右侧的 ▼，或从输入建议中选择。');
+          // 聚焦第一个无效字段，并打开选择面板以便用户选择
+          if (!isKnownOption('pickup', newPU)) { get('.inpPU').focus(); openOptionsPanel('pickup', get('.inpPU')); }
+          else if (!isKnownOption('product', newPR)) { get('.inpPR').focus(); openOptionsPanel('product', get('.inpPR')); }
+          else if (!isKnownOption('destination', newDE)) { get('.inpDE').focus(); openOptionsPanel('destination', get('.inpDE')); }
+          return;
+        }
         const id = tr.dataset.id ? Number(tr.dataset.id) : null;
 
         // Prevent overlapping date ranges for the same (PU, PR, DE)
