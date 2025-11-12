@@ -26,5 +26,9 @@ window.__SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
       var as = localStorage.getItem('CM_AUTOSAVE');
       window.__CM_AUTOSAVE = (as == null) ? false : (as === 'true');
     }
+    // Global toggle to disable planner localStorage caching (source of truth = Supabase)
+    if (typeof window.NANYANG_USE_LOCAL_CACHE !== 'boolean') {
+      window.NANYANG_USE_LOCAL_CACHE = false;
+    }
   } catch (_) { /* noop */ }
 })();

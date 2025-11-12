@@ -2874,14 +2874,19 @@ async function upsertOptionAndSync(category, name) {
             queueAutosave();
         }
 
+        // Global toggle: disable any localStorage caching for planner data
+        const USE_LOCAL_CACHE = (typeof window.NANYANG_USE_LOCAL_CACHE === 'boolean')
+            ? window.NANYANG_USE_LOCAL_CACHE
+            : false; // default to false for data integrity
+
         // Debounced autosave queue (faster and with flush-on-exit)
         let autosaveTimer = null;
         function queueAutosave(delay = 300) {
             if (autosaveTimer) clearTimeout(autosaveTimer);
             autosaveTimer = setTimeout(() => {
                 supabaseSaveSchedule(window.currentDate, sampleData);
-                // Local fallback persistence
-                localSaveSchedule(window.currentDate, sampleData);
+                // Local fallback persistence (disabled when USE_LOCAL_CACHE is false)
+                if (USE_LOCAL_CACHE) localSaveSchedule(window.currentDate, sampleData);
                 autosaveTimer = null;
             }, Math.max(0, delay));
         }
@@ -2891,8 +2896,8 @@ async function upsertOptionAndSync(category, name) {
                 clearTimeout(autosaveTimer);
                 autosaveTimer = null;
                 supabaseSaveSchedule(window.currentDate, sampleData);
-                // Local fallback persistence
-                localSaveSchedule(window.currentDate, sampleData);
+                // Local fallback persistence (disabled when USE_LOCAL_CACHE is false)
+                if (USE_LOCAL_CACHE) localSaveSchedule(window.currentDate, sampleData);
             }
         }
 
@@ -2902,6 +2907,7 @@ async function upsertOptionAndSync(category, name) {
         }
         function localSaveSchedule(date, rows) {
             try {
+                if (!USE_LOCAL_CACHE) return; // disabled by global toggle
                 if (typeof localStorage === 'undefined') return;
                 const key = 'planner_schedule_' + formatDateKey(date);
                 localStorage.setItem(key, JSON.stringify(rows));
@@ -2909,6 +2915,7 @@ async function upsertOptionAndSync(category, name) {
         }
         function localLoadSchedule(date) {
             try {
+                if (!USE_LOCAL_CACHE) return null; // disabled by global toggle
                 if (typeof localStorage === 'undefined') return null;
                 const key = 'planner_schedule_' + formatDateKey(date);
                 const raw = localStorage.getItem(key);
@@ -3051,38 +3058,20 @@ async function upsertOptionAndSync(category, name) {
         async function supabaseLoadSchedule(date) {
             
             if (!sb) {
-                // Local-only mode: load from localStorage; if empty, seed from CONFIG.lorryPlates
-                const local = localLoadSchedule(date);
-                if (Array.isArray(local) && local.length) {
-                    // Normalize older saved data that may still use `remarks` into `reason`
-                    sampleData = local.map(r => {
-                        const nr = { ...r };
-                        for (let i = 1; i <= 5; i++) {
-                            const k = 'trip' + i;
-                            if (nr[k]) {
-                                nr[k].reason = (typeof nr[k].reason === 'string' && nr[k].reason)
-                                    ? nr[k].reason
-                                    : (typeof nr[k].remarks === 'string' ? nr[k].remarks : '');
-                            }
-                        }
-                        return nr;
-                    });
-                } else {
-                    const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
-                    const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
-                    const plates = (CONFIG.lorryPlates || []).filter(p => !hiddenSet.has(p) && !archivedSet.has(p));
-                    sampleData = plates.map(plate => ({
-                        lorryPlate: plate,
-                        trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
-                        tol_amount: '', petrol_amount: ''
-                    }));
-                    // Persist seeded rows so subsequent loads show data
-                    try { localSaveSchedule(date, sampleData); } catch (_) { /* non-critical */ }
-                }
+                // Supabase is required as single source of truth; when unavailable, do not read or write local cache
+                // Seed blank rows from CONFIG for display only (no local persistence)
+                const hiddenSet = new Set(CONFIG.hiddenLorryPlates || []);
+                const archivedSet = new Set(CONFIG.archivedLorryPlates || []);
+                const plates = (CONFIG.lorryPlates || []).filter(p => !hiddenSet.has(p) && !archivedSet.has(p));
+                sampleData = plates.map(plate => ({
+                    lorryPlate: plate,
+                    trip1: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                    trip2: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                    trip3: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                    trip4: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                    trip5: { pickUp: '', product: '', destination: '', completed: CONFIG.defaultCompletion || false, commission: '', reason: '' },
+                    tol_amount: '', petrol_amount: ''
+                }));
                 return;
             }
             try {
@@ -3163,25 +3152,7 @@ async function upsertOptionAndSync(category, name) {
                         }
                     }
 
-                    // Merge local cached edits (e.g., reason) on top of DB data
-                    const local = localLoadSchedule(date);
-                    if (Array.isArray(local) && local.length) {
-                        const map = new Map(local.map(r => [String(r.lorryPlate), r]));
-                        sampleData = sampleData.map(r => {
-                            const lr = map.get(String(r.lorryPlate));
-                            if (!lr) return r;
-                            for (let i = 1; i <= 5; i++) {
-                                const k = 'trip' + i;
-                                if (lr[k]) {
-                                    const localReason = typeof lr[k].reason === 'string' ? lr[k].reason : (typeof lr[k].remarks === 'string' ? lr[k].remarks : '');
-                                    if (typeof localReason === 'string') {
-                                        r[k].reason = localReason || r[k].reason || '';
-                                    }
-                                }
-                            }
-                            return r;
-                        });
-                    }
+                    // Do NOT merge any local cached edits when Supabase is the source of truth
                 } else {
                     // No schedules yet for this date: seed rows from Supabase lorry_plates (fallback to local CONFIG)
                     try {
@@ -3201,25 +3172,7 @@ async function upsertOptionAndSync(category, name) {
                                 tol_amount: '',
                                 petrol_amount: ''
                             }));
-                        // Apply local cache if available (e.g., offline edits for this date)
-                        const local = localLoadSchedule(date);
-                        if (Array.isArray(local) && local.length) {
-                            const map = new Map(local.map(r => [String(r.lorryPlate), r]));
-                            sampleData = sampleData.map(r => {
-                                const lr = map.get(String(r.lorryPlate));
-                                if (!lr) return r;
-                                for (let i = 1; i <= 5; i++) {
-                                    const k = 'trip' + i;
-                                    if (lr[k]) {
-                                        const localReason = typeof lr[k].reason === 'string' ? lr[k].reason : (typeof lr[k].remarks === 'string' ? lr[k].remarks : '');
-                                        if (typeof localReason === 'string') {
-                                            r[k].reason = localReason || r[k].reason || '';
-                                        }
-                                    }
-                                }
-                                return r;
-                            });
-                        }
+                        // No local cache merging: rely purely on Supabase rows
                     } catch (_) {
                         // Fallback to local CONFIG list if DB load fails
                         sampleData = (CONFIG.lorryPlates || [])
