@@ -4663,12 +4663,17 @@ async function upsertOptionAndSync(category, name) {
             }
 
             // 关闭车税管理模态框的函数
-            function closeCommissionPanel() {
+            async function closeCommissionPanel() {
                 modalManager.close('commission');
                 // 重新激活规划器标签
                 const topTabPlanner = document.getElementById('topTabPlanner');
                 if (topTabPlanner) {
                     setActive(topTabPlanner);
+                }
+                // Reload config when closing commission manager to ensure dropdowns are updated
+                console.log('Commission panel closed, reloading config...');
+                if (typeof loadConfigFromSupabase === 'function') {
+                    await loadConfigFromSupabase();
                 }
             }
 
@@ -4679,10 +4684,27 @@ async function upsertOptionAndSync(category, name) {
             }
 
             // Listen for messages from iframe to close commission panel
-            window.addEventListener('message', function (event) {
+            window.addEventListener('message', async function (event) {
                 // For security, you might want to check event.origin in production
-                if (event.data && event.data.action === 'closeCommissionPanel') {
+                const data = event.data;
+                if (!data) return;
+
+                // Close commission panel
+                if (data.action === 'closeCommissionPanel') {
                     closeCommissionPanel();
+                }
+
+                // Reload config when options are updated in commission manager
+                if (data.type === 'optionsUpdated' || data.type === 'commissionRulesChanged') {
+                    console.log('Options updated from commission manager, reloading config...');
+                    // Reload config from Supabase
+                    if (typeof loadConfigFromSupabase === 'function') {
+                        await loadConfigFromSupabase();
+                    }
+                    // Also reload the table to reflect any commission changes
+                    if (typeof loadTable === 'function') {
+                        await loadTable();
+                    }
                 }
             });
         });

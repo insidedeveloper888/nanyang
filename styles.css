@@ -375,7 +375,7 @@ table {
 table tr>th:first-child {
     position: sticky;
     left: 0;
-    z-index: 21;
+    z-index: 25;
     background: var(--surface);
     border-right: 2px solid var(--primary);
 }
@@ -397,10 +397,6 @@ th {
     font-weight: 700;
     font-size: 11px;
     border: 1px solid var(--border);
-    /* Remove sticky headers on scroll */
-    position: static;
-    top: auto;
-    z-index: auto;
     box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
     cursor: pointer;
     user-select: none;
@@ -410,6 +406,34 @@ th {
 th:hover {
     background: var(--primary);
     color: white;
+}
+
+/* Sticky header rows */
+.trip-group-header th {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--surface);
+}
+
+.columns-header th {
+    position: sticky;
+    top: 28px; /* Height of first header row: padding(6*2) + font + border + spacing ≈ 32px */
+    z-index: 29;
+    background: var(--surface-2);
+}
+
+/* Frozen column in header rows needs higher z-index */
+.trip-group-header th.frozen-column {
+    z-index: 40;
+    left: 0;
+    background: var(--surface);
+}
+
+.columns-header th.frozen-column {
+    z-index: 39;
+    left: 0;
+    background: var(--surface);
 }
 
 th.sortable::after {
@@ -489,10 +513,7 @@ th.sort-desc::after {
 /* ===================== Trip Group Headers ===================== */
 /* Prominent trip group headers row (sticks above column headers) */
 .trip-group-header th {
-    /* No sticky group headers */
-    position: static;
-    top: auto;
-    z-index: auto;
+    /* Sticky positioning is now set earlier in the CSS */
     background: var(--surface);
     font-size: 10px;
     font-weight: 800;
@@ -509,10 +530,9 @@ th.sort-desc::after {
     border-left: 3px solid var(--primary);
 }
 
-/* Column letters/labels row (non-sticky) */
+/* Column labels row - styling only (sticky positioning set earlier) */
 .columns-header th {
-    top: auto !important;
-    z-index: auto;
+    /* Sticky positioning handled above */
 }
 
 /* Prevent header cells from blocking interactions on the first body row */
@@ -787,7 +807,9 @@ select:focus,
     text-align: center;
     padding: 0;
     /* 去除额外空白 */
-    min-width: 32px;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    width: 32px !important;
     /* 稍宽以匹配表头 */
 }
 
@@ -804,7 +826,9 @@ select:focus,
 
 /* 完成列表头：仅显示文字 */
 .completion-header {
-    min-width: 36px;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    width: 32px !important;
     /* 紧凑但保持可读 */
     padding: 4px 2px;
     text-align: center;
@@ -817,6 +841,23 @@ select:focus,
 
 .completion-header::after {
     content: none;
+}
+
+/* ===================== Product Column Styles ===================== */
+/* Make product column as narrow as possible */
+td[data-column^="product"],
+th[data-column^="product"] {
+    min-width: 45px !important;
+    max-width: 60px !important;
+    width: 50px !important;
+    padding: 2px 4px !important;
+}
+
+/* Product input/select should fit the narrow column */
+td[data-column^="product"] .combo-input,
+td[data-column^="product"] select {
+    padding: 2px 4px !important;
+    font-size: 10px !important;
 }
 
 /* ===================== Commission Input Styles ===================== */
@@ -1671,6 +1712,7 @@ select:focus,
     zoom: var(--zoom);
     transform: none;
     transform-origin: top left;
+    min-width: 100%;
     width: max-content;
 }
 

@@ -163,8 +163,8 @@
       background: var(--surface);
       color: var(--text);
       border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 13px;
+      padding: 6px 10px;
+      font-size: 12px;
       cursor: pointer;
       transition: background .15s ease, border-color .15s ease, transform .05s ease;
     }
@@ -202,8 +202,8 @@
     table {
       width: 100%;
       border-collapse: separate;
-      border-spacing: 16px 10px;
-      /* wider gutters for clearer separation */
+      border-spacing: 4px 4px;
+      /* reduced spacing for more compact view */
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -215,7 +215,8 @@
     th,
     td {
       border-bottom: 1px solid var(--border);
-      padding: 10px;
+      padding: 6px 8px;
+      /* reduced padding for more compact view */
       text-align: left;
       vertical-align: middle;
     }
@@ -557,25 +558,27 @@
       <datalist id="dlProducts" class="datalist"></datalist>
       <datalist id="dlDestinations" class="datalist"></datalist>
 
-      <!-- 工具栏：滚到底部（置于搜索框之上） -->
-      <div class="toolbar" id="scrollToolbar" style="display:flex;gap:12px;align-items:center;margin:10px 0;">
-        <button id="scrollBottom" class="btn btn-primary" title="滚动到表格底部以添加新规则">滚到底部</button>
-      </div>
-
-      <!-- Moved search bar here to sit between add-new card and the table -->
+      <!-- Search bar -->
       <div class="toolbar" id="rulesSearchBar">
         <input id="search" class="search" type="text" placeholder="搜索工厂/产品/地方/金额" />
+      </div>
+
+      <!-- Pagination controls -->
+      <div class="toolbar" id="paginationToolbar" style="display:flex;gap:12px;align-items:center;justify-content:center;margin:10px 0;">
+        <button id="prevPage" class="btn">上一页</button>
+        <span>第 <input type="number" id="currentPageInput" min="1" style="width:60px;text-align:center;" value="1"> 页 / 共 <span id="totalPages">1</span> 页</span>
+        <button id="nextPage" class="btn">下一页</button>
       </div>
 
       <table id="rulesTable">
         <thead>
           <tr>
-            <th style="width:18%">工厂</th>
-            <th style="width:16%">产品</th>
-            <th style="width:18%">地方</th>
-            <th style="width:12%">车税（RM）</th>
-            <th style="width:30%">日期范围</th>
-            <th style="width:12%">操作</th>
+            <th style="width:16%">工厂</th>
+            <th style="width:12%">产品</th>
+            <th style="width:16%">地方</th>
+            <th style="width:10%">车税（RM）</th>
+            <th style="width:26%">日期范围</th>
+            <th style="width:20%">操作</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -626,6 +629,14 @@
     };
 
     function norm(s) { return (s || '').toString().trim(); }
+    // Normalize for duplicate checking: remove all spaces, symbols, special chars, lowercase
+    // Examples: "C/SAND" → "csand", "C-SAND" → "csand", "C SAND" → "csand", "3/4 AGG" → "34agg"
+    function normForDuplicateCheck(s) {
+      return (s || '').toString()
+        .replace(/[\s\-_\/\\.,;:!@#$%^&*()+=\[\]{}|<>?~`'"]/g, '') // Remove all symbols and spaces
+        .toLowerCase()
+        .trim();
+    }
     // Smarter Title Case that:
     // - capitalizes each alphabetic word
     // - preserves numbers and separators like /, -, ' correctly
@@ -638,6 +649,12 @@
     }
     // Fully uppercase formatting for pickup/product/destination per request
     function formatCase(s) { return norm(s).toUpperCase(); }
+    // Check if value already exists (ignore spaces and case)
+    function isDuplicate(category, value) {
+      const arr = optionsCache[category] || [];
+      const normalized = normForDuplicateCheck(value);
+      return arr.some(v => normForDuplicateCheck(v) === normalized);
+    }
     function toRM(s) {
       if (s == null) return '';
       const m = String(s).match(/[0-9]+(?:\.[0-9]+)?/);
@@ -698,66 +715,37 @@
       } catch (e) { /* silent on production */ }
     }
 
+    // Pagination state
+    let currentPage = 1;
+    const rowsPerPage = 20;
+    let allRulesData = [];
+
     async function loadRules() {
       // If Supabase is not available in local mode, still render one blank row for adding
       if (!sb) {
         const tbody = document.querySelector('#rulesTable tbody');
         tbody.innerHTML = '';
-        const empty = document.createElement('tr');
-        empty.dataset.new = '1';
-        empty.innerHTML = `
-          <td><div class="combo"><input type="text" class="inpPU" placeholder="工厂" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
-          <td><div class="combo"><input type="text" class="inpPR" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
-          <td><div class="combo"><input type="text" class="inpDE" placeholder="地方" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
-          <td><input type="text" class="inpCM" placeholder="RM"></td>
-          <td>
-            <div class="date-range">
-              <input type="date" class="inpStart">
-              <span class="range-sep">至</span>
-              <input type="date" class="inpEnd">
-            </div>
-          </td>
-          <td><button class="btn btn-danger btnDelete">删除</button></td>`;
+        const empty = createNewRow();
         tbody.appendChild(empty);
         return;
       }
       const search = document.getElementById('search').value.toLowerCase();
       const { data, error } = await sb.from('commission_rules').select('id,pick_up,product,destination,commission,active,valid_from,valid_to');
       if (error) { console.error(error); return; }
-      const tbody = document.querySelector('#rulesTable tbody');
-      tbody.innerHTML = '';
-      (data || [])
+
+      // Filter and sort data
+      allRulesData = (data || [])
         .sort((a, b) => norm(a.pick_up).localeCompare(norm(b.pick_up)) || norm(a.product).localeCompare(norm(b.product)) || norm(a.destination).localeCompare(norm(b.destination)))
-        .forEach(row => {
+        .filter(row => {
           const pu = formatCase(row.pick_up), pr = formatCase(row.product), de = formatCase(row.destination), cm = toRM(row.commission);
           const txt = `${pu} ${pr} ${de} ${cm}`.toLowerCase();
-          if (search && !txt.includes(search)) return;
-          const s = row.valid_from ? String(row.valid_from) : '';
-          const e = row.valid_to ? String(row.valid_to) : '';
-          const tr = document.createElement('tr');
-          // Keep the row's primary key so edits can UPDATE instead of creating new rows
-          if (row.id != null) tr.dataset.id = String(row.id);
-          tr.innerHTML = `
-            <td><div class="combo"><input type="text" class="inpPU" value="${pu}" placeholder="工厂" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
-            <td><div class="combo"><input type="text" class="inpPR" value="${pr}" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
-            <td><div class="combo"><input type="text" class="inpDE" value="${de}" placeholder="地方" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
-            <td><input type="text" class="inpCM" value="${cm}" placeholder="RM"></td>
-            <td>
-              <div class="date-range">
-                <input type="date" class="inpStart" value="${s}">
-                <span class="range-sep">至</span>
-                <input type="date" class="inpEnd" value="${e}">
-              </div>
-            </td>
-            <td style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-              <span class="save-badge saved" title="已保存">已保存</span>
-              <button class="btn btn-primary btnSave">保存</button>
-              <button class="btn btn-danger btnDelete">删除</button>
-            </td>`;
-          tbody.appendChild(tr);
-          const saveBtn = tr.querySelector('.btnSave'); if (saveBtn) saveBtn.disabled = true;
+          return !search || txt.includes(search);
         });
-      // Always show one empty row at bottom for adding new rule
+
+      renderPage();
+    }
+
+    function createNewRow() {
       const empty = document.createElement('tr');
       empty.dataset.new = '1';
       empty.innerHTML = `
@@ -772,12 +760,63 @@
             <input type="date" class="inpEnd">
           </div>
         </td>
-        <td style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <td style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
           <span class="save-badge unsaved" title="未保存">未保存</span>
           <button class="btn btn-primary btnSave">保存</button>
           <button class="btn btn-danger btnDelete">删除</button>
         </td>`;
-      tbody.appendChild(empty);
+      return empty;
+    }
+
+    function renderPage() {
+      const tbody = document.querySelector('#rulesTable tbody');
+      tbody.innerHTML = '';
+
+      // Add new row at top
+      const newRow = createNewRow();
+      tbody.appendChild(newRow);
+
+      // Calculate pagination
+      const totalPages = Math.max(1, Math.ceil(allRulesData.length / rowsPerPage));
+      currentPage = Math.min(currentPage, totalPages);
+      const startIdx = (currentPage - 1) * rowsPerPage;
+      const endIdx = Math.min(startIdx + rowsPerPage, allRulesData.length);
+
+      // Render paginated rows
+      for (let i = startIdx; i < endIdx; i++) {
+        const row = allRulesData[i];
+        const pu = formatCase(row.pick_up), pr = formatCase(row.product), de = formatCase(row.destination), cm = toRM(row.commission);
+        const s = row.valid_from ? String(row.valid_from) : '';
+        const e = row.valid_to ? String(row.valid_to) : '';
+        const tr = document.createElement('tr');
+        // Keep the row's primary key so edits can UPDATE instead of creating new rows
+        if (row.id != null) tr.dataset.id = String(row.id);
+        tr.innerHTML = `
+          <td><div class="combo"><input type="text" class="inpPU" value="${pu}" placeholder="工厂" list="dlPickups" autocomplete="off"><button class="combo-btn" data-cat="pickup">▼</button></div></td>
+          <td><div class="combo"><input type="text" class="inpPR" value="${pr}" placeholder="产品" list="dlProducts" autocomplete="off"><button class="combo-btn" data-cat="product">▼</button></div></td>
+          <td><div class="combo"><input type="text" class="inpDE" value="${de}" placeholder="地方" list="dlDestinations" autocomplete="off"><button class="combo-btn" data-cat="destination">▼</button></div></td>
+          <td><input type="text" class="inpCM" value="${cm}" placeholder="RM"></td>
+          <td>
+            <div class="date-range">
+              <input type="date" class="inpStart" value="${s}">
+              <span class="range-sep">至</span>
+              <input type="date" class="inpEnd" value="${e}">
+            </div>
+          </td>
+          <td style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            <span class="save-badge saved" title="已保存">已保存</span>
+            <button class="btn btn-primary btnSave">保存</button>
+            <button class="btn btn-danger btnDelete">删除</button>
+          </td>`;
+        tbody.appendChild(tr);
+        const saveBtn = tr.querySelector('.btnSave'); if (saveBtn) saveBtn.disabled = true;
+      }
+
+      // Update pagination controls
+      document.getElementById('currentPageInput').value = currentPage;
+      document.getElementById('totalPages').textContent = totalPages;
+      document.getElementById('prevPage').disabled = currentPage <= 1;
+      document.getElementById('nextPage').disabled = currentPage >= totalPages;
     }
 
     // 是否在前端强制“日期范围不可重叠”校验（开发环境可关闭）
@@ -833,18 +872,37 @@
         const next = combo.nextElementSibling;
         if (next && next.classList && next.classList.contains('invalid-hint')) next.remove();
       };
-                const msg = '仅可从列表选择';
-      // PU
-      if (pu && !isKnownOption('pickup', pu)) { puEl?.classList.add('invalid'); const h = ensureFieldHint(puEl); if (h) h.textContent = msg; okAll = false; }
-      else { puEl?.classList.remove('invalid'); clearFieldHint(puEl); }
+      const msgNew = '新值 (保存时自动添加)';
+      // PU - show info hint for new values, not error
+      if (pu && !isKnownOption('pickup', pu)) {
+        puEl?.classList.remove('invalid');
+        const h = ensureFieldHint(puEl);
+        if (h) { h.textContent = msgNew; h.style.color = '#1890ff'; }
+      } else {
+        puEl?.classList.remove('invalid');
+        clearFieldHint(puEl);
+      }
       // PR
-      if (pr && !isKnownOption('product', pr)) { prEl?.classList.add('invalid'); const h = ensureFieldHint(prEl); if (h) h.textContent = msg; okAll = false; }
-      else { prEl?.classList.remove('invalid'); clearFieldHint(prEl); }
+      if (pr && !isKnownOption('product', pr)) {
+        prEl?.classList.remove('invalid');
+        const h = ensureFieldHint(prEl);
+        if (h) { h.textContent = msgNew; h.style.color = '#1890ff'; }
+      } else {
+        prEl?.classList.remove('invalid');
+        clearFieldHint(prEl);
+      }
       // DE
-      if (de && !isKnownOption('destination', de)) { deEl?.classList.add('invalid'); const h = ensureFieldHint(deEl); if (h) h.textContent = msg; okAll = false; }
-      else { deEl?.classList.remove('invalid'); clearFieldHint(deEl); }
+      if (de && !isKnownOption('destination', de)) {
+        deEl?.classList.remove('invalid');
+        const h = ensureFieldHint(deEl);
+        if (h) { h.textContent = msgNew; h.style.color = '#1890ff'; }
+      } else {
+        deEl?.classList.remove('invalid');
+        clearFieldHint(deEl);
+      }
       const btn = tr.querySelector('.btnSave');
-      if (btn) btn.disabled = !okAll || !tr.dataset.dirty;
+      // Allow saving with new values (they will be auto-added)
+      if (btn) btn.disabled = !tr.dataset.dirty;
       return okAll;
     }
     function markRowUnsaved(tr) {
@@ -1290,12 +1348,36 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
     // Wire toolbar（若无刷新按钮则跳过）
     const refreshBtn = document.getElementById('refresh');
     if (refreshBtn) refreshBtn.addEventListener('click', loadRules);
-    document.getElementById('search').addEventListener('input', loadRules);
-    const scrollBtn = document.getElementById('scrollBottom');
-    if (scrollBtn) scrollBtn.addEventListener('click', () => {
-      const tbody = document.querySelector('#rulesTable tbody');
-      const last = tbody && tbody.lastElementChild;
-      if (last) last.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    document.getElementById('search').addEventListener('input', () => {
+      currentPage = 1; // Reset to first page on search
+      loadRules();
+    });
+
+    // Pagination event listeners
+    document.getElementById('prevPage').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage();
+      }
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+      const totalPages = Math.max(1, Math.ceil(allRulesData.length / rowsPerPage));
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPage();
+      }
+    });
+
+    document.getElementById('currentPageInput').addEventListener('change', (e) => {
+      const newPage = parseInt(e.target.value);
+      const totalPages = Math.max(1, Math.ceil(allRulesData.length / rowsPerPage));
+      if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderPage();
+      } else {
+        e.target.value = currentPage; // Reset to current page if invalid
+      }
     });
 
     // 顶部新增/删除已禁用；行内保存可以通过“保存”按钮触发。
@@ -1476,8 +1558,93 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
       };
       const render = () => {
         const q = String(search.value || '').toLowerCase();
+        const qTrimmed = search.value.trim();
         list.innerHTML = '';
         const filtered = uniqItems.filter(v => !q || v.toLowerCase().includes(q));
+
+        // Check if search term is not in existing items (check for duplicates ignoring spaces)
+        const isDupe = isDuplicate(category, qTrimmed);
+        const showAddNew = qTrimmed && !isDupe && qTrimmed.length > 0;
+
+        // Show "Add New" option at top if search doesn't match
+        if (showAddNew) {
+          const addNewDiv = document.createElement('div');
+          addNewDiv.className = 'option-item';
+          addNewDiv.style.cssText = 'background: #e6f7ff; border: 2px solid #1890ff; font-weight: 600; color: #0050b3;';
+          addNewDiv.innerHTML = `➕ 添加新${category === 'pickup' ? '工厂' : category === 'product' ? '产品' : '地方'}: <strong>${formatCase(qTrimmed)}</strong>`;
+          addNewDiv.addEventListener('click', async () => {
+            const newValue = formatCase(qTrimmed);
+
+            // Double-check for duplicates before adding
+            if (isDuplicate(category, newValue)) {
+              alert(`❌ 无法添加：该${category === 'pickup' ? '工厂' : category === 'product' ? '产品' : '地方'}已存在！\n\n"${newValue}" 与现有选项重复（忽略空格和大小写）`);
+              return;
+            }
+
+            if (confirm(`确定要添加新的${category === 'pickup' ? '工厂' : category === 'product' ? '产品' : '地方'}吗？\n\n名称: ${newValue}`)) {
+              // Add to Supabase config_options
+              if (sb) {
+                try {
+                  const { error } = await sb.from('config_options').upsert([
+                    { category: category, name: newValue, active: true }
+                  ], { onConflict: 'category,name' });
+
+                  if (error) {
+                    alert('保存失败: ' + error.message);
+                    return;
+                  }
+
+                  // Add to local cache
+                  if (!optionsCache[category]) optionsCache[category] = [];
+                  if (!optionsCache[category].some(v => v.toLowerCase() === newValue.toLowerCase())) {
+                    optionsCache[category].push(newValue);
+                    optionsCache[category].sort((a, b) => a.localeCompare(b));
+                  }
+
+                  // Refresh datalist
+                  const dlId = category === 'pickup' ? 'dlPickups' : category === 'product' ? 'dlProducts' : 'dlDestinations';
+                  const dl = document.getElementById(dlId);
+                  if (dl) {
+                    const opt = document.createElement('option');
+                    opt.value = newValue;
+                    dl.appendChild(opt);
+                  }
+
+                  // Set value and close
+                  targetInput.value = newValue;
+                  closeOptionsPanel();
+
+                  // Reload options to ensure sync
+                  await loadOptions();
+
+                  alert(`✅ 成功添加: ${newValue}`);
+
+                  // Notify parent window
+                  try {
+                    window.parent && window.parent.postMessage({
+                      type: 'optionsUpdated',
+                      added: [{ category: category, name: newValue }]
+                    }, '*');
+                  } catch (_) { }
+                } catch (e) {
+                  alert('添加失败: ' + e.message);
+                }
+              } else {
+                // Offline mode: just add to local cache
+                if (!optionsCache[category]) optionsCache[category] = [];
+                if (!optionsCache[category].some(v => v.toLowerCase() === newValue.toLowerCase())) {
+                  optionsCache[category].push(newValue);
+                  optionsCache[category].sort((a, b) => a.localeCompare(b));
+                }
+                targetInput.value = newValue;
+                closeOptionsPanel();
+                alert(`✅ 已添加到本地: ${newValue}\n(需要连接Supabase才能永久保存)`);
+              }
+            }
+          });
+          list.appendChild(addNewDiv);
+        }
+
         const seen = new Set();
         const present = new Set();
         filtered.forEach(v => present.add(getLetter(v)));
@@ -1490,6 +1657,15 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
           div.addEventListener('click', () => { targetInput.value = v; closeOptionsPanel(); });
           list.appendChild(div);
         });
+
+        // Show message if no results and no add new option
+        if (filtered.length === 0 && !showAddNew) {
+          const noResults = document.createElement('div');
+          noResults.style.cssText = 'padding: 20px; text-align: center; color: #999;';
+          noResults.textContent = '没有找到匹配项';
+          list.appendChild(noResults);
+        }
+
         // Rebuild alpha index and auto-jump to last used letter
         updateAlpha(present);
         const saved = alphaLast[category] || (typeof localStorage !== 'undefined' ? localStorage.getItem('cm_alpha_' + category) : null);
@@ -1565,19 +1741,59 @@ const { error } = await sb.from('commission_rules').upsert(slice.map(r => ({ ...
         const newPU = formatCase(get('.inpPU').value);
         const newPR = formatCase(get('.inpPR').value);
         const newDE = formatCase(get('.inpDE').value);
-        const newCM = toRM(get('.inpCM').value);
+        // Allow null/empty commission value, default to 0
+        const cmInput = get('.inpCM').value;
+        const newCM = cmInput && cmInput.trim() ? toRM(cmInput) : '0.00';
         const newST = get('.inpStart').value || null;
         const newEN = get('.inpEnd').value || null;
         const newAC = get('.inpAC') ? get('.inpAC').checked : true;
         if (!newPU || !newPR || !newDE) { alert('工厂/产品/地方均为必填'); return; }
-        // 限制：只能选择列表中的值
-        if (!isKnownOption('pickup', newPU) || !isKnownOption('product', newPR) || !isKnownOption('destination', newDE)) {
-          alert('无法保存：工厂/产品/地方必须从列表中选择，不能手动输入未知值。\n请点击各字段右侧的 ▼，或从输入建议中选择。');
-          // 聚焦第一个无效字段，并打开选择面板以便用户选择
-          if (!isKnownOption('pickup', newPU)) { get('.inpPU').focus(); openOptionsPanel('pickup', get('.inpPU')); }
-          else if (!isKnownOption('product', newPR)) { get('.inpPR').focus(); openOptionsPanel('product', get('.inpPR')); }
-          else if (!isKnownOption('destination', newDE)) { get('.inpDE').focus(); openOptionsPanel('destination', get('.inpDE')); }
-          return;
+
+        // Check for duplicates before auto-adding (ignore spaces and case)
+        const optionsToAdd = [];
+
+        // Check pickup
+        if (!isKnownOption('pickup', newPU)) {
+          if (isDuplicate('pickup', newPU)) {
+            alert(`❌ 无法保存：工厂 "${newPU}" 与现有选项重复（忽略空格和大小写）`);
+            return;
+          }
+          optionsToAdd.push({ category: 'pickup', name: newPU, active: true });
+          if (!optionsCache.pickup) optionsCache.pickup = [];
+          optionsCache.pickup.push(newPU);
+        }
+
+        // Check product
+        if (!isKnownOption('product', newPR)) {
+          if (isDuplicate('product', newPR)) {
+            alert(`❌ 无法保存：产品 "${newPR}" 与现有选项重复（忽略空格和大小写）`);
+            return;
+          }
+          optionsToAdd.push({ category: 'product', name: newPR, active: true });
+          if (!optionsCache.product) optionsCache.product = [];
+          optionsCache.product.push(newPR);
+        }
+
+        // Check destination
+        if (!isKnownOption('destination', newDE)) {
+          if (isDuplicate('destination', newDE)) {
+            alert(`❌ 无法保存：地方 "${newDE}" 与现有选项重复（忽略空格和大小写）`);
+            return;
+          }
+          optionsToAdd.push({ category: 'destination', name: newDE, active: true });
+          if (!optionsCache.destination) optionsCache.destination = [];
+          optionsCache.destination.push(newDE);
+        }
+
+        // Save new options to Supabase
+        if (sb && optionsToAdd.length > 0) {
+          try {
+            await sb.from('config_options').upsert(optionsToAdd, { onConflict: 'category,name' });
+            // Reload options and refresh datalists
+            await loadOptions();
+          } catch (e) {
+            console.error('Failed to save new options:', e);
+          }
         }
         const id = tr.dataset.id ? Number(tr.dataset.id) : null;
 
