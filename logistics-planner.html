@@ -3924,6 +3924,8 @@ async function upsertOptionAndSync(category, name) {
             await supabaseLoadSchedule(window.currentDate);
                 populateTable();
                 queueAutosave();
+                // Mark config as saved so closeConfig doesn't revert changes
+                window.CONFIG_MODAL_SAVED = true;
                 closeConfig();
                 try { hideLoading('配置已保存'); } catch (_) {}
                 btnSaveCfg.disabled = false;
@@ -4672,9 +4674,12 @@ async function upsertOptionAndSync(category, name) {
                 }
                 // Reload config when closing commission manager to ensure dropdowns are updated
                 console.log('Commission panel closed, reloading config...');
-                if (typeof loadConfigFromSupabase === 'function') {
-                    await loadConfigFromSupabase();
+                if (typeof window.loadConfigFromSupabase === 'function') {
+                    await window.loadConfigFromSupabase();
                 }
+                // Also reload table to show updated data
+                await supabaseLoadSchedule(window.currentDate);
+                populateTable();
             }
 
             // Commission modal close button
@@ -4682,6 +4687,15 @@ async function upsertOptionAndSync(category, name) {
             if (closeCommission) {
                 closeCommission.addEventListener('click', closeCommissionPanel);
             }
+
+            // Create alias for config reload function (used by message listener)
+            window.loadConfigFromSupabase = async function() {
+                await supabaseLoadOptions();
+                // Update dropdown options
+                pickUpOptions = canonicalizeOptionList(CONFIG.pickUps || []);
+                productOptions = canonicalizeOptionList(CONFIG.products || []);
+                destinationOptions = canonicalizeOptionList(CONFIG.destinations || []);
+            };
 
             // Listen for messages from iframe to close commission panel
             window.addEventListener('message', async function (event) {
@@ -4698,13 +4712,10 @@ async function upsertOptionAndSync(category, name) {
                 if (data.type === 'optionsUpdated' || data.type === 'commissionRulesChanged') {
                     console.log('Options updated from commission manager, reloading config...');
                     // Reload config from Supabase
-                    if (typeof loadConfigFromSupabase === 'function') {
-                        await loadConfigFromSupabase();
-                    }
+                    await window.loadConfigFromSupabase();
                     // Also reload the table to reflect any commission changes
-                    if (typeof loadTable === 'function') {
-                        await loadTable();
-                    }
+                    await supabaseLoadSchedule(window.currentDate);
+                    populateTable();
                 }
             });
         });
